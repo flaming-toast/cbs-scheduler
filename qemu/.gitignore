@@ -112,3 +112,4 @@ TAGS
 *~
 /config.status
 config.mak
+!/qemu-options.hx
