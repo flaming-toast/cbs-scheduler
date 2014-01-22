@@ -1,0 +1,52 @@
+#!/bin/bash -e
+
+serial=""
+initrd="--initrd .lab0/interactive_initrd.gz"
+append=""
+monitor=""
+debug=""
+kvm=""
+memory="-m 512"
+net=""
+smp=""
+fs=""
+wd="-watchdog ib700 -watchdog-action poweroff"
+
+while [[ "$1" != "" ]]
+do
+    if [[ "$1" == "--initrd" ]]
+    then
+	initrd="$1 $2"
+	shift
+    elif [[ "$1" == "--stdio" ]]
+    then
+	append="--append console=ttyS0"
+	serial="--serial stdio"
+    elif [[ "$1" == "--debug" ]]
+    then
+	gdb_port="1234"
+	debug="-gdb tcp::$gdb_port"
+	kvm="--no-kvm"
+
+	# FIXME: gdb doesn't support kernel debugging during early
+	# init (unfortunately it actually breaks that running gdb
+	# instance) so we have to wait for until after Linux makes its
+	# 32->64 bit transition before attaching the GDB instance.
+	# This sleep aims to do that, but if you get errors about "bad
+	# 'g' packet, too long" then you'll have to INCREASE this
+	# sleep time.  Apparently fixing this requires hacking on GDB,
+	# something I'm not prepared to do right now.
+	#   -- palmer, Jan 14 2013
+	(
+	    sleep 5s ; \
+	    xfce4-terminal -x gdb $(readlink -f linux/vmlinux) \
+	                    -ex "target remote :1234"
+	) &
+    fi
+
+    shift
+done
+
+exec ./qemu/x86_64-softmmu/qemu-system-x86_64 \
+    --kernel linux/arch/x86/boot/bzImage \
+    $initrd $append $serial $monitor $debug $kvm $memory $net $smp $fs $wd
