@@ -38,6 +38,8 @@
 #define TYPE_IB700 "ib700"
 #define IB700(obj) OBJECT_CHECK(IB700State, (obj), TYPE_IB700)
 
+#define ENABLE_AT_BOOT
+
 typedef struct IB700state {
     ISADevice parent_obj;
 
@@ -114,15 +116,24 @@ static void wdt_ib700_realize(DeviceState *dev, Error **errp)
 
     portio_list_init(port_list, OBJECT(s), wdt_portio_list, s, "ib700");
     portio_list_add(port_list, isa_address_space_io(&s->parent_obj), 0);
+
+#ifdef ENABLE_AT_BOOT
+    ib700_debug("enabling ib700 at boot, set to 30 seconds\n");
+    ib700_write_enable_reg(s, 443, 0);
+#endif
 }
 
 static void wdt_ib700_reset(DeviceState *dev)
 {
+    /* Don't allow the timer to be reset -- this means that we'll
+     * reboot if there isn't a watchdog timer anywhere! */
+#ifndef ENABLE_AT_BOOT
     IB700State *s = IB700(dev);
 
     ib700_debug("watchdog reset\n");
 
     timer_del(s->timer);
+#endif
 }
 
 static WatchdogTimerModel model = {
