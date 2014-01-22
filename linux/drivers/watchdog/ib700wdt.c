@@ -45,7 +45,8 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
-
+#include <linux/timer.h>
+#include <linux/kernel.h>
 
 static struct platform_device *ibwdt_platform_device;
 static unsigned long ibwdt_is_open;
@@ -94,6 +95,10 @@ static char expect_close;
 #define WDT_STOP 0x441
 #define WDT_START 0x443
 
+/* If this is defined then we won't expose this watchdog to userspace
+ * but will instead manage it entirely within the kernel. */
+#define WATCHDOG_IN_KERNEL 1
+
 /* Default timeout */
 #define WATCHDOG_TIMEOUT 30		/* 30 seconds +/- 20% */
 static int timeout = WATCHDOG_TIMEOUT;	/* in seconds */
@@ -107,6 +112,9 @@ module_param(nowayout, bool, 0);
 MODULE_PARM_DESC(nowayout,
 		"Watchdog cannot be stopped once started (default="
 				__MODULE_STRING(WATCHDOG_NOWAYOUT) ")");
+
+/* This is set to TRUE whenever the machine has paniced. */
+static bool has_paniced = false;
 
 
 /*
@@ -254,6 +262,36 @@ static int ibwdt_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
+/* A tasklet to reset the watchdog timer from within the kernel. */
+#ifdef WATCHDOG_IN_KERNEL
+static void ibwdt_timer_func(unsigned long arg);
+static struct timer_list ibwdt_timer_struct;
+
+void ibwdt_timer_func(unsigned long arg)
+{
+	unsigned long timeout_jiffies;
+
+	if (has_paniced == true)
+		return;
+
+	ibwdt_ping();
+	timeout_jiffies = msecs_to_jiffies(500 * timeout);
+	mod_timer(&ibwdt_timer_struct, jiffies + timeout_jiffies);
+}
+
+static int ibwdt_helper_panic(struct notifier_block *n, unsigned long unused,
+                              void *panic_message);
+static struct notifier_block paniced = {
+	.notifier_call = ibwdt_helper_panic
+};
+
+int ibwdt_helper_panic(struct notifier_block *n, unsigned long unused,
+                       void *panic_message)
+{
+	has_paniced = true;
+}
+#endif
+
 /*
  *	Kernel Interfaces
  */
@@ -355,23 +393,35 @@ static int __init ibwdt_init(void)
 	if (err)
 		return err;
 
+#ifndef WATCHDOG_IN_KERNEL
 	ibwdt_platform_device = platform_device_register_simple(DRV_NAME,
 								-1, NULL, 0);
 	if (IS_ERR(ibwdt_platform_device)) {
 		err = PTR_ERR(ibwdt_platform_device);
 		goto unreg_platform_driver;
 	}
+#else
+        setup_timer(&ibwdt_timer_struct, &ibwdt_timer_func, 0);
+        mod_timer(&ibwdt_timer_struct, 0);
+
+        atomic_notifier_chain_register(&panic_notifier_list, &paniced);
+#endif
 
 	return 0;
 
 unreg_platform_driver:
+        pr_info("WDT driver for IB700 ungeristering\n");
 	platform_driver_unregister(&ibwdt_driver);
 	return err;
 }
 
 static void __exit ibwdt_exit(void)
 {
+#ifndef WATCHDOG_IN_KERNEL
 	platform_device_unregister(ibwdt_platform_device);
+#else
+        del_timer(&ibwdt_timer_struct);
+#endif
 	platform_driver_unregister(&ibwdt_driver);
 	pr_info("Watchdog Module Unloaded\n");
 }
