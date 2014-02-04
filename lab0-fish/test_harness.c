@@ -11,6 +11,7 @@
 #include <sys/reboot.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include "fish_impl.h"
 #include "fish_syscall.h"
@@ -155,9 +156,23 @@ int main(int argc, char **argv)
 	    fish_syscall(__NR_fish, FISH_SYNC, atoi(fx), atoi(fy),
 			                       atoi(tx), atoi(ty));
 	}
-	else if (strcmp(line, "demo") == 0)
-	    demo();
-	else
+	else if (strcmp(line, "demo") == 0) {
+#ifdef USERSPACE_TEST
+		pid_t pid = fork();
+		if (pid == 0) {
+			demo();
+		} else if (pid > 0) {
+			if (waitpid(pid, NULL, 0) == -1) {
+				perror("[fish] Child process vanished");
+			}
+		} else {
+			perror("[fish] Unable to fork child process");
+			fflush(stdout);
+		}
+#else
+		demo();
+#endif
+	} else
 	    printf("[fish] Unknown command: '%s'\n", line);
 
 	printf("[fish] command '%s' finished\n", line);
