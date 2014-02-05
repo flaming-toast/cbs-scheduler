@@ -4,6 +4,7 @@
 #ifdef PALLOC_TEST
 #include <stdio.h>
 #include "palloc.h"
+#include "mm_alloc.h"
 #include "CUnit/Basic.h"
 
 static int init_suite_example(void)
@@ -23,7 +24,7 @@ static void test_palloc(void)
 {
 	int i = 0;
     void *context = palloc_init("test context");
-    int *test = mm_alloc(sizeof(int)); //Set memory to non-zero
+    int *test = mm_malloc(sizeof(int)); //Set memory to non-zero
     *test = 1;
     mm_free(test);
     for (i = 0; i < 200; i += 1) { //Repeat many times.
@@ -41,12 +42,12 @@ static void test_palloc(void)
 static void test_parent_child(void)
 {
     void *parent = palloc_init("test context");
-    void *child = palloc(parent, sizeof(int), "int");
+    void *child = _palloc(parent, sizeof(int), "int");
     int returnparent = 0;
     int returnchild = 0;
     returnparent = pfree(parent);
     CU_ASSERT(returnparent == 0);
-    returnchild = pfree(child);
+    returnchild = pfree(child); //Currently doesn't return -1, actually attempts to free
     CU_ASSERT(returnchild == -1);
     CU_ASSERT(!parent);
     CU_ASSERT(!child);
