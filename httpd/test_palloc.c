@@ -265,7 +265,7 @@ static void test_array_resize_larger(void) {
 static void test_cast(void) {
     init_suite_example();
     stringChild = palloc_strdup(context, "Test");
-    CU_ASSERT(palloc_cast(stringChild, char*) != NULL);
+    CU_ASSERT(palloc_cast(stringChild, char) != NULL);
     CU_ASSERT(palloc_cast(stringChild, int) == NULL);
     clean_suite_example();
 }
@@ -299,142 +299,142 @@ static void test_array_resize_smaller(void) {
     clean_suite_example();
 }
 
-//static void child_string(void) {
-//	char strgen[30];
-//    char *localString; 
-//    int randomwait, counter, localreturn;
-//    srand(time(NULL));
-//    randomwait = rand() % 100;
-//    sprintf(strgen, "%d", randomwait);
-//    localString = palloc_strdup(context, strgen);
-//    CU_ASSERT(localString != NULL);
-//    counter = 0;
-//    while(counter < randomwait) {
-//    	counter += 1;
-//    }
-//    CU_ASSERT(strcmp(localString, strgen) == 0);
-//    counter = 0;
-//    while(counter < randomwait) {
-//    	counter += 1;
-//    }
-//    localreturn = pfree(localString);
-//    CU_ASSERT(localreturn == 0);
-//    localString = NULL;
-//}
-//
-///**Currently Not implemented due to segmentation fault,
-// * but would be a copy of the three test array functions
-// * with various wait areas like child_string();
-// * 
-// * This function combines the three array tests.
-// */
-//static void child_array(void) {
-//	char strgen[30];
-//	char strgen2[30];
-//    char **localArray; 
-//    //char *localpointer;
-//    int randomwait, counter, localreturn;
-//    localArray = palloc_array(context, char*, 5);
-//    srand(time(NULL));
-//    randomwait = rand() % 50;
-//    sprintf(strgen, "%d", randomwait);
-//    for (i = 0; i < 5; i += 1) {
-//        counter = 0;
-//        while(counter < randomwait) {
-//        	counter += 1;
-//        }
-//        randomwait = rand() % 5;
-//        /*
-//        localArray[i] = palloc_strdup(localArray, strgen);
-//        CU_ASSERT(localArray[i] != NULL);
-//        localpointer = (char*) localArray[i];
-//        CU_ASSERT(strcmp(localpointer, "strgen) == 0);
-//        */
-//    }
-//    localArray = prealloc(localArray, 3);
-//    for (i = 0; i < 3; i += 1) {
-//        counter = 0;
-//        while(counter < randomwait) {
-//        	counter += 1;
-//        }
-//        randomwait = rand() % 5;
-//        /*
-//        CU_ASSERT(localArray[i] != NULL);
-//        localpointer = (char*) localArray[i];
-//        CU_ASSERT(strcmp(localpointer, strgen) == 0);
-//        */
-//    }
-//    sprintf(strgen2, "%d", (randomwait + 1));
-//    localArray = prealloc(localArray, 7);
-//    for (i = 3; i < 7; i += 1) {
-//        counter = 0;
-//        while(counter < randomwait) {
-//        	counter += 1;
-//        }
-//        randomwait = rand() % 5;
-//        /*
-//        localArray[i] = palloc_strdup(localArray, strgen2);
-//        CU_ASSERT(localArray[i] != NULL);
-//        localpointer = (char*) localArray[i];
-//        CU_ASSERT(strcmp(localpointer, strgen2) == 0);
-//        */
-//    }
-//    for (i = 0; i < 3; i += 1) {
-//        counter = 0;
-//        while(counter < randomwait) {
-//        	counter += 1;
-//        }
-//        randomwait = rand() % 5;
-//        /*
-//        CU_ASSERT(localArray[i] != NULL);
-//        localpointer = (char*) localArray[i];
-//        CU_ASSERT(strcmp(localpointer, strgen) == 0);
-//        */
-//    }
-//    localreturn = pfree(localArray);
-//    CU_ASSERT(localreturn == 0);
-//    localArray = NULL;
-//}
-//
-///**
-// * Combination of the three destructor tests.
-// */
-//static void child_destructor(void) {
-//    void *localInt = palloc(context, int);
-//    int randomwait, counter, localreturn;
-//    srand(time(NULL));
-//    randomwait = rand() % 50;
-//    counter = 0;
-//    while(counter < randomwait) {
-//    	counter += 1;
-//    }
-//    palloc_destructor(localInt, &return_valid);
-//    localreturn = pfree(localInt);
-//    CU_ASSERT(localreturn == 0);
-//    counter = 0;
-//    while(counter < randomwait) {
-//    	counter += 1;
-//    }
-//    localInt = palloc(context, int);
-//    palloc_destructor(localInt, &return_invalid);
-//    localreturn = pfree(localInt);
-//    CU_ASSERT(localreturn == -1);
-//    counter = 0;
-//    while(counter < randomwait) {
-//    	counter += 1;
-//    }
-//    localInt = palloc(context, int);
-//    palloc_destructor(localInt, &return_invalid);
-//    palloc_destructor(localInt, NULL);
-//    localreturn = pfree(localInt);
-//    CU_ASSERT(localreturn == 0);
-//    localInt = NULL;
-//}
+static void child_string(void) {
+	char strgen[30];
+    char *localString; 
+    int randomwait, counter, localreturn;
+    srand(time(NULL));
+    randomwait = rand() % 100;
+    sprintf(strgen, "%d", randomwait);
+    localString = palloc_strdup(context, strgen);
+    CU_ASSERT(localString != NULL);
+    counter = 0;
+    while(counter < randomwait) {
+    	counter += 1;
+    }
+    CU_ASSERT(strcmp(localString, strgen) == 0);
+    counter = 0;
+    while(counter < randomwait) {
+    	counter += 1;
+    }
+    localreturn = pfree(localString);
+    CU_ASSERT(localreturn == 0);
+    localString = NULL;
+}
+
+/**Currently Not implemented due to segmentation fault,
+ * but would be a copy of the three test array functions
+ * with various wait areas like child_string();
+ * 
+ * This function combines the three array tests.
+ */
+static void child_array(void) {
+	char strgen[30];
+	char strgen2[30];
+    char **localArray; 
+    //char *localpointer;
+    int randomwait, counter, localreturn;
+    localArray = palloc_array(context, char*, 5);
+    srand(time(NULL));
+    randomwait = rand() % 50;
+    sprintf(strgen, "%d", randomwait);
+    for (i = 0; i < 5; i += 1) {
+        counter = 0;
+        while(counter < randomwait) {
+        	counter += 1;
+        }
+        randomwait = rand() % 5;
+        /*
+        localArray[i] = palloc_strdup(localArray, strgen);
+        CU_ASSERT(localArray[i] != NULL);
+        localpointer = (char*) localArray[i];
+        CU_ASSERT(strcmp(localpointer, "strgen) == 0);
+        */
+    }
+    localArray = prealloc(localArray, 3);
+    for (i = 0; i < 3; i += 1) {
+        counter = 0;
+        while(counter < randomwait) {
+        	counter += 1;
+        }
+        randomwait = rand() % 5;
+        /*
+        CU_ASSERT(localArray[i] != NULL);
+        localpointer = (char*) localArray[i];
+        CU_ASSERT(strcmp(localpointer, strgen) == 0);
+        */
+    }
+    sprintf(strgen2, "%d", (randomwait + 1));
+    localArray = prealloc(localArray, 7);
+    for (i = 3; i < 7; i += 1) {
+        counter = 0;
+        while(counter < randomwait) {
+        	counter += 1;
+        }
+        randomwait = rand() % 5;
+        /*
+        localArray[i] = palloc_strdup(localArray, strgen2);
+        CU_ASSERT(localArray[i] != NULL);
+        localpointer = (char*) localArray[i];
+        CU_ASSERT(strcmp(localpointer, strgen2) == 0);
+        */
+    }
+    for (i = 0; i < 3; i += 1) {
+        counter = 0;
+        while(counter < randomwait) {
+        	counter += 1;
+        }
+        randomwait = rand() % 5;
+        /*
+        CU_ASSERT(localArray[i] != NULL);
+        localpointer = (char*) localArray[i];
+        CU_ASSERT(strcmp(localpointer, strgen) == 0);
+        */
+    }
+    localreturn = pfree(localArray);
+    CU_ASSERT(localreturn == 0);
+    localArray = NULL;
+}
+
+/**
+ * Combination of the three destructor tests.
+ */
+static void child_destructor(void) {
+    void *localInt = palloc(context, int);
+    int randomwait, counter, localreturn;
+    srand(time(NULL));
+    randomwait = rand() % 50;
+    counter = 0;
+    while(counter < randomwait) {
+    	counter += 1;
+    }
+    palloc_destructor(localInt, &return_valid);
+    localreturn = pfree(localInt);
+    CU_ASSERT(localreturn == 0);
+    counter = 0;
+    while(counter < randomwait) {
+    	counter += 1;
+    }
+    localInt = palloc(context, int);
+    palloc_destructor(localInt, &return_invalid);
+    localreturn = pfree(localInt);
+    CU_ASSERT(localreturn == -1);
+    counter = 0;
+    while(counter < randomwait) {
+    	counter += 1;
+    }
+    localInt = palloc(context, int);
+    palloc_destructor(localInt, &return_invalid);
+    palloc_destructor(localInt, NULL);
+    localreturn = pfree(localInt);
+    CU_ASSERT(localreturn == 0);
+    localInt = NULL;
+}
 
 /**
  * Tests casting a child.
  */
-/*
+
 static void child_cast(void) {
     int randomwait, counter, localreturn;
     char *localString = palloc_strdup(context, "Test");
@@ -445,8 +445,9 @@ static void child_cast(void) {
     while(counter < randomwait) {
     	counter += 1;
     }
-
-    CU_ASSERT(palloc_cast(localString, char*) != NULL);
+    
+    CU_ASSERT(palloc_cast(localString, char) != NULL);
+    
     counter = 0;
     while(counter < randomwait) {
     	counter += 1;
@@ -455,68 +456,59 @@ static void child_cast(void) {
     localreturn = pfree(localString);
     CU_ASSERT(localreturn == 0);
     localString = NULL;
+	//printf("CHECKPOINT C\n");
 }
-*/
+
 
 /** What each child does, a combination of other previous tests. */
 static void * children_tests(void *ptr) {
-	/*
 	int order = 0;
-    //srand(time(NULL));
-	//order = rand() % 1;
+    srand(time(NULL));
+	order = rand() % 1;
 	if(order) {
-		//child_string();
-		//child_array();
-		//child_destructor();
-		//child_cast();
+		child_string();
+		child_array();
+		child_destructor();
+		child_cast();
 	} else {
-		//child_cast();
-		//child_destructor();
-		//child_array();
-		//child_string();
-	}
-	*/
-	printf("Checkpoint A");
-	/*
-	if(order == 3) {
 		child_cast();
 		child_destructor();
 		child_array();
 		child_string();
 	}
-	*/
-	//pthread_exit(0);
+
+	printf("Checkpoint A\n");
 	return NULL;
 }
 
 /** Method to create children.
- * TODO: Figure out why having multiple children creation results in segmentation faults...
+ *
  */
 static void * create_children(void *ptr) {
 	pthread_t child1;
-	pthread_t child2, child3, child4, child5, child6, child7, child8, child9, child10;
+	pthread_t child2;
+	//child3, child4, child5, child6, child7, child8, child9, child10;
 	pthread_create(&child1, NULL, &children_tests, NULL);
 	pthread_create(&child2, NULL, &children_tests, NULL);
-	pthread_create(&child3, NULL, &children_tests, NULL);
-	pthread_create(&child4, NULL, &children_tests, NULL);
-	pthread_create(&child5, NULL, &children_tests, NULL);
-	pthread_create(&child6, NULL, &children_tests, NULL);
-	pthread_create(&child7, NULL, &children_tests, NULL);
-	pthread_create(&child8, NULL, &children_tests, NULL);
-	pthread_create(&child9, NULL, &children_tests, NULL);
-	pthread_create(&child10, NULL, &children_tests, NULL);
+	//pthread_create(&child3, NULL, &children_tests, NULL);
+	//pthread_create(&child4, NULL, &children_tests, NULL);
+	//pthread_create(&child5, NULL, &children_tests, NULL);
+	//pthread_create(&child6, NULL, &children_tests, NULL);
+	//pthread_create(&child7, NULL, &children_tests, NULL);
+	//pthread_create(&child8, NULL, &children_tests, NULL);
+	//pthread_create(&child9, NULL, &children_tests, NULL);
+	//pthread_create(&child10, NULL, &children_tests, NULL);
 	pthread_join(child1, NULL);
 	pthread_join(child2, NULL);
-	pthread_join(child2, NULL);
-	pthread_join(child3, NULL);
-	pthread_join(child4, NULL);
-	pthread_join(child5, NULL);
-	pthread_join(child6, NULL);
-	pthread_join(child7, NULL);
-	pthread_join(child8, NULL);
-	pthread_join(child9, NULL);
-	pthread_join(child10, NULL);
-	printf("CHECKPOINT B");
+	//pthread_join(child3, NULL);
+	//pthread_join(child4, NULL);
+	//pthread_join(child5, NULL);
+	//pthread_join(child6, NULL);
+	//pthread_join(child7, NULL);
+	//pthread_join(child8, NULL);
+	//pthread_join(child9, NULL);
+	//pthread_join(child10, NULL);
+	printf("CHECKPOINT B\n");
 	return NULL;
 }
 
