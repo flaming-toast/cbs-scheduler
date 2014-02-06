@@ -189,6 +189,29 @@ static void test_usability(void)
     palloc_print_tree(parent);
 }
 
+/** 
+ * Tests to see if asynchronous calls have no error. This is done
+ * by creating multiple threads that run which acquires the parent
+ * context and does manipulations to it where it adds, verifies, then deletes a change
+ * (test at each step to verify none of the data on shared data was modified,
+ * so requires a local copy of all data, it is fine if data on non-shared data is modified to allow
+ * parallel access to different memory address)
+ * 
+ */
+static void fork_test(void) {
+	//TODO: ASK IF ABOVE IS FINE OR
+	//If we can simply test if the lock works via having multiple threads try to acquire the lock via
+	//a palloc call on shared context and meory address and
+	//making sure only one did in a particular timeframe. Wouldn't that be redundant?
+	//
+	//Implementation idea (former)
+	//Repeat 10 times
+	//	for x < 20, spawn 20 threads
+	//		let each child thread call a helper
+	//			helper does 'unique change' on shared memory area, as well as change in non-shared
+	//			verify no other thread changed shared memory area during entire process (that it is locked)
+}
+
 /** Test slab allocator internal representation. This test is not finalized yet since
  *  Slab Allocation may change in API. */
 static void test_slab(void) 
@@ -230,6 +253,7 @@ int main(int argc, char **argv)
         CU_add_test(s, "test if destructors work properly with pfree", &test_destructor);
         CU_add_test(s, "test each of the remaining allocation methods in palloc. Array, String, Realloc, Cast", &test_usability);
         CU_add_test(s, "Test slab allocation internal structure", &test_slab); //Tests for slab allocation internal structure if we do use it
+        CU_add_test(s, "Test asynchronous palloc usage", &fork_test);
     }
 
     /* Actually run your tests here. */
