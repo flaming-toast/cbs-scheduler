@@ -197,29 +197,49 @@ static void test_string(void) {
     clean_suite_example();
 }
 
+static void test_array_new(void) {
+	void *local_context = palloc_init("Local Test");
+    char **local_arrayChild = palloc_array(local_context, char*, 5);
+    int local_return;
+    char *local_pointer;
+    CU_ASSERT(local_arrayChild != NULL);
+    for (i = 0; i < 5; i += 1) {
+    	local_arrayChild[i] = palloc_strdup(local_context, "Child");
+        //printf("Array Initialized");
+        CU_ASSERT(local_arrayChild[i] != NULL);
+        local_pointer = (char*) local_arrayChild[i];
+        CU_ASSERT(strcmp(local_pointer, "Child") == 0);
+    }
+    local_return = pfree(local_arrayChild);
+    CU_ASSERT(local_arrayChild != NULL);
+    CU_ASSERT(local_return == 0);
+    local_arrayChild = NULL;
+}
+
 /** 
  * Test if creating an array and adding elements works.
  * Unknown Bug: This test now throws a segmentation fault due to the commented out code
  * fault (was working before merging in checkpoint 1). False pass currently.
  */
+/*
 static void test_array_simple(void) {
     init_suite_example();
     arrayChild = palloc_array(context, char*, 5);
     CU_ASSERT(arrayChild != NULL);
     for (i = 0; i < 1; i += 1) {
-        arrayChild[i] = "Child";
-        stringChild = palloc_strdup(context, "Test");
+        arrayChild[i] = "";
+        		//palloc_strdup(context, "Child");
         //printf("Array Initialized");
-        //CU_ASSERT(arrayChild[i] != NULL);
-        //pointercheck = (char*) arrayChild[i];
-        //CU_ASSERT(strcmp(pointercheck, "Child") == 0);
-        
+        CU_ASSERT(arrayChild[i] != NULL);
+        pointercheck = (char*) arrayChild[i];
+        CU_ASSERT(strcmp(pointercheck, "Child") == 0);
     }
-    //returnchild1 = pfree(arrayChild);
-    //CU_ASSERT(arrayChild != NULL);
-    //arrayChild = NULL;
-    //clean_suite_example();
+    returnchild1 = pfree(arrayChild);
+    CU_ASSERT(arrayChild != NULL);
+    arrayChild = NULL;
+    clean_suite_example();
 }
+*/
 
 /** Test if making an array larger works. We repeat test_array_simple,
  *  then resize to 7, then verify contents of previous to realloc to ensure
@@ -572,7 +592,7 @@ int main(int argc, char **argv)
         CU_add_test(s, "test if a destructor error is returned by pfree()", &test_destructor_invalid);
         CU_add_test(s, "Test slab allocation internal structure", &test_slab);
         CU_add_test(s, "test if strings work.", &test_string);
-        CU_add_test(s, "test if simple array works.", &test_array_simple);
+        CU_add_test(s, "test if simple array works.", &test_array_new);
         CU_add_test(s, "test if resizing an array larger works.", &test_array_resize_larger);
         CU_add_test(s, "test if resizing an array smaller works.", &test_array_resize_smaller);
         CU_add_test(s, "test if casting works", &test_cast);
