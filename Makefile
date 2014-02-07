@@ -37,14 +37,9 @@ linux:
 all: linux
 
 .PHONY: qemu
-qemu: qemu/qemu-options.def
+qemu:
 	$(MAKE) -C qemu
 all: qemu
-
-# Apparently we can't cache configure because it does some dependency
-# checking.
-qemu/qemu-options.def: qemu/configure
-	cd qemu && ./configure --target-list=x86_64-softmmu
 
 # We can't track dependencies through those recursive builds, but we
 # can kind of do it -- this always rebuilds the subprojects, but only
@@ -59,4 +54,11 @@ clean::
 	$(MAKE) -C linux clean
 	$(MAKE) -C busybox clean
 	$(MAKE) -C qemu clean
-	rm -rf .lab0/* .obj/*
+	rm -rf .httpd/* .lab0-fish/* .lab0/* .lab0-fish/* .obj/*
+
+# This target runs the tests and reports their results
+.PHONY: check
+check:
+	cat $^
+%.cunit_out: %
+	$< > "$@"
