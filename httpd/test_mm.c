@@ -122,14 +122,16 @@ static void test_malloc_5(void)
         unsigned long ptr_addr;
         ptr = mm_malloc(5);
         ptr_addr = (unsigned long)ptr;
-        CU_ASSERT(ptr_addr % 16 == 0);
+        CU_ASSERT(ptr_addr % 8 == 0);
 }
 
 static void test_malloc_6(void)
 {
         unsigned long ptr_addr;
         unsigned long ptr2_addr;
+        printf("sbrk0 before = %p\n", sbrk(0));
         ptr = mm_malloc(5);
+        printf("sbrk0 after = %p\n", sbrk(0));
         ptr_addr = (unsigned long)(ptr+5);
         ptr2_addr = (unsigned long)sbrk(0);
         CU_ASSERT(ptr_addr < ptr2_addr);
