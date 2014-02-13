@@ -7,7 +7,6 @@ HTTPD_DEP := $(HTTPD_OBJ:%.o:%.d)
 HTTPD_FLAGS := -fms-extensions
 MMTEST_FLAGS := -DMM_TEST $(HTTPD_FLAGS) -Wno-write-strings
 PATEST_FLAGS := -DPALLOC_TEST $(HTTPD_FLAGS)
-PRCTLTEST_FLAGS := -DPRECTL_TEST $(HTTPD_FLAGS)
 
 -include $(HTTPD_DEP) 
 
@@ -50,14 +49,3 @@ all: .httpd/test_palloc
 
 check: .httpd/test_palloc.cunit_out
 
-#Build a test harness for the prctl code -- not that linux must be built separately first
-# Builds a test harness for the palloc code
-all: .httpd/test_prctl
-.httpd/test_prctl: .httpd/test_prctl.d/test_prctl.o
-	gcc -g -static $(PRCTLTEST_FLAGS) $(CFLAGS) -o "$@" $^ -lcunit
-
-.httpd/test_prctl.d/%.o: httpd/%.c $(HTTPD_HDR)
-	mkdir -p `dirname $@`
-	gcc -g -c -o $@ $(PRCTLTEST_FLAGS) $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
-
-check: .httpd/test_prctl.cunit_out
