@@ -1999,6 +1999,14 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		if (arg2 || arg3 || arg4 || arg5)
 			return -EINVAL;
 		return current->no_new_privs ? 1 : 0;
+	/* [LAB1]: threadlimit prctl calls */
+	case PR_SET_THREADLIMIT:
+	        me->sp_limit_set = 1;
+	        me->sp_limit = arg2;
+	        break;
+	case PR_GET_THREADLIMIT:
+	  /* TODO */
+	        break;
 	default:
 		error = -EINVAL;
 		break;

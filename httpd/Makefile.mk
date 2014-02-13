@@ -48,3 +48,4 @@ all: .httpd/test_palloc
 	gcc -g -c -o $@ $(PATEST_FLAGS) $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
 
 check: .httpd/test_palloc.cunit_out
+
