@@ -1183,7 +1183,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	}
 
 	/* [LAB1]: If the forking task is breaking its sp_limit, don't fork. */
-	if (current->sp_limit_set && (current->sp_limit <=0)) {
+	if (current->sp_limit_set && current->sp_limit <= 0) {
 	  return ERR_PTR(-EINVAL);
 	}
 
