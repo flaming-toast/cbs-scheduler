@@ -149,4 +149,7 @@
 
 #define PR_GET_TID_ADDRESS	40
 
+#define PR_SET_THREADLIMIT      41
+#define PR_GET_THREADLIMIT      42
+
 #endif /* _LINUX_PRCTL_H */

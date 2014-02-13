@@ -1027,6 +1027,11 @@ struct task_struct {
 	unsigned int flags;	/* per process flags, defined below */
 	unsigned int ptrace;
 
+        /* [LAB1]: Subprocess limit (prctl) information */
+        char sp_limit_set;
+        unsigned long sp_limit;
+        unsigned long sp_count;
+
 #ifdef CONFIG_SMP
 	struct llist_node wake_entry;
 	int on_cpu;
