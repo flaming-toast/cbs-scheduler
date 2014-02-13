@@ -3,6 +3,7 @@
 
 #ifdef PALLOC_TEST
 #include <stdio.h>
+#include <string.h>
 #include "palloc.h"
 #include "mm_alloc.h"
 #include "CUnit/Basic.h"
@@ -42,15 +43,19 @@ static void test_palloc(void)
 static void test_parent_child(void)
 {
     void *parent = palloc_init("test context");
-    void *child = _palloc(parent, sizeof(int), "int");
+    void *child1 = palloc(parent, int);
+    void *child2 = palloc(child1, int);
     int returnparent = 0;
     //int returnchild = 0;
-    returnparent = pfree(parent);
+    returnparent = pfree(child1);
     CU_ASSERT(returnparent == 0);
     //returnchild = pfree(child); //Currently doesn't return -1, actually attempts to free
     //CU_ASSERT(returnchild == -1); //TODO: Reimplement once it doesn't cause an error which ruins every other test.
-    CU_ASSERT(parent == NULL);
-    CU_ASSERT(child == NULL);
+    CU_ASSERT(parent != NULL);
+    CU_ASSERT(child1 != NULL);
+    CU_ASSERT(child2 != NULL);
+    palloc_print_tree(parent); //A PRINT STATEMENT TO MAKE SURE ACTUALLY FREED
+    
 }
 
 int return_valid(void *ignore)
@@ -93,23 +98,26 @@ static void test_usability(void)
     void *parent = palloc_init("Test context");
     char **child1 = palloc_array(parent, char*, 5);
     char *child2 = palloc_strdup(parent, "Test");
+    char *pointercheck;
     int i = 0;
     for (i = 0; i < 5; i += 1) {
     	child1[i] = palloc_strdup(child1, "Larger Child");
     	CU_ASSERT(child1[i] != NULL);
-    	//TODO: Figure out how to access value.
+    	pointercheck = (char*) child1[i];
+    	CU_ASSERT(strcmp(pointercheck, "Larger Child") == 0);//TODO: Figure out how to access value.
     }
     palloc_strdup(child2, "Test");
     CU_ASSERT(child1 != NULL);
     CU_ASSERT(child2 != NULL);
-    palloc_print_tree(parent); //Make sure correct manually?
+    palloc_print_tree(parent); //Make sure correct manually? TODO: Replace with a traversal through the tree structure after finalized in implementation.
     CU_ASSERT(palloc_cast(child2, char*) != NULL);
     CU_ASSERT(palloc_cast(child2, int) == NULL);
-    prealloc(child1, 7);
+    child1 = prealloc(child1, 7);
     for (i = 5; i < 7; i += 1) {
     	child1[i] = palloc_strdup(child1, "Larger Child");
     	CU_ASSERT(child1[i] != NULL);
-    	//TODO: Figure out how to access value
+    	pointercheck = (char*) child1[i];
+    	CU_ASSERT(strcmp(pointercheck, "Larger Child") == 0);//TODO: Figure out how to access value.
     }
     //Test making the array smaller, test if parent still has a pointer to the old size 7 array.
     child1 = palloc_array(parent, char*, 5);
@@ -117,6 +125,9 @@ static void test_usability(void)
     for (i = 0; i < 5; i += 1) {
     	child1[i] = palloc_strdup(child1, "Smaller Child");
     	CU_ASSERT(child1[i] != NULL);
+    	pointercheck = (char*) child1[i];
+    	CU_ASSERT(strcmp(pointercheck, "Smaller Child") == 0);//TODO: Figure out how to access value.
+
     }
     palloc_print_tree(parent);
     //TODO: Write a custom print function that actually prints the values.
