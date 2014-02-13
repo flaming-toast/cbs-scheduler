@@ -33,32 +33,49 @@ int http_get(struct mimetype *mt, struct http_session *s)
 {
     struct mimetype_file *mtf;
     int fd;
+    int pipefd[2]; 
     char buf[BUF_COUNT];
     ssize_t readed;
+    pid_t childpid;
 
     mtf = palloc_cast(mt, struct mimetype_file);
     if (mtf == NULL)
-	return -1;
+		return -1;
+
+	/* Simple CGI implementation */
+    pipe(pipefd);
+    if (access(mtf->fullpath, F_OK|X_OK)){
+    	fd = open(mtf->fullpath, O_RDONLY);
+    } else {
+		childpid = fork();
+		if (!childpid) {
+			dup2(pipefd[1], 1);
+			execl(mtf->fullpath, "", NULL);
+			exit(0);
+		} else {
+			dup2(pipefd[0], 0);
+			fd = pipefd[0]; //read from child
+		}
+	}
 
     s->puts(s, "HTTP/1.1 200 OK\r\n");
     s->puts(s, "Content-Type: text/html\r\n");
     s->puts(s, "\r\n");
 
-    fd = open(mtf->fullpath, O_RDONLY);
+	//		close(pipefd[0]);
+	close(pipefd[1]); //stop communcation, signal end of data
 
     while ((readed = read(fd, buf, BUF_COUNT)) > 0)
     {
-	ssize_t written;
-
-	written = 0;
-	while (written < readed)
-	{
-	    ssize_t w;
-
-	    w = s->write(s, buf+written, readed-written);
-	    if (w > 0)
-		written += w;
-	}
+		ssize_t written;
+		written = 0;
+		while (written < readed)
+		{
+	    	ssize_t w;
+	    	w = s->write(s, buf+written, readed-written);
+	    	if (w > 0)
+				written += w;
+		}
     }
 
     close(fd);

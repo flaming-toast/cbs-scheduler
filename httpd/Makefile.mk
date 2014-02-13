@@ -5,7 +5,7 @@ HTTPD_OBJ := $(HTTPD_SRC:%.c=%.o)
 HTTPD_OBJ := $(HTTPD_OBJ:./httpd/%=./.httpd/httpd.d/%)
 HTTPD_DEP := $(HTTPD_OBJ:%.o:%.d)
 HTTPD_FLAGS := -fms-extensions
-MMTEST_FLAGS := -DMM_TEST $(HTTPD_FLAGS) -Wno-write-strings
+MMTEST_FLAGS := -DMM_TEST $(HTTPD_FLAGS) -Wno-write-strings -pthread
 PATEST_FLAGS := -DPALLOC_TEST $(HTTPD_FLAGS)
 
 -include $(HTTPD_DEP) 
