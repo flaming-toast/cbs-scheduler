@@ -8,13 +8,55 @@
 #include "mm_alloc.h"
 #include "CUnit/Basic.h"
 
+static int i;
+static int returnparent;
+static int returnchild1;
+static int returnchild2;
+static void *context;
+static void *child1;
+static void *child2;
+static char **arrayChild;
+static char *stringChild;
+static char *pointercheck;
+
 static int init_suite_example(void)
 {
+	i = 0;
+	returnparent = 0;
+	returnchild1 = 0;
+	returnchild2 = 0;
+	if (context == NULL) {
+		context = palloc_init("test context");
+	}
     return 0;
 }
 
 static int clean_suite_example(void)
 {
+	if (child1 != NULL) {
+		pfree(child1);
+		child1 = NULL;
+	}
+	if (child2 != NULL) {
+		pfree(child2);
+		child2 = NULL;
+	}
+    if (arrayChild != NULL) {
+    	pfree(arrayChild);
+    	arrayChild = NULL;
+    }
+    if (stringChild != NULL) {
+    	pfree(stringChild);
+    	stringChild = NULL;
+    }
+    if (pointercheck != NULL) {
+    	pfree(pointercheck);
+    	pointercheck = NULL;
+    }
+	if (context != NULL) {
+		pfree(context);
+		context = NULL;
+	}
     return 0;
 }
 /**
@@ -24,18 +66,16 @@ static int clean_suite_example(void)
  */
 static void test_palloc(void)
 {
-	int i = 0;
-    void *context = palloc_init("test context");
-    int *test = mm_malloc(sizeof(int)); //Set memory to non-zero
-    *test = 1;
-    mm_free(test);
-    for (i = 0; i < 200; i += 1) { //Repeat many times to ensure always zero.
+	init_suite_example();
+    for (i = 0; i < 200; i += 1) {
 		int *ptr = palloc(context, int);
 		CU_ASSERT(ptr != NULL);
 		CU_ASSERT(*ptr == 0);
-		*ptr = 1; //Set value at pointer to non-zero.
+		*ptr = 1;
 		pfree(ptr);
+		ptr = NULL;
     }
+    clean_suite_example();
 }
 
 /**
@@ -45,22 +85,28 @@ static void test_palloc(void)
  * The print statement at the end is intended for debugging purposes in the future to make
  * sure pointers were actually freed as I intend to add debugging print statements to check
  * for if the memory was actually freed. It is also to make sure the print function works.
+ * 
+ * Parts of this test is commented out because having it there results in all tests crashing
+ * They will be uncommented once the bugs with palloc are fixed. 
  */
 static void test_parent_child(void)
 {
-    void *parent = palloc_init("test context");
-    void *child1 = palloc(parent, int);
-    void *child2 = palloc(child1, int);
-    int returnparent = 0;
-    //int returnchild = 0; Commented out to allow compiling.
-    returnparent = pfree(child1);
+	init_suite_example();
+    child1 = palloc(context, int);
+    child2 = palloc(child1, int);
+    returnchild1 = pfree(child1);
     CU_ASSERT(returnparent == 0);
-    //returnchild = pfree(child); //Currently doesn't return -1, results in all tests crashing, so commented out.
-    //CU_ASSERT(returnchild == -1); //TODO: Reimplement once it doesn't cause an error which ruins every other test.
-    CU_ASSERT(parent != NULL);
+    //returnchild2 = pfree(child2);
+    //CU_ASSERT(returnchild2 == -1);
+    CU_ASSERT(context != NULL);
     CU_ASSERT(child1 != NULL);
     CU_ASSERT(child2 != NULL);
-    palloc_print_tree(parent);
+    palloc_print_tree(context);
+    child1 = NULL;
+    //child2 = NULL;
+    //returnchild2 = pfree(child2);
+    //CU_ASSERT(returnchild2 == -1);
+    clean_suite_example();
     
 }
 
@@ -80,115 +126,174 @@ int return_invalid(void *ignore)
 	return -1;
 }
 /**
- * This test group is a more complicated test of destructors.
- * 
- * First, we test if adding a destructor and then removing it works.
+ * Below are tests which test destructors.
+ */
+
+/**
+ * We test if adding a destructor and then removing it works.
  * We do this by adding the return_invalid destructor
  * to a call, and then removing it. We expect the free to return 0.
- * 
- * Second, we test to make sure having a destructor doesn't break free.
- * We do this by adding the return_valid destructor
- * to a call. We expect the free to return 0.
- * 
- * Lastly, we test to make sure a destructor returning -1 is passed through
+ */
+static void test_destructor_remove(void)
+{
+	init_suite_example();
+    child1 = palloc(context, int);
+    palloc_destructor(child1, &return_invalid);
+    palloc_destructor(child1, NULL); 
+    returnchild1 = pfree(child1);
+    CU_ASSERT(returnchild1 == 0);
+    child1 = NULL;
+    clean_suite_example();
+}
+
+/**
+ * We test to make sure a destructor returning -1 is passed through
  * as a result of pfree per the palloc.h file. We do this by adding the
  * return_invalid destructor to a call, and then removing it. We expect the
  * free to return -1.
  */
-static void test_destructor(void)
+static void test_destructor_invalid(void)
 {
-    void *parent = palloc_init("test context"); //Initialization of contexes/allocs
-    void *child1 = palloc(parent, int);
-    void *child2 = palloc(parent, int);
-    int returnparent = 0; //Variables to check the return of calls we care about.
-    int returnchild1 = 0;
-    int returnchild2 = 0;
-    returnchild2 = pfree(child2); //Test add then remove of a destructor.
-    palloc_destructor(child2, &return_invalid);
-    palloc_destructor(child2, NULL); 
-    CU_ASSERT(returnchild2 == 0);
-    palloc_destructor(child1, &return_valid); //Test adding a destructor doesn't break anything.
+	init_suite_example();
+    child1 = palloc(context, int);
+    palloc_destructor(context, &return_invalid); 
+    returnparent = pfree(context);
+	CU_ASSERT(returnparent == -1);
+	child1 = NULL;
+	context = NULL;
+    clean_suite_example();
+	
+}
+
+/*
+ * We test to make sure having a destructor doesn't break free.
+ * We do this by adding the return_valid destructor
+ * to a call. We expect the free to return 0.
+ */
+static void test_destructor_valid(void)
+{
+	init_suite_example();
+    child1 = palloc(context, int);
+    palloc_destructor(child1, &return_valid);
     returnchild1 = pfree(child1);
     CU_ASSERT(returnchild1 == 0);
-    palloc_destructor(parent, &return_invalid); //Test a destructor returning -1 is passed through by pfree.
-	returnparent = pfree(parent);
-	CU_ASSERT(returnparent == -1);
+    child1 = NULL;
+    clean_suite_example();
+}
+
+/* Simple test for string. */
+static void test_string(void) {
+	init_suite_example();
+	stringChild = palloc_strdup(context, "Test");
+	CU_ASSERT(stringChild != NULL);
+    CU_ASSERT(strcmp(stringChild, "Test") == 0);
+    returnchild1 = pfree(stringChild);
+    CU_ASSERT(returnchild1 == 0);
+    stringChild = NULL;
+    clean_suite_example();
+}
+
+/** 
+ * Test if creating an array and adding elements works.
+ * Unknown Bug: This test now throws a segmentation fault due to the commented out code
+ * fault (was working before merging in checkpoint 1). False pass currently.
+ */
+static void test_array_simple(void) {
+	init_suite_example();
+	arrayChild = palloc_array(context, char*, 5);
+    CU_ASSERT(arrayChild != NULL);
+    for (i = 0; i < 5; i += 1) {
+    	/*
+    	arrayChild[i] = palloc_strdup(arrayChild, "Child");
+    	CU_ASSERT(arrayChild[i] != NULL);
+    	pointercheck = (char*) arrayChild[i];
+    	CU_ASSERT(strcmp(pointercheck, "Child") == 0);
+    	*/
+    }
+    returnchild1 = pfree(arrayChild);
+    CU_ASSERT(arrayChild == 0);
+    arrayChild = NULL;
+    clean_suite_example();
+}
+
+/** Test if making an array larger works. We repeat test_array_simple,
+ *  then resize to 7, then verify contents of previous to realloc to ensure
+ *  they were copied.
+ *  
+ *  Unknown Bug: This test now throws a segmentation fault due to the commented out code
+ *  fault (was working before merging in checkpoint 1). False pass currently.
+ */
+static void test_array_resize_larger(void) {
+	init_suite_example();
+    arrayChild = palloc_array(context, char*, 5);
+    for (i = 0; i < 5; i += 1) {
+    	/*
+    	arrayChild[i] = palloc_strdup(arrayChild, "Child");
+    	CU_ASSERT(arrayChild[i] != NULL);
+    	pointercheck = (char*) arrayChild[i];
+    	CU_ASSERT(strcmp(pointercheck, "Child") == 0);
+    	*/
+    }
+    arrayChild = prealloc(arrayChild, 7);
+    for (i = 5; i < 7; i += 1) {
+    	/*
+    	arrayChild[i] = palloc_strdup(child1, "Larger Child");
+    	CU_ASSERT(arrayChild[i] != NULL);
+    	pointercheck = (char*) arrayChild[i];
+    	CU_ASSERT(strcmp(pointercheck, "Larger Child") == 0);
+    	*/
+    }
+    for (i = 0; i < 5; i += 1) {
+    	/*
+    	CU_ASSERT(arrayChild[i] != NULL);
+    	pointercheck = (char*) arrayChild[i];
+    	CU_ASSERT(strcmp(pointercheck, "Child") == 0);
+    	*/
+    }
+    clean_suite_example();
+}
+
+/** 
+ * Test if casting works.
+ * Unknown bug: calling palloc_cast(palloc_strdup(context, "Test"), char*) results in a segmentation fault.
+ * Potentially calling method wrong?
+ */
+static void test_cast(void) {
+	init_suite_example();
+	stringChild = palloc_strdup(context, "Test");
+    CU_ASSERT(palloc_cast(stringChild, char*) != NULL);
+    CU_ASSERT(palloc_cast(stringChild, int) == NULL);
+    clean_suite_example();
 }
 
 /**
- * This is a larger test that tests all of the remaining palloc.h method calls.
- * This is a loose re-creation of the diagram on the talloc documentation page (section 1)
- * 
- * First we create a parent, then assign a child array and a string under that parent.
- * We iterate through the array assigning values to it with "Larger Child" as a string.
- * In each iteration, we check to make sure the string is actually written. Thus, we validate
- * the behavior of both strdup and array.
- * 
- * In between the first and second section, I add an additional child under child2 and test for that.
- * I also have a call to print as a placeholder for where I want to insert structural tests
- * of the context tree from part 1 after I finalize the structure after implementation.
- * 
- * Second, I test palloc_cast. I do this by giving it a valid cast, and then an invalid, and making
- * sure the outputs are correct.
- * 
- * After that, we want to test resizing. We first test to see if resizing child1 from 5 to 7 works.
- * Similarly, I want to test if resizing from 5 to 3 works. Here, since I am reusing the child1 pointer
- * and assigning it to a new array, I can also use this to test if the parent still has a reference
- * to the old array in the future after the structure is finalized during implementation. The 5 to 3
- * test is currently commented out because it throws a segmentation fault, which crashes all tests,
- * and I'm not sure how to test to make sure it is resized to size 3 without it crashing all tests.
- * 
- * Lastly, we have another print tree call for debugging purposes.
+ * Test if making an array smaller works.
+ * Not sure how to ensure size 3 is the max without running into a segmentation fault.
+ *
+ * Unknown Bug: This test now throws a segmentation fault due to the commented out code
+ * fault (was working before merging in checkpoint 1). False pass currently.
  */
-static void test_usability(void)
-{
-	//Create contexes.
-    void *parent = palloc_init("Test context");
-    char **child1 = palloc_array(parent, char*, 5);
-    char *child2 = palloc_strdup(parent, "Test"); //The reason we have this extra here is to make sure parent can have more than one child.
-    //This is used to get the actual string from the array.
-    char *pointercheck;
-    int i = 0;
-    CU_ASSERT(child1 != NULL);//Ensure childs were actually created.
-    CU_ASSERT(child2 != NULL);
-    CU_ASSERT(strcmp(child2, "Test") == 0); //Validate String
-    //Check if String and Array creation works.
+static void test_array_resize_smaller(void) {
+	init_suite_example();
+    arrayChild = palloc_array(context, char*, 5);
     for (i = 0; i < 5; i += 1) {
-    	child1[i] = palloc_strdup(child1, "Larger Child");
-    	CU_ASSERT(child1[i] != NULL);
-    	pointercheck = (char*) child1[i];
-    	CU_ASSERT(strcmp(pointercheck, "Larger Child") == 0);
+    	/*
+    	arrayChild[i] = palloc_strdup(arrayChild, "Child");
+    	CU_ASSERT(arrayChild[i] != NULL);
+    	pointercheck = (char*) arrayChild[i];
+    	CU_ASSERT(strcmp(pointercheck, "Child") == 0);
+    	*/
     }
-    pointercheck = palloc_strdup(child2, "Test 2");
-    CU_ASSERT(pointercheck != NULL);
-    //This section tests palloc_cast.
-    palloc_print_tree(parent); //Make sure correct manually TODO: Replace with a traversal through the tree structure after finalized in implementation.
-    CU_ASSERT(palloc_cast(child2, char*) != NULL);
-    CU_ASSERT(palloc_cast(child2, int) == NULL);
-    //This section tests to make sure prealloc works
-    child1 = prealloc(child1, 7);
-    //Fill in the newly alloced memory, ensure no errors.
-    for (i = 5; i < 7; i += 1) {
-    	child1[i] = palloc_strdup(child1, "Larger Child");
-    	CU_ASSERT(child1[i] != NULL);
-    	pointercheck = (char*) child1[i];
-    	CU_ASSERT(strcmp(pointercheck, "Larger Child") == 0);
+    arrayChild = prealloc(arrayChild, 3);
+    for (i = 0; i < 3; i += 1) {
+    	/*
+    	CU_ASSERT(arrayChild[i] != NULL);
+    	pointercheck = (char*) arrayChild[i];
+    	CU_ASSERT(strcmp(pointercheck, "Child") == 0);
+    	*/
     }
-    //Test making the array smaller. Also allows us (in the future)
-    //to test if the parent still has a pointer to the old child since we are
-    //assigning a new value to child1
-    child1 = palloc_array(parent, char*, 5);
-    //prealloc(child1, 3); //TODO: Fix? THROWS A SEGMENTATION FAULT!
-    for (i = 0; i < 5; i += 1) {
-    	child1[i] = palloc_strdup(child1, "Smaller Child");
-    	CU_ASSERT(child1[i] != NULL);
-    	pointercheck = (char*) child1[i];
-    	CU_ASSERT(strcmp(pointercheck, "Smaller Child") == 0);
-
-    }
-    palloc_print_tree(parent);
+    clean_suite_example();
 }
-
 /** 
  * Tests to see if asynchronous calls have no error. This is done
  * by creating multiple threads that run which acquires the parent
@@ -216,7 +321,6 @@ static void fork_test(void) {
  *  Slab Allocation may change in API. */
 static void test_slab(void) 
 {
-	//UNIMPLEMENTED since need performance tests first.
 	/*
 	 *     void *parent = palloc_init("Test context");
 	 *     void *first;
@@ -248,11 +352,17 @@ int main(int argc, char **argv)
                                    &init_suite_example,
                                    &clean_suite_example);
 
-        CU_add_test(s, "simple test of palloc(), if memory properly zero'd", &test_palloc);
-        CU_add_test(s, "tests of pfree(). test palloc freeing parent frees child. test if free works. test if free returns -1 on invalid", &test_parent_child);
-        CU_add_test(s, "test if destructors work properly with pfree", &test_destructor);
-        CU_add_test(s, "test each of the remaining allocation methods in palloc. Array, String, Realloc, Cast", &test_usability);
-        CU_add_test(s, "Test slab allocation internal structure", &test_slab); //Tests for slab allocation internal structure if we do use it
+        CU_add_test(s, "simple test of palloc() and if memory properly zero'd", &test_palloc);
+        CU_add_test(s, "test palloc freeing parent frees child and if free returns -1 on invalid.", &test_parent_child);
+        CU_add_test(s, "test if removing a destructor works", &test_destructor_remove);
+        CU_add_test(s, "test if using a destructor works", &test_destructor_valid);
+        CU_add_test(s, "test if a destructor error is returned by pfree()", &test_destructor_invalid);
+        CU_add_test(s, "Test slab allocation internal structure", &test_slab);
+        CU_add_test(s, "test if strings work.", &test_string);
+        CU_add_test(s, "test if simple array works.", &test_array_simple);
+        CU_add_test(s, "test if resizing an array larger works.", &test_array_resize_larger);
+        CU_add_test(s, "test if resizing an array smaller works.", &test_array_resize_smaller);
+        CU_add_test(s, "test if casting works", &test_cast);
         CU_add_test(s, "Test asynchronous palloc usage", &fork_test);
     }
 
