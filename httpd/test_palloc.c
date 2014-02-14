@@ -12,57 +12,8 @@
 #include "CUnit/Basic.h"
 
 
-static int i;
-static int returnparent;
-static int returnchild1;
-static int returnchild2;
-static void *context;
-static void *child1;
-static void *child2;
-static char **arrayChild;
-static char *stringChild;
-static char *pointercheck;
 
-static int init_suite_example(void)
-{
-    i = 0;
-    returnparent = 0;
-    returnchild1 = 0;
-    returnchild2 = 0;
-    if (context == NULL) {
-        context = palloc_init("test context");
-    }
-    return 0;
-}
 
-static int clean_suite_example(void)
-{
-    if (child1 != NULL) {
-        pfree(child1);
-        child1 = NULL;
-    }
-    if (child2 != NULL) {
-        pfree(child2);
-        child2 = NULL;
-    }
-    if (arrayChild != NULL) {
-        pfree(arrayChild);
-        arrayChild = NULL;
-    }
-    if (stringChild != NULL) {
-        pfree(stringChild);
-        stringChild = NULL;
-    }
-    if (pointercheck != NULL) {
-        pfree(pointercheck);
-        pointercheck = NULL;
-    }
-    if (context != NULL) {
-        pfree(context);
-        context = NULL;
-    }
-    return 0;
-}
 /**
  * Simple test to see if Palloc works
  * It uses palloc to initialize a bunch of integers over and over again, each time setting
@@ -70,16 +21,18 @@ static int clean_suite_example(void)
  */
 static void test_palloc(void)
 {
-    init_suite_example();
+	void *local_context = palloc_init("Local Test");
+    int i;
     for (i = 0; i < 200; i += 1) {
-        int *ptr = palloc(context, int);
+        int *ptr = palloc(local_context, int);
         CU_ASSERT(ptr != NULL);
         CU_ASSERT(*ptr == 0);
         *ptr = 1;
         pfree(ptr);
         ptr = NULL;
     }
-    clean_suite_example();
+    pfree(local_context);
+    local_context = NULL;
 }
 
 /**
@@ -95,22 +48,21 @@ static void test_palloc(void)
  */
 static void test_parent_child(void)
 {
-    init_suite_example();
-    child1 = palloc(context, int);
-    child2 = palloc(child1, int);
-    returnchild1 = pfree(child1);
-    CU_ASSERT(returnparent == 0);
-    //returnchild2 = pfree(child2);
-    //CU_ASSERT(returnchild2 == -1);
-    CU_ASSERT(context != NULL);
-    CU_ASSERT(child1 != NULL);
-    CU_ASSERT(child2 != NULL);
-    palloc_print_tree(context);
-    child1 = NULL;
-    //child2 = NULL;
-    //returnchild2 = pfree(child2);
-    //CU_ASSERT(returnchild2 == -1);
-    clean_suite_example();
+	void *local_context = palloc_init("Local Test");
+    void *local_child1 = palloc(local_context, int);
+    void *local_child2 = palloc(local_child1, int);
+    int local_return = pfree(local_child1);
+    CU_ASSERT(local_return == 0);
+    CU_ASSERT(local_context != NULL);
+    CU_ASSERT(local_child1 != NULL);
+    CU_ASSERT(local_child2 != NULL);
+    palloc_print_tree(local_context);
+    local_child1 = NULL;
+    local_child2 = NULL;
+    //local_return = pfree(local_child2);
+    //CU_ASSERT(local_return == -1);
+    pfree(local_context);
+    local_context = NULL;
     
 }
 
@@ -140,14 +92,16 @@ int return_invalid(void *ignore)
  */
 static void test_destructor_remove(void)
 {
-    init_suite_example();
-    child1 = palloc(context, int);
-    palloc_destructor(child1, &return_invalid);
-    palloc_destructor(child1, NULL); 
-    returnchild1 = pfree(child1);
-    CU_ASSERT(returnchild1 == 0);
-    child1 = NULL;
-    clean_suite_example();
+	void *local_context = palloc_init("Local Test");
+    void *local_child1 = palloc(local_context, int);
+    int local_return;
+    palloc_destructor(local_child1, &return_invalid);
+    palloc_destructor(local_child1, NULL); 
+    local_return = pfree(local_child1);
+    CU_ASSERT(local_return == 0);
+    local_child1 = NULL;
+    pfree(local_context);
+    local_context = NULL;
 }
 
 /**
@@ -158,14 +112,14 @@ static void test_destructor_remove(void)
  */
 static void test_destructor_invalid(void)
 {
-    init_suite_example();
-    child1 = palloc(context, int);
-    palloc_destructor(context, &return_invalid); 
-    returnparent = pfree(context);
-    CU_ASSERT(returnparent == -1);
-    child1 = NULL;
-    context = NULL;
-    clean_suite_example();
+	void *local_context = palloc_init("Local Test");
+    int local_return;
+    palloc_destructor(local_context, &return_invalid); 
+    local_return = pfree(local_context);
+    CU_ASSERT(local_return == -1);
+    //palloc_destructor(local_context, NULL); TODO: Modify based on Piazza reply
+    pfree(local_context);
+    local_context = NULL;
     
 }
 
@@ -176,31 +130,40 @@ static void test_destructor_invalid(void)
  */
 static void test_destructor_valid(void)
 {
-    init_suite_example();
-    child1 = palloc(context, int);
-    palloc_destructor(child1, &return_valid);
-    returnchild1 = pfree(child1);
-    CU_ASSERT(returnchild1 == 0);
-    child1 = NULL;
-    clean_suite_example();
+	void *local_context = palloc_init("Local Test");
+    void *local_child1 = palloc(local_context, int);
+    int local_return;
+    palloc_destructor(local_child1, &return_valid);
+    local_return = pfree(local_child1);
+    CU_ASSERT(local_return == 0);
+    local_child1 = NULL;
+    //palloc_destructor(local_child1, NULL);
+    pfree(local_context);
+
+    local_context = NULL;
 }
 
 /* Simple test for string. */
 static void test_string(void) {
-    init_suite_example();
-    stringChild = palloc_strdup(context, "Test");
-    CU_ASSERT(stringChild != NULL);
-    CU_ASSERT(strcmp(stringChild, "Test") == 0);
-    returnchild1 = pfree(stringChild);
-    CU_ASSERT(returnchild1 == 0);
-    stringChild = NULL;
-    clean_suite_example();
+	void *local_context = palloc_init("Local Test");
+    char *local_stringChild = palloc_strdup(local_context, "Test");
+    int local_return;
+    CU_ASSERT(local_stringChild != NULL);
+    CU_ASSERT(strcmp(local_stringChild, "Test") == 0);
+    local_return = pfree(local_stringChild);
+    CU_ASSERT(local_return == 0);
+    local_stringChild = NULL;
+    pfree(local_context);
+    local_context = NULL;
 }
 
-static void test_array_new(void) {
+/** 
+ * Test if creating an array and adding elements works.
+ */
+static void test_array_simple(void) {
 	void *local_context = palloc_init("Local Test");
     char **local_arrayChild = palloc_array(local_context, char*, 5);
-    int local_return;
+    int local_return, i;
     char *local_pointer;
     CU_ASSERT(local_arrayChild != NULL);
     for (i = 0; i < 5; i += 1) {
@@ -210,124 +173,106 @@ static void test_array_new(void) {
         local_pointer = (char*) local_arrayChild[i];
         CU_ASSERT(strcmp(local_pointer, "Child") == 0);
     }
-    local_return = pfree(local_arrayChild);
+    local_return = pfree(local_context);
     CU_ASSERT(local_arrayChild != NULL);
     CU_ASSERT(local_return == 0);
     local_arrayChild = NULL;
+    local_context = NULL;
+    local_pointer = NULL;
 }
 
-/** 
- * Test if creating an array and adding elements works.
- * Unknown Bug: This test now throws a segmentation fault due to the commented out code
- * fault (was working before merging in checkpoint 1). False pass currently.
- */
-/*
-static void test_array_simple(void) {
-    init_suite_example();
-    arrayChild = palloc_array(context, char*, 5);
-    CU_ASSERT(arrayChild != NULL);
-    for (i = 0; i < 1; i += 1) {
-        arrayChild[i] = "";
-        		//palloc_strdup(context, "Child");
-        //printf("Array Initialized");
-        CU_ASSERT(arrayChild[i] != NULL);
-        pointercheck = (char*) arrayChild[i];
-        CU_ASSERT(strcmp(pointercheck, "Child") == 0);
-    }
-    returnchild1 = pfree(arrayChild);
-    CU_ASSERT(arrayChild != NULL);
-    arrayChild = NULL;
-    clean_suite_example();
-}
-*/
+
+
 
 /** Test if making an array larger works. We repeat test_array_simple,
  *  then resize to 7, then verify contents of previous to realloc to ensure
  *  they were copied.
- *  
- *  Unknown Bug: This test now throws a segmentation fault due to the commented out code
- *  fault (was working before merging in checkpoint 1). False pass currently.
  */
 static void test_array_resize_larger(void) {
-    init_suite_example();
-    arrayChild = palloc_array(context, char*, 5);
+	void *local_context = palloc_init("Local Test");
+    char **local_arrayChild = palloc_array(local_context, char*, 5);
+    int local_return, i;
+    char *local_pointer;
+    CU_ASSERT(local_arrayChild != NULL);
     for (i = 0; i < 5; i += 1) {
-        /*
-        arrayChild[i] = palloc_strdup(arrayChild, "Child");
-        CU_ASSERT(arrayChild[i] != NULL);
-        pointercheck = (char*) arrayChild[i];
-        CU_ASSERT(strcmp(pointercheck, "Child") == 0);
-        */
+    	local_arrayChild[i] = palloc_strdup(local_arrayChild, "Child");
+        CU_ASSERT(local_arrayChild[i] != NULL);
+        local_pointer = (char*) local_arrayChild[i];
+        CU_ASSERT(strcmp(local_pointer, "Child") == 0);
     }
-    arrayChild = prealloc(arrayChild, 7);
+    local_arrayChild = prealloc(local_arrayChild, 7);
     for (i = 5; i < 7; i += 1) {
-        /*
-        arrayChild[i] = palloc_strdup(arrayChild, "Larger Child");
-        CU_ASSERT(arrayChild[i] != NULL);
-        pointercheck = (char*) arrayChild[i];
-        CU_ASSERT(strcmp(pointercheck, "Larger Child") == 0);
-        */
+    	local_arrayChild[i] = palloc_strdup(local_arrayChild, "Larger Child");
+        CU_ASSERT(local_arrayChild[i] != NULL);
+        local_pointer = (char*) local_arrayChild[i];
+        CU_ASSERT(strcmp(local_pointer, "Larger Child") == 0);
     }
     for (i = 0; i < 5; i += 1) {
-        /*
-        CU_ASSERT(arrayChild[i] != NULL);
-        pointercheck = (char*) arrayChild[i];
-        CU_ASSERT(strcmp(pointercheck, "Child") == 0);
-        */
+        CU_ASSERT(local_arrayChild[i] != NULL);
+        local_pointer = (char*) local_arrayChild[i];
+        CU_ASSERT(strcmp(local_pointer, "Child") == 0);
     }
-    clean_suite_example();
-}
-
-/** 
- * Test if casting works.
- * Unknown bug: calling palloc_cast(palloc_strdup(context, "Test"), char*) results in a segmentation fault.
- * Potentially calling method wrong?
- */
-static void test_cast(void) {
-    init_suite_example();
-    stringChild = palloc_strdup(context, "Test");
-    CU_ASSERT(palloc_cast(stringChild, char) != NULL);
-    CU_ASSERT(palloc_cast(stringChild, int) == NULL);
-    clean_suite_example();
+    local_return = pfree(local_context);
+    CU_ASSERT(local_arrayChild != NULL);
+    CU_ASSERT(local_return == 0);
+    local_arrayChild = NULL;
+    local_context = NULL;
+    local_pointer = NULL;
 }
 
 /**
  * Test if making an array smaller works.
  * Not sure how to ensure size 3 is the max without running into a segmentation fault.
- *
- * Unknown Bug: This test now throws a segmentation fault due to the commented out code
- * fault (was working before merging in checkpoint 1). False pass currently.
  */
 static void test_array_resize_smaller(void) {
-    init_suite_example();
-    arrayChild = palloc_array(context, char*, 5);
+	void *local_context = palloc_init("Local Test");
+    char **local_arrayChild = palloc_array(local_context, char*, 5);
+    int local_return, i;
+    char *local_pointer;
     for (i = 0; i < 5; i += 1) {
-        /*
-        arrayChild[i] = palloc_strdup(arrayChild, "Child");
-        CU_ASSERT(arrayChild[i] != NULL);
-        pointercheck = (char*) arrayChild[i];
-        CU_ASSERT(strcmp(pointercheck, "Child") == 0);
-        */
+    	local_arrayChild[i] = palloc_strdup(local_arrayChild, "Child");
+        CU_ASSERT(local_arrayChild[i] != NULL);
+        local_pointer = (char*) local_arrayChild[i];
+        CU_ASSERT(strcmp(local_pointer, "Child") == 0);
     }
-    arrayChild = prealloc(arrayChild, 3);
+    local_arrayChild = prealloc(local_arrayChild, 3);
     for (i = 0; i < 3; i += 1) {
-        /*
-        CU_ASSERT(arrayChild[i] != NULL);
-        pointercheck = (char*) arrayChild[i];
-        CU_ASSERT(strcmp(pointercheck, "Child") == 0);
-        */
+        CU_ASSERT(local_arrayChild[i] != NULL);
+        local_pointer = (char*) local_arrayChild[i];
+        CU_ASSERT(strcmp(local_pointer, "Child") == 0);
     }
-    clean_suite_example();
+    local_return = pfree(local_context);
+    CU_ASSERT(local_arrayChild != NULL);
+    CU_ASSERT(local_return == 0);
+    local_arrayChild = NULL;
+    local_context = NULL;
+    local_pointer = NULL;
 }
 
-static void child_string(void) {
+
+/** 
+ * Test if casting works.
+ */
+static void test_cast(void) {
+	void *local_context = palloc_init("Local Test");
+    char *local_stringChild = palloc_strdup(local_context, "Test");
+    CU_ASSERT(palloc_cast(local_stringChild, char) != NULL);
+    CU_ASSERT(palloc_cast(local_stringChild, int) == NULL);
+    pfree(local_context);
+    local_context = NULL;
+}
+
+/**
+ * Tests asynchronous string actions on a shared context.
+ */
+static void child_string(void *local_context) {
 	char strgen[30];
     char *localString; 
     int randomwait, counter, localreturn;
     srand(time(NULL));
     randomwait = rand() % 100;
     sprintf(strgen, "%d", randomwait);
-    localString = palloc_strdup(context, strgen);
+    localString = palloc_strdup(local_context, strgen);
     CU_ASSERT(localString != NULL);
     counter = 0;
     while(counter < randomwait) {
@@ -343,19 +288,16 @@ static void child_string(void) {
     localString = NULL;
 }
 
-/**Currently Not implemented due to segmentation fault,
- * but would be a copy of the three test array functions
- * with various wait areas like child_string();
- * 
+/**
+ * Tests various array actions on a shared context
  * This function combines the three array tests.
  */
-static void child_array(void) {
+static void child_array(void *local_context) {
 	char strgen[30];
 	char strgen2[30];
-    char **localArray; 
-    //char *localpointer;
-    int randomwait, counter, localreturn;
-    localArray = palloc_array(context, char*, 5);
+    char **localArray = palloc_array(local_context, char*, 5); 
+    char *localpointer;
+    int randomwait, counter, localreturn, i;
     srand(time(NULL));
     randomwait = rand() % 50;
     sprintf(strgen, "%d", randomwait);
@@ -365,12 +307,10 @@ static void child_array(void) {
         	counter += 1;
         }
         randomwait = rand() % 5;
-        /*
         localArray[i] = palloc_strdup(localArray, strgen);
         CU_ASSERT(localArray[i] != NULL);
         localpointer = (char*) localArray[i];
-        CU_ASSERT(strcmp(localpointer, "strgen) == 0);
-        */
+        CU_ASSERT(strcmp(localpointer, strgen) == 0);
     }
     localArray = prealloc(localArray, 3);
     for (i = 0; i < 3; i += 1) {
@@ -379,11 +319,9 @@ static void child_array(void) {
         	counter += 1;
         }
         randomwait = rand() % 5;
-        /*
         CU_ASSERT(localArray[i] != NULL);
         localpointer = (char*) localArray[i];
         CU_ASSERT(strcmp(localpointer, strgen) == 0);
-        */
     }
     sprintf(strgen2, "%d", (randomwait + 1));
     localArray = prealloc(localArray, 7);
@@ -393,12 +331,10 @@ static void child_array(void) {
         	counter += 1;
         }
         randomwait = rand() % 5;
-        /*
         localArray[i] = palloc_strdup(localArray, strgen2);
         CU_ASSERT(localArray[i] != NULL);
         localpointer = (char*) localArray[i];
         CU_ASSERT(strcmp(localpointer, strgen2) == 0);
-        */
     }
     for (i = 0; i < 3; i += 1) {
         counter = 0;
@@ -406,22 +342,22 @@ static void child_array(void) {
         	counter += 1;
         }
         randomwait = rand() % 5;
-        /*
         CU_ASSERT(localArray[i] != NULL);
         localpointer = (char*) localArray[i];
         CU_ASSERT(strcmp(localpointer, strgen) == 0);
-        */
     }
     localreturn = pfree(localArray);
     CU_ASSERT(localreturn == 0);
     localArray = NULL;
+    localpointer = NULL;
 }
 
 /**
+ * Tests various destructor actions on a shared context.
  * Combination of the three destructor tests.
  */
-static void child_destructor(void) {
-    void *localInt = palloc(context, int);
+static void child_destructor(void *local_context) {
+    void *localInt = palloc(local_context, int);
     int randomwait, counter, localreturn;
     srand(time(NULL));
     randomwait = rand() % 50;
@@ -436,7 +372,7 @@ static void child_destructor(void) {
     while(counter < randomwait) {
     	counter += 1;
     }
-    localInt = palloc(context, int);
+    localInt = palloc(local_context, int);
     palloc_destructor(localInt, &return_invalid);
     localreturn = pfree(localInt);
     CU_ASSERT(localreturn == -1);
@@ -444,7 +380,7 @@ static void child_destructor(void) {
     while(counter < randomwait) {
     	counter += 1;
     }
-    localInt = palloc(context, int);
+    localInt = palloc(local_context, int);
     palloc_destructor(localInt, &return_invalid);
     palloc_destructor(localInt, NULL);
     localreturn = pfree(localInt);
@@ -453,12 +389,12 @@ static void child_destructor(void) {
 }
 
 /**
- * Tests casting a child.
+ * Tests casting a child on a shared context
  */
 
-static void child_cast(void) {
+static void child_cast(void *local_context) {
     int randomwait, counter, localreturn;
-    char *localString = palloc_strdup(context, "Test");
+    char *localString = palloc_strdup(local_context, "Test");
 
     srand(time(NULL));
     randomwait = rand() % 25;
@@ -487,18 +423,18 @@ static void * children_tests(void *ptr) {
     srand(time(NULL));
 	order = rand() % 1;
 	if(order) {
-		child_string();
-		child_array();
-		child_destructor();
-		child_cast();
+		child_string(ptr);
+		child_array(ptr);
+		child_destructor(ptr);
+		child_cast(ptr);
 	} else {
-		child_cast();
-		child_destructor();
-		child_array();
-		child_string();
+		child_cast(ptr);
+		child_destructor(ptr);
+		child_array(ptr);
+		child_string(ptr);
 	}
 
-	printf("Checkpoint A\n");
+	//printf("Checkpoint A\n");
 	return NULL;
 }
 
@@ -506,30 +442,15 @@ static void * children_tests(void *ptr) {
  *
  */
 static void * create_children(void *ptr) {
-	pthread_t child1;
-	pthread_t child2;
-	//child3, child4, child5, child6, child7, child8, child9, child10;
-	pthread_create(&child1, NULL, &children_tests, NULL);
-	pthread_create(&child2, NULL, &children_tests, NULL);
-	//pthread_create(&child3, NULL, &children_tests, NULL);
-	//pthread_create(&child4, NULL, &children_tests, NULL);
-	//pthread_create(&child5, NULL, &children_tests, NULL);
-	//pthread_create(&child6, NULL, &children_tests, NULL);
-	//pthread_create(&child7, NULL, &children_tests, NULL);
-	//pthread_create(&child8, NULL, &children_tests, NULL);
-	//pthread_create(&child9, NULL, &children_tests, NULL);
-	//pthread_create(&child10, NULL, &children_tests, NULL);
-	pthread_join(child1, NULL);
-	pthread_join(child2, NULL);
-	//pthread_join(child3, NULL);
-	//pthread_join(child4, NULL);
-	//pthread_join(child5, NULL);
-	//pthread_join(child6, NULL);
-	//pthread_join(child7, NULL);
-	//pthread_join(child8, NULL);
-	//pthread_join(child9, NULL);
-	//pthread_join(child10, NULL);
-	printf("CHECKPOINT B\n");
+	pthread_t children[10];
+	int count = 0;
+	for (count = 0; count < 10; count += 1) {
+		pthread_create(&children[count], NULL, &children_tests, ptr);
+	}
+	for (count = 0; count < 10; count += 1) {
+		pthread_join(children[count], NULL);
+	}
+	//printf("CHECKPOINT B\n");
 	return NULL;
 }
 
@@ -543,33 +464,15 @@ static void * create_children(void *ptr) {
  * 
  */
 static void fork_test(void) {
-    init_suite_example();
-	for(i = 0; i < 1; i += 1) {
-		create_children(NULL);
+    void *local_context;
+    int i;
+	for(i = 0; i < 5; i += 1) {
+		local_context = palloc_init("Local Test");
+		create_children(local_context);
+		pfree(local_context);
+		local_context = NULL;
 	}
-    clean_suite_example();
-}
 
-/** Test slab allocator internal representation. This test is not finalized yet since
- *  Slab Allocation may change in API. */
-static void test_slab(void) 
-{
-    /*
-     *     void *parent = palloc_init("Test context");
-     *     void *first;
-     *     void *second;
-     *     
-     *     slab_group *first_group = new_slab(parent, 256, 2);
-     *     new_slab(first, 1024, 2);
-     *     first = slab_get(first_group, 1024); //Should work
-     *     //Check to make sure not dynamically reallocate
-     *     CU_ASSERT(first != NULL); //Actually alloced
-     *     CU_ASSERT(slab_free(slab, first) != -1);
-     *     second = slab_get(first_group, 2048); //Should dynamically reallocate a new slab
-     *     CU_ASSERT(second != NULL);
-     *     first = slab_realloc(second, 4096);
-     *     CU_ASSERT(first != NULL);
-     */
 }
 
 int main(int argc, char **argv)
@@ -590,9 +493,8 @@ int main(int argc, char **argv)
         CU_add_test(s, "test if removing a destructor works", &test_destructor_remove);
         CU_add_test(s, "test if using a destructor works", &test_destructor_valid);
         CU_add_test(s, "test if a destructor error is returned by pfree()", &test_destructor_invalid);
-        CU_add_test(s, "Test slab allocation internal structure", &test_slab);
         CU_add_test(s, "test if strings work.", &test_string);
-        CU_add_test(s, "test if simple array works.", &test_array_new);
+        CU_add_test(s, "test if simple array works.", &test_array_simple);
         CU_add_test(s, "test if resizing an array larger works.", &test_array_resize_larger);
         CU_add_test(s, "test if resizing an array smaller works.", &test_array_resize_smaller);
         CU_add_test(s, "test if casting works", &test_cast);
