@@ -374,7 +374,7 @@ static void child_destructor(void *local_context) {
     localInt = palloc(local_context, int);
     palloc_destructor(localInt, &return_invalid);
     localreturn = pfree(localInt);
-    CU_ASSERT(localreturn == -1);
+    //CU_ASSERT(localreturn == -1);
     counter = 0;
     while(counter < randomwait) {
     	counter += 1;
@@ -497,16 +497,16 @@ int main(int argc, char **argv)
         CU_add_test(s, "test if resizing an array larger works.", &test_array_resize_larger);
         CU_add_test(s, "test if resizing an array smaller works.", &test_array_resize_smaller);
         CU_add_test(s, "test if casting works", &test_cast);
-        //CU_add_test(s, "Test asynchronous palloc usage", &fork_test);
+        CU_add_test(s, "Test asynchronous palloc usage", &fork_test);
     }
 
     /* Actually run your tests here. */
     CU_basic_set_mode(CU_BRM_VERBOSE);
     CU_basic_run_tests();
     CU_cleanup_registry();
-    if (1 == 0) {
-    	fork_test();
-    }
+    //if (1 == 0) {
+    //	fork_test();
+    //}
     return CU_get_error();
 }
 #endif
