@@ -21,42 +21,42 @@ static char *pointercheck;
 
 static int init_suite_example(void)
 {
-	i = 0;
-	returnparent = 0;
-	returnchild1 = 0;
-	returnchild2 = 0;
-	if (context == NULL) {
-		context = palloc_init("test context");
-	}
+    i = 0;
+    returnparent = 0;
+    returnchild1 = 0;
+    returnchild2 = 0;
+    if (context == NULL) {
+        context = palloc_init("test context");
+    }
     return 0;
 }
 
 static int clean_suite_example(void)
 {
-	if (child1 != NULL) {
-		pfree(child1);
-		child1 = NULL;
-	}
-	if (child2 != NULL) {
-		pfree(child2);
-		child2 = NULL;
-	}
+    if (child1 != NULL) {
+        pfree(child1);
+        child1 = NULL;
+    }
+    if (child2 != NULL) {
+        pfree(child2);
+        child2 = NULL;
+    }
     if (arrayChild != NULL) {
-    	pfree(arrayChild);
-    	arrayChild = NULL;
+        pfree(arrayChild);
+        arrayChild = NULL;
     }
     if (stringChild != NULL) {
-    	pfree(stringChild);
-    	stringChild = NULL;
+        pfree(stringChild);
+        stringChild = NULL;
     }
     if (pointercheck != NULL) {
-    	pfree(pointercheck);
-    	pointercheck = NULL;
+        pfree(pointercheck);
+        pointercheck = NULL;
     }
-	if (context != NULL) {
-		pfree(context);
-		context = NULL;
-	}
+    if (context != NULL) {
+        pfree(context);
+        context = NULL;
+    }
     return 0;
 }
 /**
@@ -66,14 +66,14 @@ static int clean_suite_example(void)
  */
 static void test_palloc(void)
 {
-	init_suite_example();
+    init_suite_example();
     for (i = 0; i < 200; i += 1) {
-		int *ptr = palloc(context, int);
-		CU_ASSERT(ptr != NULL);
-		CU_ASSERT(*ptr == 0);
-		*ptr = 1;
-		pfree(ptr);
-		ptr = NULL;
+        int *ptr = palloc(context, int);
+        CU_ASSERT(ptr != NULL);
+        CU_ASSERT(*ptr == 0);
+        *ptr = 1;
+        pfree(ptr);
+        ptr = NULL;
     }
     clean_suite_example();
 }
@@ -91,7 +91,7 @@ static void test_palloc(void)
  */
 static void test_parent_child(void)
 {
-	init_suite_example();
+    init_suite_example();
     child1 = palloc(context, int);
     child2 = palloc(child1, int);
     returnchild1 = pfree(child1);
@@ -115,7 +115,7 @@ static void test_parent_child(void)
  */
 int return_valid(void *ignore)
 {
-	return 0;
+    return 0;
 }
 
 /**
@@ -123,7 +123,7 @@ int return_valid(void *ignore)
  */
 int return_invalid(void *ignore)
 {
-	return -1;
+    return -1;
 }
 /**
  * Below are tests which test destructors.
@@ -136,7 +136,7 @@ int return_invalid(void *ignore)
  */
 static void test_destructor_remove(void)
 {
-	init_suite_example();
+    init_suite_example();
     child1 = palloc(context, int);
     palloc_destructor(child1, &return_invalid);
     palloc_destructor(child1, NULL); 
@@ -154,15 +154,15 @@ static void test_destructor_remove(void)
  */
 static void test_destructor_invalid(void)
 {
-	init_suite_example();
+    init_suite_example();
     child1 = palloc(context, int);
     palloc_destructor(context, &return_invalid); 
     returnparent = pfree(context);
-	CU_ASSERT(returnparent == -1);
-	child1 = NULL;
-	context = NULL;
+    CU_ASSERT(returnparent == -1);
+    child1 = NULL;
+    context = NULL;
     clean_suite_example();
-	
+    
 }
 
 /*
@@ -172,7 +172,7 @@ static void test_destructor_invalid(void)
  */
 static void test_destructor_valid(void)
 {
-	init_suite_example();
+    init_suite_example();
     child1 = palloc(context, int);
     palloc_destructor(child1, &return_valid);
     returnchild1 = pfree(child1);
@@ -183,9 +183,9 @@ static void test_destructor_valid(void)
 
 /* Simple test for string. */
 static void test_string(void) {
-	init_suite_example();
-	stringChild = palloc_strdup(context, "Test");
-	CU_ASSERT(stringChild != NULL);
+    init_suite_example();
+    stringChild = palloc_strdup(context, "Test");
+    CU_ASSERT(stringChild != NULL);
     CU_ASSERT(strcmp(stringChild, "Test") == 0);
     returnchild1 = pfree(stringChild);
     CU_ASSERT(returnchild1 == 0);
@@ -199,16 +199,16 @@ static void test_string(void) {
  * fault (was working before merging in checkpoint 1). False pass currently.
  */
 static void test_array_simple(void) {
-	init_suite_example();
-	arrayChild = palloc_array(context, char*, 5);
+    init_suite_example();
+    arrayChild = palloc_array(context, char*, 5);
     CU_ASSERT(arrayChild != NULL);
     for (i = 0; i < 5; i += 1) {
-    	/*
-    	arrayChild[i] = palloc_strdup(arrayChild, "Child");
-    	CU_ASSERT(arrayChild[i] != NULL);
-    	pointercheck = (char*) arrayChild[i];
-    	CU_ASSERT(strcmp(pointercheck, "Child") == 0);
-    	*/
+        /*
+        arrayChild[i] = palloc_strdup(arrayChild, "Child");
+        CU_ASSERT(arrayChild[i] != NULL);
+        pointercheck = (char*) arrayChild[i];
+        CU_ASSERT(strcmp(pointercheck, "Child") == 0);
+        */
     }
     returnchild1 = pfree(arrayChild);
     CU_ASSERT(arrayChild == 0);
@@ -224,31 +224,31 @@ static void test_array_simple(void) {
  *  fault (was working before merging in checkpoint 1). False pass currently.
  */
 static void test_array_resize_larger(void) {
-	init_suite_example();
+    init_suite_example();
     arrayChild = palloc_array(context, char*, 5);
     for (i = 0; i < 5; i += 1) {
-    	/*
-    	arrayChild[i] = palloc_strdup(arrayChild, "Child");
-    	CU_ASSERT(arrayChild[i] != NULL);
-    	pointercheck = (char*) arrayChild[i];
-    	CU_ASSERT(strcmp(pointercheck, "Child") == 0);
-    	*/
+        /*
+        arrayChild[i] = palloc_strdup(arrayChild, "Child");
+        CU_ASSERT(arrayChild[i] != NULL);
+        pointercheck = (char*) arrayChild[i];
+        CU_ASSERT(strcmp(pointercheck, "Child") == 0);
+        */
     }
     arrayChild = prealloc(arrayChild, 7);
     for (i = 5; i < 7; i += 1) {
-    	/*
-    	arrayChild[i] = palloc_strdup(child1, "Larger Child");
-    	CU_ASSERT(arrayChild[i] != NULL);
-    	pointercheck = (char*) arrayChild[i];
-    	CU_ASSERT(strcmp(pointercheck, "Larger Child") == 0);
-    	*/
+        /*
+        arrayChild[i] = palloc_strdup(child1, "Larger Child");
+        CU_ASSERT(arrayChild[i] != NULL);
+        pointercheck = (char*) arrayChild[i];
+        CU_ASSERT(strcmp(pointercheck, "Larger Child") == 0);
+        */
     }
     for (i = 0; i < 5; i += 1) {
-    	/*
-    	CU_ASSERT(arrayChild[i] != NULL);
-    	pointercheck = (char*) arrayChild[i];
-    	CU_ASSERT(strcmp(pointercheck, "Child") == 0);
-    	*/
+        /*
+        CU_ASSERT(arrayChild[i] != NULL);
+        pointercheck = (char*) arrayChild[i];
+        CU_ASSERT(strcmp(pointercheck, "Child") == 0);
+        */
     }
     clean_suite_example();
 }
@@ -259,8 +259,8 @@ static void test_array_resize_larger(void) {
  * Potentially calling method wrong?
  */
 static void test_cast(void) {
-	init_suite_example();
-	stringChild = palloc_strdup(context, "Test");
+    init_suite_example();
+    stringChild = palloc_strdup(context, "Test");
     CU_ASSERT(palloc_cast(stringChild, char*) != NULL);
     CU_ASSERT(palloc_cast(stringChild, int) == NULL);
     clean_suite_example();
@@ -274,23 +274,23 @@ static void test_cast(void) {
  * fault (was working before merging in checkpoint 1). False pass currently.
  */
 static void test_array_resize_smaller(void) {
-	init_suite_example();
+    init_suite_example();
     arrayChild = palloc_array(context, char*, 5);
     for (i = 0; i < 5; i += 1) {
-    	/*
-    	arrayChild[i] = palloc_strdup(arrayChild, "Child");
-    	CU_ASSERT(arrayChild[i] != NULL);
-    	pointercheck = (char*) arrayChild[i];
-    	CU_ASSERT(strcmp(pointercheck, "Child") == 0);
-    	*/
+        /*
+        arrayChild[i] = palloc_strdup(arrayChild, "Child");
+        CU_ASSERT(arrayChild[i] != NULL);
+        pointercheck = (char*) arrayChild[i];
+        CU_ASSERT(strcmp(pointercheck, "Child") == 0);
+        */
     }
     arrayChild = prealloc(arrayChild, 3);
     for (i = 0; i < 3; i += 1) {
-    	/*
-    	CU_ASSERT(arrayChild[i] != NULL);
-    	pointercheck = (char*) arrayChild[i];
-    	CU_ASSERT(strcmp(pointercheck, "Child") == 0);
-    	*/
+        /*
+        CU_ASSERT(arrayChild[i] != NULL);
+        pointercheck = (char*) arrayChild[i];
+        CU_ASSERT(strcmp(pointercheck, "Child") == 0);
+        */
     }
     clean_suite_example();
 }
@@ -304,39 +304,39 @@ static void test_array_resize_smaller(void) {
  * 
  */
 static void fork_test(void) {
-	//TODO: ASK IF ABOVE IS FINE OR
-	//If we can simply test if the lock works via having multiple threads try to acquire the lock via
-	//a palloc call on shared context and meory address and
-	//making sure only one did in a particular timeframe. Wouldn't that be redundant?
-	//
-	//Implementation idea (former)
-	//Repeat 10 times
-	//	for x < 20, spawn 20 threads
-	//		let each child thread call a helper
-	//			helper does 'unique change' on shared memory area, as well as change in non-shared
-	//			verify no other thread changed shared memory area during entire process (that it is locked)
+    //TODO: ASK IF ABOVE IS FINE OR
+    //If we can simply test if the lock works via having multiple threads try to acquire the lock via
+    //a palloc call on shared context and meory address and
+    //making sure only one did in a particular timeframe. Wouldn't that be redundant?
+    //
+    //Implementation idea (former)
+    //Repeat 10 times
+    //    for x < 20, spawn 20 threads
+    //        let each child thread call a helper
+    //            helper does 'unique change' on shared memory area, as well as change in non-shared
+    //            verify no other thread changed shared memory area during entire process (that it is locked)
 }
 
 /** Test slab allocator internal representation. This test is not finalized yet since
  *  Slab Allocation may change in API. */
 static void test_slab(void) 
 {
-	/*
-	 *     void *parent = palloc_init("Test context");
-	 *     void *first;
-	 *     void *second;
-	 *     
-	 *     slab_group *first_group = new_slab(parent, 256, 2);
-	 *     new_slab(first, 1024, 2);
-	 *     first = slab_get(first_group, 1024); //Should work
-	 *     //Check to make sure not dynamically reallocate
-	 *     CU_ASSERT(first != NULL); //Actually alloced
-	 *     CU_ASSERT(slab_free(slab, first) != -1);
-	 *     second = slab_get(first_group, 2048); //Should dynamically reallocate a new slab
-	 *     CU_ASSERT(second != NULL);
-	 *     first = slab_realloc(second, 4096);
-	 *     CU_ASSERT(first != NULL);
-	 */
+    /*
+     *     void *parent = palloc_init("Test context");
+     *     void *first;
+     *     void *second;
+     *     
+     *     slab_group *first_group = new_slab(parent, 256, 2);
+     *     new_slab(first, 1024, 2);
+     *     first = slab_get(first_group, 1024); //Should work
+     *     //Check to make sure not dynamically reallocate
+     *     CU_ASSERT(first != NULL); //Actually alloced
+     *     CU_ASSERT(slab_free(slab, first) != -1);
+     *     second = slab_get(first_group, 2048); //Should dynamically reallocate a new slab
+     *     CU_ASSERT(second != NULL);
+     *     first = slab_realloc(second, 4096);
+     *     CU_ASSERT(first != NULL);
+     */
 }
 
 int main(int argc, char **argv)
