@@ -45,7 +45,7 @@ all: .httpd/test_palloc
 
 .httpd/test_palloc.d/%.o: httpd/%.c $(HTTPD_HDR)
 	mkdir -p `dirname $@`
-	gcc -g -c -o $@ $(PATEST_FLAGS) $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
+	gcc -g -c -pthread -o $@ $(PATEST_FLAGS) $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
 
 check: .httpd/test_palloc.cunit_out
 
