@@ -4,9 +4,13 @@
 #ifdef PALLOC_TEST
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
 #include "palloc.h"
-#include "mm_alloc.h"
 #include "CUnit/Basic.h"
+
 
 static int i;
 static int returnparent;
@@ -211,7 +215,7 @@ static void test_array_simple(void) {
         */
     }
     returnchild1 = pfree(arrayChild);
-    CU_ASSERT(arrayChild == 0);
+    CU_ASSERT(arrayChild != NULL);
     arrayChild = NULL;
     clean_suite_example();
 }
@@ -237,7 +241,7 @@ static void test_array_resize_larger(void) {
     arrayChild = prealloc(arrayChild, 7);
     for (i = 5; i < 7; i += 1) {
         /*
-        arrayChild[i] = palloc_strdup(child1, "Larger Child");
+        arrayChild[i] = palloc_strdup(arrayChild, "Larger Child");
         CU_ASSERT(arrayChild[i] != NULL);
         pointercheck = (char*) arrayChild[i];
         CU_ASSERT(strcmp(pointercheck, "Larger Child") == 0);
@@ -294,27 +298,246 @@ static void test_array_resize_smaller(void) {
     }
     clean_suite_example();
 }
+
+static void child_string(void) {
+	char strgen[30];
+    char *localString; 
+    int randomwait, counter, localreturn;
+    srand(time(NULL));
+    randomwait = rand() % 100;
+    sprintf(strgen, "%d", randomwait);
+    localString = palloc_strdup(context, strgen);
+    CU_ASSERT(localString != NULL);
+    counter = 0;
+    while(counter < randomwait) {
+    	counter += 1;
+    }
+    CU_ASSERT(strcmp(localString, strgen) == 0);
+    counter = 0;
+    while(counter < randomwait) {
+    	counter += 1;
+    }
+    localreturn = pfree(localString);
+    CU_ASSERT(localreturn == 0);
+    localString = NULL;
+}
+
+/**Currently Not implemented due to segmentation fault,
+ * but would be a copy of the three test array functions
+ * with various wait areas like child_string();
+ * 
+ * This function combines the three array tests.
+ */
+static void child_array(void) {
+	char strgen[30];
+	char strgen2[30];
+    char **localArray; 
+    //char *localpointer;
+    int randomwait, counter, localreturn;
+    localArray = palloc_array(context, char*, 5);
+    srand(time(NULL));
+    randomwait = rand() % 50;
+    sprintf(strgen, "%d", randomwait);
+    for (i = 0; i < 5; i += 1) {
+        counter = 0;
+        while(counter < randomwait) {
+        	counter += 1;
+        }
+        randomwait = rand() % 5;
+        /*
+        localArray[i] = palloc_strdup(localArray, strgen);
+        CU_ASSERT(localArray[i] != NULL);
+        localpointer = (char*) localArray[i];
+        CU_ASSERT(strcmp(localpointer, "strgen) == 0);
+        */
+    }
+    localArray = prealloc(localArray, 3);
+    for (i = 0; i < 3; i += 1) {
+        counter = 0;
+        while(counter < randomwait) {
+        	counter += 1;
+        }
+        randomwait = rand() % 5;
+        /*
+        CU_ASSERT(localArray[i] != NULL);
+        localpointer = (char*) localArray[i];
+        CU_ASSERT(strcmp(localpointer, strgen) == 0);
+        */
+    }
+    sprintf(strgen2, "%d", (randomwait + 1));
+    localArray = prealloc(localArray, 7);
+    for (i = 3; i < 7; i += 1) {
+        counter = 0;
+        while(counter < randomwait) {
+        	counter += 1;
+        }
+        randomwait = rand() % 5;
+        /*
+        localArray[i] = palloc_strdup(localArray, strgen2);
+        CU_ASSERT(localArray[i] != NULL);
+        localpointer = (char*) localArray[i];
+        CU_ASSERT(strcmp(localpointer, strgen2) == 0);
+        */
+    }
+    for (i = 0; i < 3; i += 1) {
+        counter = 0;
+        while(counter < randomwait) {
+        	counter += 1;
+        }
+        randomwait = rand() % 5;
+        /*
+        CU_ASSERT(localArray[i] != NULL);
+        localpointer = (char*) localArray[i];
+        CU_ASSERT(strcmp(localpointer, strgen) == 0);
+        */
+    }
+    localreturn = pfree(localArray);
+    CU_ASSERT(localreturn == 0);
+    localArray = NULL;
+}
+
+/**
+ * Combination of the three destructor tests.
+ */
+static void child_destructor(void) {
+    void *localInt = palloc(context, int);
+    int randomwait, counter, localreturn;
+    srand(time(NULL));
+    randomwait = rand() % 50;
+    counter = 0;
+    while(counter < randomwait) {
+    	counter += 1;
+    }
+    palloc_destructor(localInt, &return_valid);
+    localreturn = pfree(localInt);
+    CU_ASSERT(localreturn == 0);
+    counter = 0;
+    while(counter < randomwait) {
+    	counter += 1;
+    }
+    localInt = palloc(context, int);
+    palloc_destructor(localInt, &return_invalid);
+    localreturn = pfree(localInt);
+    CU_ASSERT(localreturn == -1);
+    counter = 0;
+    while(counter < randomwait) {
+    	counter += 1;
+    }
+    localInt = palloc(context, int);
+    palloc_destructor(localInt, &return_invalid);
+    palloc_destructor(localInt, NULL);
+    localreturn = pfree(localInt);
+    CU_ASSERT(localreturn == 0);
+    localInt = NULL;
+}
+
+/**
+ * Tests casting a child.
+ */
+static void child_cast(void) {
+    int randomwait, counter, localreturn;
+    char *localString = palloc_strdup(context, "Test");
+
+    srand(time(NULL));
+    randomwait = rand() % 25;
+    counter = 0;
+    while(counter < randomwait) {
+    	counter += 1;
+    }
+
+    CU_ASSERT(palloc_cast(localString, char*) != NULL);
+    counter = 0;
+    while(counter < randomwait) {
+    	counter += 1;
+    }
+    CU_ASSERT(palloc_cast(localString, int) == NULL);
+    localreturn = pfree(localString);
+    CU_ASSERT(localreturn == 0);
+    localString = NULL;
+}
+
+/** What each child does, a combination of other previous tests. */
+static void* children_tests(void* ptr) {
+	int order = 0;
+    //srand(time(NULL));
+	//order = rand() % 1;
+	if(order) {
+		//child_string();
+		//child_array();
+		//child_destructor();
+		//child_cast();
+	} else {
+		//child_cast();
+		//child_destructor();
+		//child_array();
+		//child_string();
+	}
+	//To allow compiling
+	CU_FAIL("CHECKPOINT A");
+	if(order == 3) {
+		child_cast();
+		child_destructor();
+		child_array();
+		child_string();
+	}
+	//pthread_exit(0);
+	return NULL;
+}
+
+/** Method to create children.
+ * TODO: Figure out why having multiple children creation results in segmentation faults...
+ */
+static void* create_children(void* ptr) {
+	pthread_t child1;
+	pthread_t child2;
+	//, child3, child4, child5, child6, child7, child8, child9, child10;
+	pthread_create(&child1, NULL, &children_tests, NULL);
+	pthread_create(&child2, NULL, &children_tests, NULL);
+	//pthread_create(&child3, NULL, &children_tests, NULL);
+	//pthread_create(&child4, NULL, &children_tests, NULL);
+	//pthread_create(&child5, NULL, &children_tests, NULL);
+	//pthread_create(&child6, NULL, &children_tests, NULL);
+	//pthread_create(&child7, NULL, &children_tests, NULL);
+	//pthread_create(&child8, NULL, &children_tests, NULL);
+	//pthread_create(&child9, NULL, &children_tests, NULL);
+	//pthread_create(&child10, NULL, &children_tests, NULL);
+	usleep(100000); //Supposedly we need to wait for init according to stack overflow.
+	pthread_join(child1, NULL);
+	pthread_join(child2, NULL);
+	//pthread_join(child2, NULL);
+	//pthread_join(child3, NULL);
+	//pthread_join(child4, NULL);
+	//pthread_join(child5, NULL);
+	//pthread_join(child6, NULL);
+	//pthread_join(child7, NULL);
+	//pthread_join(child8, NULL);
+	//pthread_join(child9, NULL);
+	//pthread_join(child10, NULL);
+	CU_FAIL("CHECKPOINT B");
+	//pthread_exit(0);
+	return NULL;
+}
+
 /** 
  * Tests to see if asynchronous calls have no error. This is done
  * by creating multiple threads that run which acquires the parent
- * context and does manipulations to it where it adds, verifies, then deletes a change
- * (test at each step to verify none of the data on shared data was modified,
- * so requires a local copy of all data, it is fine if data on non-shared data is modified to allow
- * parallel access to different memory address)
+ * context and does manipulations to it where it calls various palloc functions.
+ * Each thread also is set to wait an arbitrary amount of time to ensure
+ * randomness. See *children_tests(). Parent context is shared across children since
+ * init is not run by children.
  * 
  */
 static void fork_test(void) {
-    //TODO: ASK IF ABOVE IS FINE OR
-    //If we can simply test if the lock works via having multiple threads try to acquire the lock via
-    //a palloc call on shared context and meory address and
-    //making sure only one did in a particular timeframe. Wouldn't that be redundant?
-    //
-    //Implementation idea (former)
-    //Repeat 10 times
-    //    for x < 20, spawn 20 threads
-    //        let each child thread call a helper
-    //            helper does 'unique change' on shared memory area, as well as change in non-shared
-    //            verify no other thread changed shared memory area during entire process (that it is locked)
+    init_suite_example();
+	for(i = 0; i < 1; i += 1) {
+		pthread_t parentthread;
+		if (pthread_create( &parentthread, NULL, &create_children, NULL) == 0) {
+			pthread_join(parentthread, NULL);
+		} else {
+			CU_FAIL("Thread not created");
+		}
+	}
+    clean_suite_example();
 }
 
 /** Test slab allocator internal representation. This test is not finalized yet since
@@ -348,12 +571,12 @@ int main(int argc, char **argv)
 
     /* Here's an example test suite.  First we initialize the suit. */
     {
-        CU_pSuite s = CU_add_suite("example test suite",
-                                   &init_suite_example,
-                                   &clean_suite_example);
+        CU_pSuite s = CU_add_suite("Palloc Test Suite",
+                                   NULL,
+                                   NULL);
 
         CU_add_test(s, "simple test of palloc() and if memory properly zero'd", &test_palloc);
-        CU_add_test(s, "test palloc freeing parent frees child and if free returns -1 on invalid.", &test_parent_child);
+        CU_add_test(s, "freeing parent frees child; if free returns -1 on invalid.", &test_parent_child);
         CU_add_test(s, "test if removing a destructor works", &test_destructor_remove);
         CU_add_test(s, "test if using a destructor works", &test_destructor_valid);
         CU_add_test(s, "test if a destructor error is returned by pfree()", &test_destructor_invalid);
