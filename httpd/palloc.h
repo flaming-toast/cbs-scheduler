@@ -51,16 +51,15 @@ palloc_env palloc_init(const char *format, ...) __attribute__ ((format (__printf
 /**
  * @brief Change the size of a palloc array.
  *
- * The macro changes the size of a palloc pointer. The 'count'
- * argument is the number of elements of type 'type' that you want the
- * resulting pointer to hold.
+ * The macro changes the size of a palloc pointer with given size
+ * passed through to mm_malloc.
  *
  *
  * @param[in]  ptr      The chunk to be resized.
  *
  * @param[in]  size     The intended new block size.
  *
- * @return              The new array, NULL on error.
+ * @return              The new array, NULL on error. Note this frees regardless.
  */
 void *prealloc(const void *ptr, size_t size);
 
