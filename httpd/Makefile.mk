@@ -41,7 +41,7 @@ all: .httpd/test_palloc
 .httpd/test_palloc: .httpd/test_palloc.d/palloc.o \
 			.httpd/test_palloc.d/mm_alloc.o \
 			.httpd/test_palloc.d/test_palloc.o
-	gcc -g -static $(PATEST_FLAGS) $(CFLAGS) -o "$@" $^ -lcunit
+	gcc -g -pthread -static $(PATEST_FLAGS) $(CFLAGS) -o "$@" $^ -lcunit
 
 .httpd/test_palloc.d/%.o: httpd/%.c $(HTTPD_HDR)
 	mkdir -p `dirname $@`
