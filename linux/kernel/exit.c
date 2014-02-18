@@ -765,6 +765,13 @@ void do_exit(long code)
 		if (tsk->mm)
 			setmax_mm_hiwater_rss(&tsk->signal->maxrss, tsk->mm);
 	}
+
+	/* [LAB1]: If this was in a clone jail, decrement the number of threads
+	 * used */
+	if (tsk->sp_limit_block) {
+	  atomic_dec(tsk->sp_limit_block->sp_used);
+	}
+
 	acct_collect(code, group_dead);
 	if (group_dead)
 		tty_audit_exit();

@@ -1020,6 +1020,11 @@ enum perf_event_task_context {
 	perf_nr_task_contexts,
 };
 
+struct thread_limit_struct {
+        atomic_t* sp_limit;
+        atomic_t* sp_used;
+};
+
 struct task_struct {
 	volatile long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
 	void *stack;
@@ -1028,9 +1033,7 @@ struct task_struct {
 	unsigned int ptrace;
 
         /* [LAB1]: Subprocess limit (prctl) information */
-        char sp_limit_set;
-        unsigned long sp_limit;
-        unsigned long sp_count;
+        thread_limit_struct* sp_limit_block;
 
 #ifdef CONFIG_SMP
 	struct llist_node wake_entry;

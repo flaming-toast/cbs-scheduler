@@ -1182,9 +1182,14 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 			return ERR_PTR(-EINVAL);
 	}
 
-	/* [LAB1]: If the forking task is breaking its sp_limit, don't fork. */
-	if (current->sp_limit_set && current->sp_limit <= 0) {
-	  return ERR_PTR(-EINVAL);
+	/* [LAB1]: If the forking task is breaking its sp_limit, don't fork. If
+	*  we do fork, make sure to increment the counter. */
+	if (current->sp_limit_block) {
+	  atomic_inc(current->sp_limit_block->sp_used);
+	  if (atomic_read(current->sp_limit_block->sp_used) > atomic_read(current->sp_limit_block->sp_limit)) {
+	    atomic_dec(current->sp_limit_block->sp_used);
+	    return ERR_PTR(-EINVAL);
+	  }
 	}
 
 	retval = security_task_create(clone_flags);
@@ -1195,6 +1200,11 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	p = dup_task_struct(current);
 	if (!p)
 		goto fork_out;
+
+	/* [LAB1]: if the parent was in a clone jail, so is this */
+	if (current->sp_limit_block) {
+	  p->sp_limit_block = current->sp_limit_block;
+	}
 
 	ftrace_graph_init_task(p);
 	get_seccomp_filter(p);
