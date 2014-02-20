@@ -104,24 +104,6 @@ static void test_destructor_remove(void)
     local_context = NULL;
 }
 
-/**
- * We test to make sure a destructor returning -1 is passed through
- * as a result of pfree per the palloc.h file. We do this by adding the
- * return_invalid destructor to a call, and then removing it. We expect the
- * free to return -1.
- */
-static void test_destructor_invalid(void)
-{
-	void *local_context = palloc_init("Local Test");
-    int local_return;
-    palloc_destructor(local_context, &return_invalid); 
-    local_return = pfree(local_context);
-    CU_ASSERT(local_return == -1);
-    //palloc_destructor(local_context, NULL); TODO: Modify based on Piazza reply
-    local_context = NULL;
-    
-}
-
 /*
  * We test to make sure having a destructor doesn't break free.
  * We do this by adding the return_valid destructor
@@ -343,10 +325,6 @@ static void child_destructor(void *local_context) {
     CU_ASSERT(localreturn == 0);
     localInt = palloc(local_context, int);
     palloc_destructor(localInt, &return_invalid);
-    localreturn = pfree(localInt);
-    CU_ASSERT(localreturn == -1);
-    localInt = palloc(local_context, int);
-    palloc_destructor(localInt, &return_invalid);
     palloc_destructor(localInt, NULL);
     localreturn = pfree(localInt);
     CU_ASSERT(localreturn == 0);
@@ -461,7 +439,6 @@ int main(int argc, char **argv)
         CU_add_test(s, "freeing parent frees child; if free returns -1 on invalid.", &test_parent_child);
         CU_add_test(s, "test if removing a destructor works", &test_destructor_remove);
         CU_add_test(s, "test if using a destructor works", &test_destructor_valid);
-        CU_add_test(s, "test if a destructor error is returned by pfree()", &test_destructor_invalid);
         CU_add_test(s, "test if strings work.", &test_string);
         CU_add_test(s, "test if simple array works.", &test_array_simple);
         CU_add_test(s, "test if resizing an array larger works.", &test_array_resize_larger);
