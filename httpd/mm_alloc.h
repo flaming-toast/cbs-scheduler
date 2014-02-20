@@ -38,14 +38,19 @@ void *mm_realloc_ll(void *ptr, size_t size);
 void mm_free_ll(void *ptr);
 size_t get_mem_size(size_t req_mem_size);
 void *align_addr(void *addr);
+void sanity_free_head(void);
 
+MM_node *get_header(void *ptr);
 void *req_free_mem(size_t size);
 int add_new_mem(size_t size);
 int check_free_size(size_t req_size, MM_node *node);
 size_t pad_mem_size(size_t size);
 MM_node *split_node(MM_node *node, size_t req_size);
-MM_node *append_node(void *addr, size_t total_size);
+MM_node *append_node(MM_node *new_node, size_t total_size);
 
+void coalesce_left(MM_node *node);
+void coalesce_right(MM_node *node);
+void mm_malloc_had_a_problem(void);
 
 #ifdef __cplusplus
 }

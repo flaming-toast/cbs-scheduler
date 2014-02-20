@@ -33,19 +33,19 @@ static int clean_suite_example(void)
         int j;
         if (ptr != NULL)
         {
-                free(ptr);
+                mm_free(ptr);
                 ptr = NULL;
         }
         if (ptr2 != NULL)
         {
-                free(ptr2);
+                mm_free(ptr2);
                 ptr2 = NULL;
         }
         for (j = 0; j < NUM_PTRS; j++)
         {
                 if (ptrs[j] != NULL)
                 {
-                        free(ptrs[j]);
+                        mm_free(ptrs[j]);
                         ptrs[j] = NULL;
                 }
         }
