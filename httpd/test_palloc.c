@@ -13,7 +13,7 @@
 
 
 
-
+static int pstart;
 /**
  * Simple test to see if Palloc works
  * It uses palloc to initialize a bunch of integers over and over again, each time setting
@@ -63,7 +63,7 @@ static void test_parent_child(void)
     CU_ASSERT(local_return == -1);
     pfree(local_context);
     local_context = NULL;
-    
+
 }
 
 /**
@@ -375,6 +375,9 @@ static void child_cast(void *local_context) {
 /** What each child does, a combination of other previous tests. */
 static void * children_tests(void *ptr) {
 	int order = 0;
+	while(pstart == 0) {
+		//Wait to start same time
+	}
     srand(time(NULL));
 	order = rand() % 3;
 	if(order == 0) {
@@ -408,9 +411,11 @@ static void * children_tests(void *ptr) {
 static void * create_children(void *ptr) {
 	pthread_t children[15];
 	int count = 0;
+	pstart = 0;
 	for (count = 0; count < 15; count += 1) {
 		pthread_create(&children[count], NULL, &children_tests, ptr);
 	}
+	pstart = 1;
 	for (count = 0; count < 15; count += 1) {
 		pthread_join(children[count], NULL);
 	}

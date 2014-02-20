@@ -117,9 +117,6 @@ void *prealloc(const void *ptr, size_t size)
     }
     if (nblk == NULL) {
 		_pfree(oblk, true);
-		if (oblk != NULL) {
-			pthread_mutex_unlock(oblk->lock);
-		}
 		return NULL;
     }
 
@@ -129,17 +126,21 @@ void *prealloc(const void *ptr, size_t size)
 	    /** Updates parents. */
 		cur = nblk->parent->children;
 		while (cur != NULL)	{
+			pthread_mutex_lock(cur->blk->lock);
 			if (cur->blk == oblk) {
 				cur->blk = nblk;
 			}
+			pthread_mutex_unlock(cur->blk->lock);
 			cur = cur->next;
 		}
 		/* Updates children. */
 		cur = nblk->children;
 		while (cur != NULL) {
+			pthread_mutex_lock(cur->blk->lock);
 			if (cur->blk->parent == oblk) {
 				cur->blk->parent = nblk;
 			}
+			pthread_mutex_unlock(cur->blk->lock);
 			cur = cur->next;
 		}
     }
@@ -171,11 +172,13 @@ void *_palloc(palloc_env env, size_t size, const char *type)
 		return NULL;
     }
 
-    /** What it does is inset self into front of child list. */
+    /** What it does is insert self into front of child list. */
     cblk->parent = pblk;
     cblk->type = type;
     clist->blk = cblk;
-    cblk->lock = pblk->lock;
+    pthread_mutex_t lock;
+    pthread_mutex_init(&lock, NULL);
+    cblk->lock = &lock;
     clist->next = pblk->children;
     pblk->children = clist;
 
@@ -189,9 +192,8 @@ int pfree(const void *ptr)
 	int res;
 	struct block *lb = PTR_BLK(ptr);
 	if (lb != NULL) {
-		pthread_mutex_lock(lb->lock); //TODO: Ask about free and returning locks, should pfree destroy the lock, and we check if lock is null, if so object got destroyed, so return error on other methods.
+		pthread_mutex_lock(lb->lock);
 		res = _pfree(ptr, true);
-		//pthread_mutex_unlock(lb->lock);
 		return res;
 	}
 	return -1;
@@ -209,6 +211,7 @@ void * _palloc_cast(const void *ptr, const char *type)
     	return NULL;
     }
     if (blk->type != type && (strcmp(blk->type, type) != 0)) {
+    	pthread_mutex_unlock(blk->lock);
     	return NULL;
     }
 	pthread_mutex_unlock(blk->lock);
@@ -231,7 +234,6 @@ char *palloc_strdup(palloc_env env, const char *str)
 
 /** 
  * Requires a lock due to macro call. 
- * TODO: Not sure if this should return an int instead.
  */
 void _palloc_destructor(const void *ptr, int (*dest)(void *))
 {
@@ -241,8 +243,9 @@ void _palloc_destructor(const void *ptr, int (*dest)(void *))
 		pthread_mutex_lock(blk->lock);
 		blk->destructor = dest;
 		pthread_mutex_unlock(blk->lock);
-    } //TODO: What to do if we get passed a null?
-    //Probably don't return something, since would require modifying method signature.
+    } else {
+    	abort();
+    }
 	return;
 }
 
@@ -280,6 +283,7 @@ struct block *block_new(int size)
     return b;
 }
 
+/** Unlocks the current lock and destroys it before returning. */
 int _pfree(const void *ptr, bool external)
 {
     struct block *cblk;
@@ -296,38 +300,41 @@ int _pfree(const void *ptr, bool external)
     cur = cblk->children;
     while (cur != NULL) {
 		struct child_list *next;
-
+	    pthread_mutex_lock(cur->blk->lock);
 		ret |= _pfree(BLK_ENV(cur->blk), false);
 		if (ret == -1) {
+		    pthread_mutex_unlock(cblk->lock);
 			return -1; //See Piazza 104
 		}
 		next = cur->next;
 		cur->next = NULL;
-		mm_free(cur);
+		mm_free(cur); //Free the child_list
 		cur = next;
     }
 
     if (cblk->pool_name != NULL) {
     	mm_free((char *)cblk->pool_name);
     }
-    //TODO: Why do we not free type, does the macro not alloc this?
 
     /** Only should run for top level. */
     if (cblk->parent != NULL && external) {
 		prev = NULL;
+		pthread_mutex_lock(cblk->parent->lock);
 		cur = cblk->parent->children;
 		/** 
 		 * So this while loop ends up with the child_list instance with blk->cblk in cur
 		 * and it's parent in prev.
 		 */
 		while (cur != NULL && cur->blk != cblk) {
+			pthread_mutex_lock(cur->blk->lock);
 			prev = cur;
 			cur = cur->next;
+			pthread_mutex_unlock(prev->blk->lock);
 		}
 
 		if (cur == NULL) {
 			fprintf(stderr, "Inconsistant palloc tree during pfree()\n");
-			abort(); //TODO Is this supposed to abort? Why not return -1?
+			abort();
 		} else if (prev == NULL) {
 			cblk->parent->children = cur->next;
 			mm_free(cur);
@@ -335,12 +342,14 @@ int _pfree(const void *ptr, bool external)
 			prev->next = cur->next;
 			mm_free(cur);
 		}
+		pthread_mutex_unlock(cblk->parent->lock);
     }
 
     if (cblk->destructor != NULL) {
     	cblk->destructor(BLK_PTR(cblk));
     }
-
+    pthread_mutex_unlock(cblk->lock);
+    pthread_mutex_destroy(cblk->lock);
     mm_free(cblk);
 
     return ret;
