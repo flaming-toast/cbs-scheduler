@@ -82,6 +82,7 @@ palloc_env palloc_init(const char *format, ...)
     va_list args;
     struct block *blk;
     char *pool_name;
+    pthread_mutex_t lock;
 
     blk = block_new(0);
     if (blk == NULL) {
@@ -93,7 +94,6 @@ palloc_env palloc_init(const char *format, ...)
     va_end(args);
 
     blk->pool_name = pool_name;
-    pthread_mutex_t lock;
     pthread_mutex_init(&lock, NULL);
     blk->lock = &lock;
 
@@ -155,6 +155,7 @@ void *_palloc(palloc_env env, size_t size, const char *type)
     struct block *pblk;
     struct block *cblk;
     struct child_list *clist;
+    pthread_mutex_t lock;
 
     pblk = ENV_BLK(env);
     pthread_mutex_lock(pblk->lock);
@@ -176,7 +177,7 @@ void *_palloc(palloc_env env, size_t size, const char *type)
     cblk->parent = pblk;
     cblk->type = type;
     clist->blk = cblk;
-    pthread_mutex_t lock;
+
     pthread_mutex_init(&lock, NULL);
     cblk->lock = &lock;
     clist->next = pblk->children;

@@ -12,11 +12,11 @@ PATEST_FLAGS := -DPALLOC_TEST $(HTTPD_FLAGS)
 
 all: .httpd/httpd
 .httpd/httpd: $(HTTPD_OBJ)
-	gcc -g -static $(HTTPD_FLAGS) $(CFLAGS) -o "$@" $^
+	gcc -g -pthread -static $(HTTPD_FLAGS) $(CFLAGS) -o "$@" $^
 
 .httpd/httpd.d/%.o : httpd/%.c $(HTTPD_HDR)
 	mkdir -p `dirname $@`
-	gcc -g -c -o $@ $(HTTPD_FLAGS) $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
+	gcc -g -pthread -c -o $@ $(HTTPD_FLAGS) $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
 
 # Builds a test harness for the mm_alloc code
 all: .httpd/test_mm
