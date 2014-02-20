@@ -60,21 +60,6 @@ int clone_new_and_ret_pid(void* fn) {
   return npid;
 }
 
-int clone_new_and_ret_result(void* fn) {
-  void* c_stack = malloc(BASIC_STACK_SIZE*sizeof(int));
-  if (c_stack == NULL) {
-    CU_ASSERT(1 == 0);
-    return 0;
-  }
-  int npid = clone((int (*fn)(void *))fn, c_stack, SIGCHLD, NULL);
-  int res = 0;
-  if (npid > 0) {
-    wait(&res);
-  }
-  free(c_stack);
-  return res;
-}
-
 /* Test routines */
 
 int run_test_prctl_limit1(void* ign) {
@@ -133,8 +118,8 @@ int run_test_prctl_limit2_failch(void* ign) {
   prctl(SET_TL_DUMMY, 2);
   void* c_stack = malloc(BASIC_STACK_SIZE*sizeof(int));
   if (c_stack == NULL) {
-    CUASSERT(1 == 0);
-    return;
+    CU_ASSERT(1 == 0);
+    return 0;
   }
   int npid = clone(clone_new_and_ret_pid, c_stack, SIGCHLD, NULL);
   int res = 0;
@@ -165,14 +150,14 @@ int run_test_prctl_limit2_failsi(void* ign) {
   prctl(SET_TL_DUMMY, 2);
   void* c_stack1 = malloc(BASIC_STACK_SIZE*sizeof(int));
   if (c_stack1 == NULL) {
-    CUASSERT(1 == 0);
-    return;
+    CU_ASSERT(1 == 0);
+    return 0;
   }
   void* c_stack2 = malloc(BASIC_STACK_SIZE*sizeof(int));
   if (c_stack2 == NULL) {
     free(c_stack1);
-    CUASSERT(1 == 0);
-    return;
+    CU_ASSERT(1 == 0);
+    return 0;
   }
   int pid1 = clone(wait_for_start_and_exit, c_stack1, SIGCHLD, NULL);
   int pid2 = clone(wait_for_start_and_exit, c_stack2, SIGCHLD, NULL);

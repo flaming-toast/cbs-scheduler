@@ -1033,7 +1033,7 @@ struct task_struct {
 	unsigned int ptrace;
 
         /* [LAB1]: Subprocess limit (prctl) information */
-        thread_limit_struct* sp_limit_block;
+        struct thread_limit_struct* sp_limit_block;
 
 #ifdef CONFIG_SMP
 	struct llist_node wake_entry;
