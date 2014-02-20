@@ -9,14 +9,12 @@
 #include "palloc.h"
 #include "mm_alloc.h"
 
-/** The list of children. */
 struct child_list
 {
     struct child_list *next;
     struct block *blk;
 };
 
-/** Stores meta-data about the memory. */
 struct block
 {
     struct block *parent;
@@ -29,7 +27,6 @@ struct block
 
 
 
-/** Get the block object from an environment (which points to start of data). */
 static inline struct block *ENV_BLK(const palloc_env env)
 {
 	if (env == NULL) {
@@ -38,9 +35,6 @@ static inline struct block *ENV_BLK(const palloc_env env)
     return (struct block *)(((char *)env) - sizeof(struct block));
 }
 
-/**
- * Get the block object from a pointer to the start of the data.
- */
 static inline struct block *PTR_BLK(const void *ptr)
 {
 	if (ptr == NULL) {
@@ -49,7 +43,6 @@ static inline struct block *PTR_BLK(const void *ptr)
     return (struct block *)(((char *)ptr) - sizeof(struct block));
 }
 
-/** Get the environment object which points to the start of the data from a block. */
 static inline palloc_env BLK_ENV(const struct block *blk)
 {
 	if (blk == NULL) {
@@ -58,7 +51,6 @@ static inline palloc_env BLK_ENV(const struct block *blk)
     return (palloc_env)(((char *)blk) + sizeof(struct block));
 }
 
-/** Get the pointer to the start of the data from a block. */
 static inline void *BLK_PTR(const struct block *blk)
 {
 	if (blk == NULL) {
@@ -67,16 +59,16 @@ static inline void *BLK_PTR(const struct block *blk)
     return (void *)(((char *)blk) + sizeof(struct block));
 }
 
-/** Returns a new block with given SIZE. */
+
 static struct block *block_new(int size);
 
-/** Implementation of free. */
+
 static int _pfree(const void *ptr, bool external);
 
-/** Implementation of print tree. */
+
 static void _palloc_print_tree(struct block *blk, int level);
 
-/** Initialize a new top level palloc_env. No locks necessary. */
+
 palloc_env palloc_init(const char *format, ...)
 {
     va_list args;
@@ -100,7 +92,7 @@ palloc_env palloc_init(const char *format, ...)
     return BLK_ENV(blk);
 }
 
-/* Some changes are to ensure compatibility with man 3 malloc. */
+
 void *prealloc(const void *ptr, size_t size)
 {
     struct block *oblk, *nblk;
@@ -112,7 +104,7 @@ void *prealloc(const void *ptr, size_t size)
     	nblk = mm_realloc(oblk, size + sizeof(*oblk));
     } else if (ptr == NULL) {
     	return NULL;
-    } else { //ptr != NULL, size == 0
+    } else { 
     	nblk = NULL;
     }
     if (nblk == NULL) {
@@ -123,7 +115,7 @@ void *prealloc(const void *ptr, size_t size)
 
     if (nblk != oblk) {
 		struct child_list *cur;
-	    /** Updates parents. */
+
 		if (nblk->parent != NULL) {
 			pthread_mutex_lock(&(nblk->parent->mutex));
 			cur = nblk->parent->children;
@@ -135,7 +127,7 @@ void *prealloc(const void *ptr, size_t size)
 			}
 			pthread_mutex_unlock(&(nblk->parent->mutex));
 		}
-		/* Updates children. */
+
 		cur = nblk->children;
 		while (cur != NULL) {
 			pthread_mutex_lock(&(cur->blk->mutex));
@@ -151,7 +143,7 @@ void *prealloc(const void *ptr, size_t size)
     return BLK_PTR(nblk);
 }
 
-/** Needs locks since called by macro defines, also since modifies env. */
+
 void *_palloc(palloc_env env, size_t size, const char *type)
 {
     struct block *pblk;
@@ -175,7 +167,7 @@ void *_palloc(palloc_env env, size_t size, const char *type)
 		return NULL;
     }
 
-    /** What it does is insert self into front of child list. */
+
     cblk->parent = pblk;
     cblk->type = type;
     clist->blk = cblk;
@@ -189,7 +181,7 @@ void *_palloc(palloc_env env, size_t size, const char *type)
     return BLK_ENV(cblk);
 }
 
-/** Public API for pfree, includes lock here. */
+
 int pfree(const void *ptr)
 {
 	int res;
@@ -221,7 +213,7 @@ void * _palloc_cast(const void *ptr, const char *type)
     return (void *)ptr;
 }
 
-/** No lock required for the palloc_array call since palloc_array acquires locks. */
+
 char *palloc_strdup(palloc_env env, const char *str)
 {
     char *out;
@@ -235,9 +227,7 @@ char *palloc_strdup(palloc_env env, const char *str)
     return out;
 }
 
-/** 
- * Requires a lock due to macro call. 
- */
+
 void _palloc_destructor(const void *ptr, int (*dest)(void *))
 {
     struct block *blk;
@@ -253,10 +243,7 @@ void _palloc_destructor(const void *ptr, int (*dest)(void *))
 }
 
 
-/** 
- * Lock in case we are traversing and data gets modified, because we want
- * to avoid having a segfault.
- */
+
 void palloc_print_tree(const void *ptr)
 {
 	struct block *lblk = PTR_BLK(ptr);
@@ -272,7 +259,7 @@ struct block *block_new(int size)
 
     b = mm_malloc(sizeof(*b) + size);
     if (b == NULL) {
-    	//Should never enter here ever
+
     	return NULL;
     }
 
@@ -281,12 +268,12 @@ struct block *block_new(int size)
     b->pool_name = NULL;
     b->type = NULL;
     b->destructor = NULL;
-    //b->mutex = NULL;
+
 
     return b;
 }
 
-/** Unlocks the current lock and destroys it before returning. */
+
 int _pfree(const void *ptr, bool external)
 {
     struct block *cblk;
@@ -311,7 +298,7 @@ int _pfree(const void *ptr, bool external)
 		}
 		next = cur->next;
 		cur->next = NULL;
-		mm_free(cur); //Free the child_list
+		mm_free(cur);
 		cur = next;
     }
 
@@ -319,15 +306,12 @@ int _pfree(const void *ptr, bool external)
     	mm_free((char *)cblk->pool_name);
     }
 
-    /** Only should run for top level. */
+
     if (cblk->parent != NULL && external) {
 		prev = NULL;
 		pthread_mutex_lock(&(cblk->parent->mutex));
 		cur = cblk->parent->children;
-		/** 
-		 * So this while loop ends up with the child_list instance with blk->cblk in cur
-		 * and it's parent in prev.
-		 */
+
 		while (cur != NULL && cur->blk != cblk) {
 			pthread_mutex_lock(&(cur->blk->mutex));
 			prev = cur;
@@ -358,9 +342,7 @@ int _pfree(const void *ptr, bool external)
     return ret;
 }
 
-/** 
- * No lock here due to the fact that we have recursive calls.
- */
+
 void _palloc_print_tree(struct block *blk, int level)
 {
     struct child_list *cur;

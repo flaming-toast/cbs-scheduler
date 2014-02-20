@@ -118,7 +118,6 @@ static void test_destructor_valid(void)
     local_return = pfree(local_child1);
     CU_ASSERT(local_return == 0);
     local_child1 = NULL;
-    //palloc_destructor(local_child1, NULL);
     pfree(local_context);
 
     local_context = NULL;
@@ -149,7 +148,6 @@ static void test_array_simple(void) {
     CU_ASSERT(local_arrayChild != NULL);
     for (i = 0; i < 5; i += 1) {
     	local_arrayChild[i] = palloc_strdup(local_context, "Child");
-        //printf("Array Initialized");
         CU_ASSERT(local_arrayChild[i] != NULL);
         local_pointer = (char*) local_arrayChild[i];
         CU_ASSERT(strcmp(local_pointer, "Child") == 0);
