@@ -24,7 +24,7 @@ struct block
     const char *pool_name;
     const char *type;
     int (*destructor)(void *ptr);
-    pthread_mutex_t *lock;
+    pthread_mutex_t mutex;
 };
 
 
@@ -82,7 +82,7 @@ palloc_env palloc_init(const char *format, ...)
     va_list args;
     struct block *blk;
     char *pool_name;
-    pthread_mutex_t lock;
+    pthread_mutex_t mutex;
 
     blk = block_new(0);
     if (blk == NULL) {
@@ -94,8 +94,8 @@ palloc_env palloc_init(const char *format, ...)
     va_end(args);
 
     blk->pool_name = pool_name;
-    pthread_mutex_init(&lock, NULL);
-    blk->lock = &lock;
+    pthread_mutex_init(&mutex, NULL);
+    blk->mutex = mutex;
 
     return BLK_ENV(blk);
 }
@@ -107,7 +107,7 @@ void *prealloc(const void *ptr, size_t size)
     if (size != 0) { 
     	oblk = PTR_BLK(ptr);
     	if (oblk != NULL) {
-    		pthread_mutex_lock(oblk->lock);
+    		pthread_mutex_lock(&(oblk->mutex));
     	}
     	nblk = mm_realloc(oblk, size + sizeof(*oblk));
     } else if (ptr == NULL) {
@@ -126,26 +126,26 @@ void *prealloc(const void *ptr, size_t size)
 	    /** Updates parents. */
 		cur = nblk->parent->children;
 		while (cur != NULL)	{
-			pthread_mutex_lock(cur->blk->lock);
+			pthread_mutex_lock(&(cur->blk->mutex));
 			if (cur->blk == oblk) {
 				cur->blk = nblk;
 			}
-			pthread_mutex_unlock(cur->blk->lock);
+			pthread_mutex_unlock(&(cur->blk->mutex));
 			cur = cur->next;
 		}
 		/* Updates children. */
 		cur = nblk->children;
 		while (cur != NULL) {
-			pthread_mutex_lock(cur->blk->lock);
+			pthread_mutex_lock(&(cur->blk->mutex));
 			if (cur->blk->parent == oblk) {
 				cur->blk->parent = nblk;
 			}
-			pthread_mutex_unlock(cur->blk->lock);
+			pthread_mutex_unlock(&(cur->blk->mutex));
 			cur = cur->next;
 		}
     }
 
-	pthread_mutex_unlock(nblk->lock);
+	pthread_mutex_unlock(&(nblk->mutex));
     return BLK_PTR(nblk);
 }
 
@@ -155,21 +155,21 @@ void *_palloc(palloc_env env, size_t size, const char *type)
     struct block *pblk;
     struct block *cblk;
     struct child_list *clist;
-    pthread_mutex_t lock;
+    pthread_mutex_t mutex;
 
     pblk = ENV_BLK(env);
-    pthread_mutex_lock(pblk->lock);
+    pthread_mutex_lock(&(pblk->mutex));
 
     cblk = block_new(size);
     if (cblk == NULL) {
-    	pthread_mutex_unlock(pblk->lock);
+    	pthread_mutex_unlock(&(pblk->mutex));
     	return NULL;
     }
 
     clist = mm_malloc(sizeof(*clist));
     if (clist == NULL) {
 		mm_free(cblk);
-		pthread_mutex_unlock(pblk->lock);
+		pthread_mutex_unlock(&(pblk->mutex));
 		return NULL;
     }
 
@@ -178,12 +178,12 @@ void *_palloc(palloc_env env, size_t size, const char *type)
     cblk->type = type;
     clist->blk = cblk;
 
-    pthread_mutex_init(&lock, NULL);
-    cblk->lock = &lock;
+    pthread_mutex_init(&mutex, NULL);
+    cblk->mutex = mutex;
     clist->next = pblk->children;
     pblk->children = clist;
 
-	pthread_mutex_unlock(pblk->lock);
+	pthread_mutex_unlock(&(pblk->mutex));
     return BLK_ENV(cblk);
 }
 
@@ -193,7 +193,7 @@ int pfree(const void *ptr)
 	int res;
 	struct block *lb = PTR_BLK(ptr);
 	if (lb != NULL) {
-		pthread_mutex_lock(lb->lock);
+		pthread_mutex_lock(&(lb->mutex));
 		res = _pfree(ptr, true);
 		return res;
 	}
@@ -207,15 +207,15 @@ void * _palloc_cast(const void *ptr, const char *type)
 
     blk = PTR_BLK(ptr);
     if (blk != NULL) {
-    	pthread_mutex_lock(blk->lock);
+    	pthread_mutex_lock(&(blk->mutex));
     } else {
     	return NULL;
     }
     if (blk->type != type && (strcmp(blk->type, type) != 0)) {
-    	pthread_mutex_unlock(blk->lock);
+    	pthread_mutex_unlock(&(blk->mutex));
     	return NULL;
     }
-	pthread_mutex_unlock(blk->lock);
+	pthread_mutex_unlock(&(blk->mutex));
     return (void *)ptr;
 }
 
@@ -226,9 +226,9 @@ char *palloc_strdup(palloc_env env, const char *str)
     struct block *lblk = ENV_BLK(env);
     out = palloc_array(env, char, strlen(str) + 2);
     if (out != NULL) {
-		pthread_mutex_lock(lblk->lock);
+		pthread_mutex_lock(&(lblk->mutex));
 		strcpy(out, str);
-		pthread_mutex_unlock(lblk->lock);
+		pthread_mutex_unlock(&(lblk->mutex));
     }
     return out;
 }
@@ -241,9 +241,9 @@ void _palloc_destructor(const void *ptr, int (*dest)(void *))
     struct block *blk;
     blk = PTR_BLK(ptr);
     if (blk != NULL) {
-		pthread_mutex_lock(blk->lock);
+		pthread_mutex_lock(&(blk->mutex));
 		blk->destructor = dest;
-		pthread_mutex_unlock(blk->lock);
+		pthread_mutex_unlock(&(blk->mutex));
     } else {
     	abort();
     }
@@ -258,9 +258,9 @@ void _palloc_destructor(const void *ptr, int (*dest)(void *))
 void palloc_print_tree(const void *ptr)
 {
 	struct block *lblk = PTR_BLK(ptr);
-    pthread_mutex_lock(lblk->lock);
+    pthread_mutex_lock(&(lblk->mutex));
     _palloc_print_tree(lblk, 0);
-	pthread_mutex_unlock(lblk->lock);
+	pthread_mutex_unlock(&(lblk->mutex));
     return;
 }
 
@@ -279,7 +279,7 @@ struct block *block_new(int size)
     b->pool_name = NULL;
     b->type = NULL;
     b->destructor = NULL;
-    b->lock = NULL;
+    //b->mutex = NULL;
 
     return b;
 }
@@ -301,10 +301,10 @@ int _pfree(const void *ptr, bool external)
     cur = cblk->children;
     while (cur != NULL) {
 		struct child_list *next;
-	    pthread_mutex_lock(cur->blk->lock);
+	    pthread_mutex_lock(&(cur->blk->mutex));
 		ret |= _pfree(BLK_ENV(cur->blk), false);
 		if (ret == -1) {
-		    pthread_mutex_unlock(cblk->lock);
+		    pthread_mutex_unlock(&(cblk->mutex));
 			return -1; //See Piazza 104
 		}
 		next = cur->next;
@@ -320,17 +320,17 @@ int _pfree(const void *ptr, bool external)
     /** Only should run for top level. */
     if (cblk->parent != NULL && external) {
 		prev = NULL;
-		pthread_mutex_lock(cblk->parent->lock);
+		pthread_mutex_lock(&(cblk->parent->mutex));
 		cur = cblk->parent->children;
 		/** 
 		 * So this while loop ends up with the child_list instance with blk->cblk in cur
 		 * and it's parent in prev.
 		 */
 		while (cur != NULL && cur->blk != cblk) {
-			pthread_mutex_lock(cur->blk->lock);
+			pthread_mutex_lock(&(cur->blk->mutex));
 			prev = cur;
 			cur = cur->next;
-			pthread_mutex_unlock(prev->blk->lock);
+			pthread_mutex_unlock(&(prev->blk->mutex));
 		}
 
 		if (cur == NULL) {
@@ -343,14 +343,14 @@ int _pfree(const void *ptr, bool external)
 			prev->next = cur->next;
 			mm_free(cur);
 		}
-		pthread_mutex_unlock(cblk->parent->lock);
+		pthread_mutex_unlock(&(cblk->parent->mutex));
     }
 
     if (cblk->destructor != NULL) {
     	cblk->destructor(BLK_PTR(cblk));
     }
-    pthread_mutex_unlock(cblk->lock);
-    pthread_mutex_destroy(cblk->lock);
+    pthread_mutex_unlock(&(cblk->mutex));
+    pthread_mutex_destroy(&(cblk->mutex));
     mm_free(cblk);
 
     return ret;
