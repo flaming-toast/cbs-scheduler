@@ -59,8 +59,8 @@ static void test_parent_child(void)
     palloc_print_tree(local_context);
     local_child1 = NULL;
     local_child2 = NULL;
-    //local_return = pfree(local_child2);
-    //CU_ASSERT(local_return == -1);
+    local_return = pfree(local_child2);
+    CU_ASSERT(local_return == -1);
     pfree(local_context);
     local_context = NULL;
     
@@ -412,7 +412,6 @@ static void child_cast(void *local_context) {
     localreturn = pfree(localString);
     CU_ASSERT(localreturn == 0);
     localString = NULL;
-	//printf("CHECKPOINT C\n");
 }
 
 
@@ -433,7 +432,6 @@ static void * children_tests(void *ptr) {
 		child_string(ptr);
 	}
 
-	//printf("Checkpoint A\n");
 	return NULL;
 }
 
@@ -449,7 +447,7 @@ static void * create_children(void *ptr) {
 	for (count = 0; count < 10; count += 1) {
 		pthread_join(children[count], NULL);
 	}
-	//printf("CHECKPOINT B\n");
+
 	return NULL;
 }
 

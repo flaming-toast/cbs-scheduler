@@ -277,12 +277,14 @@ int _pfree(const void *ptr, bool external)
     cur = cblk->children;
     while (cur != NULL) {
 		struct child_list *next;
-	
+
+		cur->parent = NULL; //TODO: Is this necessary?
 		ret |= _pfree(BLK_ENV(cur->blk), false);
 		if (ret == -1) {
 			return -1; //See Piazza 104
 		}
 		next = cur->next;
+		cur->next = NULL;
 		mm_free(cur);
 		cur = next;
     }
@@ -290,10 +292,16 @@ int _pfree(const void *ptr, bool external)
     if (cblk->pool_name != NULL) {
     	mm_free((char *)cblk->pool_name);
     }
+    //TODO: Why do we not free type, does the macro not alloc this?
 
+    /** Only should run for top level. */
     if (cblk->parent != NULL && external) {
 		prev = NULL;
 		cur = cblk->parent->children;
+		/** 
+		 * So this while loop ends up with the child_list instance with blk->cblk in cur
+		 * and it's parent in prev.
+		 */
 		while (cur != NULL && cur->blk != cblk) {
 			prev = cur;
 			cur = cur->next;
@@ -301,7 +309,7 @@ int _pfree(const void *ptr, bool external)
 
 		if (cur == NULL) {
 			fprintf(stderr, "Inconsistant palloc tree during pfree()\n");
-			abort();
+			abort(); //TODO Is this supposed to abort? Why not return -1?
 		} else if (prev == NULL) {
 			cblk->parent->children = cur->next;
 			mm_free(cur);
