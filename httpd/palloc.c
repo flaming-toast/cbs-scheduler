@@ -24,9 +24,10 @@ struct block
     const char *pool_name;
     const char *type;
     int (*destructor)(void *ptr);
+    pthread_mutex_t *lock;
 };
 
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
 
 /** Get the block object from an environment (which points to start of data). */
 static inline struct block *ENV_BLK(const palloc_env env)
@@ -92,6 +93,9 @@ palloc_env palloc_init(const char *format, ...)
     va_end(args);
 
     blk->pool_name = pool_name;
+    pthread_mutex_t lock;
+    pthread_mutex_init(&lock, NULL);
+    blk->lock = &lock;
 
     return BLK_ENV(blk);
 }
@@ -100,19 +104,22 @@ palloc_env palloc_init(const char *format, ...)
 void *prealloc(const void *ptr, size_t size)
 {
     struct block *oblk, *nblk;
-    pthread_mutex_lock(&lock);
     if (size != 0) { 
     	oblk = PTR_BLK(ptr);
+    	if (oblk != NULL) {
+    		pthread_mutex_lock(oblk->lock);
+    	}
     	nblk = mm_realloc(oblk, size + sizeof(*oblk));
     } else if (ptr == NULL) {
-    	pthread_mutex_unlock(&lock);
     	return NULL;
     } else { //ptr != NULL, size == 0
     	nblk = NULL;
     }
     if (nblk == NULL) {
 		_pfree(oblk, true);
-		pthread_mutex_unlock(&lock);
+		if (oblk != NULL) {
+			pthread_mutex_unlock(oblk->lock);
+		}
 		return NULL;
     }
 
@@ -137,7 +144,7 @@ void *prealloc(const void *ptr, size_t size)
 		}
     }
 
-	pthread_mutex_unlock(&lock);
+	pthread_mutex_unlock(nblk->lock);
     return BLK_PTR(nblk);
 }
 
@@ -148,20 +155,19 @@ void *_palloc(palloc_env env, size_t size, const char *type)
     struct block *cblk;
     struct child_list *clist;
 
-    pthread_mutex_lock(&lock);
     pblk = ENV_BLK(env);
-    
+    pthread_mutex_lock(pblk->lock);
+
     cblk = block_new(size);
     if (cblk == NULL) {
-    	pthread_mutex_unlock(&lock);
+    	pthread_mutex_unlock(pblk->lock);
     	return NULL;
     }
 
-    //TODO: Ask about sizeof if this is correct.
     clist = mm_malloc(sizeof(*clist));
     if (clist == NULL) {
 		mm_free(cblk);
-		pthread_mutex_unlock(&lock);
+		pthread_mutex_unlock(pblk->lock);
 		return NULL;
     }
 
@@ -169,10 +175,11 @@ void *_palloc(palloc_env env, size_t size, const char *type)
     cblk->parent = pblk;
     cblk->type = type;
     clist->blk = cblk;
+    cblk->lock = pblk->lock;
     clist->next = pblk->children;
     pblk->children = clist;
 
-	pthread_mutex_unlock(&lock);
+	pthread_mutex_unlock(pblk->lock);
     return BLK_ENV(cblk);
 }
 
@@ -180,10 +187,15 @@ void *_palloc(palloc_env env, size_t size, const char *type)
 int pfree(const void *ptr)
 {
 	int res;
-    pthread_mutex_lock(&lock);
-    res = _pfree(ptr, true);
-	pthread_mutex_unlock(&lock);
-	return res;
+	struct block *lb = PTR_BLK(ptr);
+	if (lb != NULL) {
+		pthread_mutex_lock(lb->lock); //TODO: Ask about free and returning locks, should pfree destroy the lock, and we check if lock is null, if so object got destroyed, so return error on other methods.
+		res = _pfree(ptr, true);
+		//pthread_mutex_unlock(lb->lock);
+		return res;
+	}
+	return -1;
+
 }
 
 void * _palloc_cast(const void *ptr, const char *type)
@@ -191,24 +203,28 @@ void * _palloc_cast(const void *ptr, const char *type)
     struct block *blk;
 
     blk = PTR_BLK(ptr);
-
+    if (blk != NULL) {
+    	pthread_mutex_lock(blk->lock);
+    } else {
+    	return NULL;
+    }
     if (blk->type != type && (strcmp(blk->type, type) != 0)) {
     	return NULL;
     }
-
+	pthread_mutex_unlock(blk->lock);
     return (void *)ptr;
 }
 
-/** No lock required (?) since palloc_array acquires locks. */
+/** No lock required for the palloc_array call since palloc_array acquires locks. */
 char *palloc_strdup(palloc_env env, const char *str)
 {
     char *out;
-
+    struct block *lblk = ENV_BLK(env);
     out = palloc_array(env, char, strlen(str) + 2);
     if (out != NULL) {
-		pthread_mutex_lock(&lock);
+		pthread_mutex_lock(lblk->lock);
 		strcpy(out, str);
-		pthread_mutex_unlock(&lock);
+		pthread_mutex_unlock(lblk->lock);
     }
     return out;
 }
@@ -220,10 +236,12 @@ char *palloc_strdup(palloc_env env, const char *str)
 void _palloc_destructor(const void *ptr, int (*dest)(void *))
 {
     struct block *blk;
-    pthread_mutex_lock(&lock);
     blk = PTR_BLK(ptr);
-    blk->destructor = dest;
-	pthread_mutex_unlock(&lock);
+    if (blk != NULL) {
+		pthread_mutex_lock(blk->lock);
+		blk->destructor = dest;
+		pthread_mutex_unlock(blk->lock);
+    } //TODO: What to do if we get passed a null?
     //Probably don't return something, since would require modifying method signature.
 	return;
 }
@@ -235,9 +253,10 @@ void _palloc_destructor(const void *ptr, int (*dest)(void *))
  */
 void palloc_print_tree(const void *ptr)
 {
-    pthread_mutex_lock(&lock);
-    _palloc_print_tree(PTR_BLK(ptr), 0);
-	pthread_mutex_unlock(&lock);
+	struct block *lblk = PTR_BLK(ptr);
+    pthread_mutex_lock(lblk->lock);
+    _palloc_print_tree(lblk, 0);
+	pthread_mutex_unlock(lblk->lock);
     return;
 }
 
@@ -256,6 +275,7 @@ struct block *block_new(int size)
     b->pool_name = NULL;
     b->type = NULL;
     b->destructor = NULL;
+    b->lock = NULL;
 
     return b;
 }

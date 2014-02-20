@@ -296,16 +296,11 @@ static void child_array(void *local_context) {
 	char strgen2[30];
     char **localArray = palloc_array(local_context, char*, 5); 
     char *localpointer;
-    int randomwait, counter, localreturn, i;
+    int randomwait, localreturn, i;
     srand(time(NULL));
     randomwait = rand() % 50;
     sprintf(strgen, "%d", randomwait);
     for (i = 0; i < 5; i += 1) {
-        counter = 0;
-        while(counter < randomwait) {
-        	counter += 1;
-        }
-        randomwait = rand() % 5;
         localArray[i] = palloc_strdup(localArray, strgen);
         CU_ASSERT(localArray[i] != NULL);
         localpointer = (char*) localArray[i];
@@ -313,11 +308,6 @@ static void child_array(void *local_context) {
     }
     localArray = prealloc(localArray, sizeof(char *) * 3);
     for (i = 0; i < 3; i += 1) {
-        counter = 0;
-        while(counter < randomwait) {
-        	counter += 1;
-        }
-        randomwait = rand() % 5;
         CU_ASSERT(localArray[i] != NULL);
         localpointer = (char*) localArray[i];
         CU_ASSERT(strcmp(localpointer, strgen) == 0);
@@ -325,22 +315,12 @@ static void child_array(void *local_context) {
     sprintf(strgen2, "%d", (randomwait + 1));
     localArray = prealloc(localArray, sizeof(char *) * 7);
     for (i = 3; i < 7; i += 1) {
-        counter = 0;
-        while(counter < randomwait) {
-        	counter += 1;
-        }
-        randomwait = rand() % 5;
         localArray[i] = palloc_strdup(localArray, strgen2);
         CU_ASSERT(localArray[i] != NULL);
         localpointer = (char*) localArray[i];
         CU_ASSERT(strcmp(localpointer, strgen2) == 0);
     }
     for (i = 0; i < 3; i += 1) {
-        counter = 0;
-        while(counter < randomwait) {
-        	counter += 1;
-        }
-        randomwait = rand() % 5;
         CU_ASSERT(localArray[i] != NULL);
         localpointer = (char*) localArray[i];
         CU_ASSERT(strcmp(localpointer, strgen) == 0);
@@ -357,28 +337,14 @@ static void child_array(void *local_context) {
  */
 static void child_destructor(void *local_context) {
     void *localInt = palloc(local_context, int);
-    int randomwait, counter, localreturn;
-    srand(time(NULL));
-    randomwait = rand() % 50;
-    counter = 0;
-    while(counter < randomwait) {
-    	counter += 1;
-    }
+    int localreturn;
     palloc_destructor(localInt, &return_valid);
     localreturn = pfree(localInt);
     CU_ASSERT(localreturn == 0);
-    counter = 0;
-    while(counter < randomwait) {
-    	counter += 1;
-    }
     localInt = palloc(local_context, int);
     palloc_destructor(localInt, &return_invalid);
     localreturn = pfree(localInt);
     CU_ASSERT(localreturn == -1);
-    counter = 0;
-    while(counter < randomwait) {
-    	counter += 1;
-    }
     localInt = palloc(local_context, int);
     palloc_destructor(localInt, &return_invalid);
     palloc_destructor(localInt, NULL);
@@ -392,22 +358,13 @@ static void child_destructor(void *local_context) {
  */
 
 static void child_cast(void *local_context) {
-    int randomwait, counter, localreturn;
+    int localreturn;
     char *localString = palloc_strdup(local_context, "Test");
 
     srand(time(NULL));
-    randomwait = rand() % 25;
-    counter = 0;
-    while(counter < randomwait) {
-    	counter += 1;
-    }
     
     CU_ASSERT(palloc_cast(localString, char) != NULL);
     
-    counter = 0;
-    while(counter < randomwait) {
-    	counter += 1;
-    }
     CU_ASSERT(palloc_cast(localString, int) == NULL);
     localreturn = pfree(localString);
     CU_ASSERT(localreturn == 0);
@@ -419,17 +376,27 @@ static void child_cast(void *local_context) {
 static void * children_tests(void *ptr) {
 	int order = 0;
     srand(time(NULL));
-	order = rand() % 1;
-	if(order) {
+	order = rand() % 3;
+	if(order == 0) {
 		child_string(ptr);
 		child_array(ptr);
 		child_destructor(ptr);
 		child_cast(ptr);
-	} else {
+	} else if(order == 1) {
 		child_cast(ptr);
 		child_destructor(ptr);
 		child_array(ptr);
 		child_string(ptr);
+	} else if(order == 2) {
+		child_array(ptr);
+		child_string(ptr);
+		child_cast(ptr);
+		child_destructor(ptr);
+	} else if(order == 3) {
+		child_destructor(ptr);
+		child_cast(ptr);
+		child_string(ptr);
+		child_array(ptr);
 	}
 
 	return NULL;
@@ -439,12 +406,12 @@ static void * children_tests(void *ptr) {
  *
  */
 static void * create_children(void *ptr) {
-	pthread_t children[10];
+	pthread_t children[15];
 	int count = 0;
-	for (count = 0; count < 10; count += 1) {
+	for (count = 0; count < 15; count += 1) {
 		pthread_create(&children[count], NULL, &children_tests, ptr);
 	}
-	for (count = 0; count < 10; count += 1) {
+	for (count = 0; count < 15; count += 1) {
 		pthread_join(children[count], NULL);
 	}
 
