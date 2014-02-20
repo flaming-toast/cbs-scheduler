@@ -260,7 +260,6 @@ struct block *block_new(int size)
     return b;
 }
 
-//TODO
 int _pfree(const void *ptr, bool external)
 {
     struct block *cblk;
@@ -278,7 +277,6 @@ int _pfree(const void *ptr, bool external)
     while (cur != NULL) {
 		struct child_list *next;
 
-		cur->parent = NULL; //TODO: Is this necessary?
 		ret |= _pfree(BLK_ENV(cur->blk), false);
 		if (ret == -1) {
 			return -1; //See Piazza 104
