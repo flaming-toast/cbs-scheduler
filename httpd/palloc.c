@@ -124,14 +124,16 @@ void *prealloc(const void *ptr, size_t size)
     if (nblk != oblk) {
 		struct child_list *cur;
 	    /** Updates parents. */
-		cur = nblk->parent->children;
-		while (cur != NULL)	{
-			pthread_mutex_lock(&(cur->blk->mutex));
-			if (cur->blk == oblk) {
-				cur->blk = nblk;
+		if (nblk->parent != NULL) {
+			pthread_mutex_lock(&(nblk->parent->mutex));
+			cur = nblk->parent->children;
+			while (cur != NULL)	{
+				if (cur->blk == oblk) {
+					cur->blk = nblk;
+				}
+				cur = cur->next;
 			}
-			pthread_mutex_unlock(&(cur->blk->mutex));
-			cur = cur->next;
+			pthread_mutex_unlock(&(nblk->parent->mutex));
 		}
 		/* Updates children. */
 		cur = nblk->children;
