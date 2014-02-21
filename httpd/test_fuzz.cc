@@ -23,7 +23,7 @@ using namespace std;
 #include "mm_alloc.h"
 
 /* Number of test iterations. */
-const int ROUNDS = 100;
+const int ROUNDS = 10;
 
 /* Maximum number of test threads. */
 const int MAX_THREADS = 16;
@@ -67,7 +67,7 @@ static void genptr(int thread_num)
     ptrs[thread_num].push_back(pair<char*, size_t>(p, n));
 }
 
-/* Remove and free a random pointer. */ 
+/* Remove and free a random pointer. */
 void rmptr(int thread_num)
 {
     size_t s = ptrs[thread_num].size();
@@ -143,7 +143,7 @@ void test(void)
     {
         //size_t N = ((size_t) rand()) % NPTRS;
         //fixup_pointers(N);
-        int total_threads = ((int) rand()) % MAX_THREADS;
+        int total_threads = 16;//((int) rand()) % MAX_THREADS;
         for (j = 0; j < total_threads; j++)
         {
             thread_nums[j] = j;

@@ -240,7 +240,7 @@ const char *http_gets(struct http_session *s)
 	readed = read(s->fd, s->buf + s->buf_used, s->buf_size - s->buf_used);
 	if (readed > 0) {
     	long tid = syscall(SYS_gettid);
-    	fprintf(stderr, "Thread %ld: read %d sess->fd = %d\n", tid, readed, s->fd);
+    	fprintf(stderr, "Thread %ld: read %d sess->fd = %d\n", tid, (int)readed, s->fd);
 	    s->buf_used += readed;
 	}
 	if (readed <= 0) 
