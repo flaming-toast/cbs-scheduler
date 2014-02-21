@@ -2001,11 +2001,32 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		return current->no_new_privs ? 1 : 0;
 	/* [LAB1]: threadlimit prctl calls */
 	case PR_SET_THREADLIMIT:
-	        me->sp_limit_set = 1;
-	        me->sp_limit = arg2;
-	        break;
+	  if (!(me->sp_limit_block)) {
+	    me->sp_limit_block = kmalloc(sizeof(struct thread_limit_block), GFP_KERNEL);
+	    if (!(me->sp_limit_block)) {
+	      error = -EINVAL;
+	      break;
+	    }
+	    me->sp_limit_block->sp_used = kmalloc(sizeof(atomic_t), GFP_KERNEL);
+	    me->sp_limit_block->sp_limit = kmalloc(sizeof(atomic_t), GFP_KERNEL);
+	    if (!((me->sp_limit_block->sp_used) && (me->sp_limit_block->sp_limit))) {
+	      error = -EINVAL;
+	      kfree(me->sp_limit_block);
+	      break;
+	    }
+	    atomic_set(me->sp_limit_block->sp_used, 1);
+	    atomic_set(me->sp_limit_block->sp_limit, arg2);
+	  } else {
+	    error = -ENOTSUP;
+	  }
+	  break;
 	case PR_GET_THREADLIMIT:
-	  /* TODO */
+	  if (me->sp_limit_block) {
+	    arg2 = atomic_read(me->sp_limit_block->sp_limit);
+	    arg3 = atomic_read(me->sp_limit_block->sp_used);
+	  } else {
+	    error = -EINVAL;
+	  }
 	        break;
 	default:
 		error = -EINVAL;

@@ -12,11 +12,11 @@ PATEST_FLAGS := -DPALLOC_TEST $(HTTPD_FLAGS)
 
 all: .httpd/httpd
 .httpd/httpd: $(HTTPD_OBJ)
-	gcc -g -static $(HTTPD_FLAGS) $(CFLAGS) -o "$@" $^
+	gcc -g -pthread -static $(HTTPD_FLAGS) $(CFLAGS) -o "$@" $^
 
 .httpd/httpd.d/%.o : httpd/%.c $(HTTPD_HDR)
 	mkdir -p `dirname $@`
-	gcc -g -c -o $@ $(HTTPD_FLAGS) $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
+	gcc -g -pthread -c -o $@ $(HTTPD_FLAGS) $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
 
 # Builds a test harness for the mm_alloc code
 all: .httpd/test_mm
@@ -41,11 +41,11 @@ all: .httpd/test_palloc
 .httpd/test_palloc: .httpd/test_palloc.d/palloc.o \
 			.httpd/test_palloc.d/mm_alloc.o \
 			.httpd/test_palloc.d/test_palloc.o
-	gcc -g -static $(PATEST_FLAGS) $(CFLAGS) -o "$@" $^ -lcunit
+	gcc -g -pthread -static $(PATEST_FLAGS) $(CFLAGS) -o "$@" $^ -lcunit
 
 .httpd/test_palloc.d/%.o: httpd/%.c $(HTTPD_HDR)
 	mkdir -p `dirname $@`
-	gcc -g -c -o $@ $(PATEST_FLAGS) $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
+	gcc -g -c -pthread -o $@ $(PATEST_FLAGS) $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
 
 check: .httpd/test_palloc.cunit_out
 
