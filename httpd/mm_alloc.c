@@ -13,7 +13,7 @@
 #include "mm_alloc.h"
 
 /* Your final implementation should comment out this macro. */
-//#define MM_USE_STUBS
+#define MM_USE_STUBS
 
 void *mm_malloc(size_t size)
 {
@@ -78,7 +78,7 @@ void *mm_malloc_ll(size_t size)
         {
                 int status;
                 void *ptr;
-                printf("requested size: %lu, new size: %lu\n", size, pad_mem_size(size));
+                ////printf("requested size: %lu, new size: %lu\n", size, pad_mem_size(size));
 
                 size = pad_mem_size(size);
 
@@ -89,7 +89,7 @@ void *mm_malloc_ll(size_t size)
                 if(status == ERROR)
                         return NULL;
 
-                print_free_blocks();
+                //print_free_blocks();
                 ptr = req_free_mem(size);
                 if(ptr == NULL)
                 {
@@ -141,17 +141,17 @@ void *mm_realloc_ll(void *ptr, size_t size)
 
 void mm_free_ll(void *ptr)
 {
-        printf("head pointed to %p\n", malloc_head->next_free);
-        printf("call to free on %p\n", get_header(ptr));
-        printf("prev of ptr is %p\n", get_header(ptr)->prev);
+        ////printf("head pointed to %p\n", malloc_head->next_free);
+        ////printf("call to free on %p\n", get_header(ptr));
+        ////printf("prev of ptr is %p\n", get_header(ptr)->prev);
         MM_node *node = get_header(ptr);
         append_node(node, node->size);
         node->status = FREE;
-        coalesce_right(node);
-        coalesce_left(node);
+        //coalesce_right(node);
+        //coalesce_left(node);
 
-        print_free_blocks();
-        printf("head now points to %p\n", malloc_head->next_free);
+        //print_free_blocks();
+        ////printf("head now points to %p\n", malloc_head->next_free);
         sanity_free_head();
         return;
 }
@@ -168,11 +168,11 @@ void mm_free_ll(void *ptr)
 int initialize(size_t req_mem_size)
 {
         void *heap_bottom;
-        printf("First call to mm_alloc. Node header size: %d\n", NODE_HEADER_SIZE);
+        //printf("First call to mm_alloc. Node header size: %d\n", NODE_HEADER_SIZE);
 
         req_mem_size = get_mem_size(req_mem_size);
 
-        printf("allocating %lu bytes of memory...\n", req_mem_size);
+        //printf("allocating %lu bytes of memory...\n", req_mem_size);
         if((heap_bottom = sbrk(req_mem_size)) == NULL)
         {
                 return ERROR;
@@ -189,9 +189,9 @@ int initialize(size_t req_mem_size)
                 malloc_head->next_free = malloc_tail;
                 malloc_tail->prev = malloc_head;
                 malloc_tail->size = req_mem_size - 2 * NODE_HEADER_SIZE;
-                printf("heap bottom: %p, %p,  %li\n", heap_bottom, malloc_head, (size_t)heap_bottom % 8);
-                printf("top malloc_head: %lu, %p, %p, %d\n", malloc_head->size, malloc_head->next_free, malloc_head->prev, malloc_head->status);
-                printf("top malloc_tail: %lu, %p, %p, %d\n", malloc_tail->size, malloc_tail->next_free, malloc_tail->prev, malloc_tail->status);
+                //printf("heap bottom: %p, %p,  %li\n", heap_bottom, malloc_head, (size_t)heap_bottom % 8);
+                //printf("top malloc_head: %lu, %p, %p, %d\n", malloc_head->size, malloc_head->next_free, malloc_head->prev, malloc_head->status);
+                //printf("top malloc_tail: %lu, %p, %p, %d\n", malloc_tail->size, malloc_tail->next_free, malloc_tail->prev, malloc_tail->status);
 
                 return SUCCESS;
         }
@@ -206,14 +206,11 @@ void *req_free_mem(size_t req_size)
         MM_node *prev_node = NULL;
         MM_node *cur_node = malloc_head;
 
-        if(cur_node == NULL)
-                return NULL;
-
         while(cur_node != NULL)
         {
                 if(cur_node->status == USED)
                 {
-                        printf("DANGER THIS SHOULD NEVER BE PRINTED\n");
+                        //printf("DANGER THIS SHOULD NEVER BE PRINTED\n");
                         mm_malloc_had_a_problem();
                 }
                 // We have enough memory in this chunk to split it into two pieces
@@ -221,7 +218,7 @@ void *req_free_mem(size_t req_size)
                 {
                         MM_node *new_node = split_node(cur_node, req_size);
                         prev_node->next_free = new_node;
-                        printf("Split: old node with size %lu, split node with size %lu\n", cur_node->size, new_node->size);
+                        //printf("Split: old node with size %lu, split node with size %lu\n", cur_node->size, new_node->size);
 
                         return (void *)((char *)cur_node + NODE_HEADER_SIZE);
                 }
@@ -249,7 +246,7 @@ int add_new_mem(size_t size)
         MM_node *new_node;
 
         size = get_mem_size(size);
-        //printf("allocating %lu bytes of memory...\n", size);
+        ////printf("allocating %lu bytes of memory...\n", size);
 
         if((heap_bottom = sbrk(size)) == NULL)
         {
@@ -279,7 +276,7 @@ MM_node *split_node(MM_node *node, size_t req_size)
 {
         if(req_size + NODE_HEADER_SIZE > node->size)
         {
-                printf("DANGER THIS SHOULD NEVER BE PRINTED\n");
+                //printf("DANGER THIS SHOULD NEVER BE PRINTED\n");
                 mm_malloc_had_a_problem();
         }
 
@@ -409,7 +406,8 @@ void *align_addr(void *addr)
         if((unsigned long)addr % 8 != 0)
         {
                 // TODO
-                printf("Memory was not aligned.\n");
+                //printf("Memory was not aligned.\n");
+                mm_malloc_had_a_problem();
                 return addr;
         } else {
                 return addr;
@@ -452,11 +450,11 @@ void print_free_blocks(void)
 
                 if(cur_node->status == FREE)
                 {
-                        printf("Node at [%d]:%p - FREE with %lu bytes free.\n", num, cur_node, cur_node->size);
+                        //printf("Node at [%d]:%p - FREE with %lu bytes free.\n", num, cur_node, cur_node->size);
                 }
                 else
                 {
-                        printf("Node at [%d]:%p - USED with %lu bytes used.\n", num, cur_node, cur_node->size);
+                        //printf("Node at [%d]:%p - USED with %lu bytes used.\n", num, cur_node, cur_node->size);
                 }
                 if(cur_node == malloc_tail)
                         break;
@@ -466,7 +464,7 @@ void sanity_free_head(void)
 {
         if(malloc_head->next_free != NULL && malloc_head->next_free->status != FREE)
         {
-                printf("DANGER THIS SHOULD NEVER BE PRINTED\n");
+                //printf("DANGER THIS SHOULD NEVER BE PRINTED\n");
                 mm_malloc_had_a_problem();
         }
 }
