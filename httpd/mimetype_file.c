@@ -102,6 +102,11 @@ int http_get(struct mimetype *mt, struct http_session *s)
     }
     fprintf(stderr,"Thread %ld: Printed out RESPONSE to session # %d \n", tid, s->fd);
 
+	s->event.events = EPOLLIN | EPOLLET; // if we happen to have switched to EPOLLOUT in the meantime and we succeed this time, switch back to EPOLLIN
+	if(epoll_ctl(s->server->efd, EPOLL_CTL_MOD, s->fd, &s->event) < 0) {
+    	fprintf(stderr, "Thread %ld: epoll_ctl failed to modify session fd %d to listen for only EPOLLOUT", tid, s->fd);
+    }
+
     close(fd);
     close(pipefd[0]); 
     perror("close() requested file");
