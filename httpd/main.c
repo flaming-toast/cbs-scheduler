@@ -20,7 +20,8 @@
 #define DEFAULT_BUFFER_SIZE 256
 
 static int event_loop(struct http_server *server);
-static int process_session_data(struct http_session *session, const char *data);
+extern int process_session_line(struct http_session *session, const char *data);
+extern int process_session_data(struct http_session *session);
 //static pthread_mutex_t lock;
 
 int main(int argc, char **argv)
@@ -71,7 +72,6 @@ int event_loop(struct http_server *server) {
 		fprintf(stderr, "Thread %ld event loop() \n", tid);
 
 		struct http_session *session;
-		const char *line;
 		int num_events_ready;
 		int i, ret;
 
@@ -142,17 +142,12 @@ int event_loop(struct http_server *server) {
 				 * We are only interested in GET's, ignore everything else.
 				 */
 					/* read lines from session->fd until we get no more lines */
-					while ((line = session->gets(session)) != NULL) {
-						// readed = read(session->fd, buf + buf_used, DEFAULT_BUFFER_SIZE - buf_used);
-						/* Process each line we receive */
-						ret = process_session_data(session, line);
-						if (ret != 0) {
-							perror("process_session_data encountered a problem");
-							abort();
-						}
-					} // after this while loop ends, should have read everything we could have
-					fprintf(stderr, "Thread %ld closing session fd %d \n", tid, session->fd);
-					close(session->fd);
+					ret = process_session_data(session);
+					if (ret < 0) {
+						perror("process_session_data failed");
+					//	abort();
+					}
+//					close(session->fd);
 				} // We got notified but the session was not ready for reading??? 
 
     		}
@@ -161,7 +156,7 @@ int event_loop(struct http_server *server) {
 }
 
 
-int process_session_data(struct http_session *session, const char *line) {
+int process_session_line(struct http_session *session, const char *line) {
 	char *method, *file, *version;
 	struct mimetype *mt;
 	int mterr;
@@ -219,4 +214,25 @@ cleanup:
 	 * removed from the epoll set */
 	pfree(session); 
 	return -1;
+}
+
+int process_session_data(struct http_session* session) {
+
+		long tid;
+		tid = syscall(SYS_gettid);
+		const char *line;
+		int ret;
+					while ((line = session->gets(session)) != NULL) {
+						// readed = read(session->fd, buf + buf_used, DEFAULT_BUFFER_SIZE - buf_used);
+						/* Process each line we receive */
+						ret = process_session_line(session, line);
+						if (ret != 0) {
+							perror("process_session_data encountered a problem");
+							//abort();
+							return ret;
+						}
+					} // after this while loop ends, should have read everything we could have
+					fprintf(stderr, "Thread %ld closing session fd %d \n", tid, session->fd);
+					close(session->fd);
+					return 0;
 }
