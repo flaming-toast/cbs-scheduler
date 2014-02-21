@@ -9,11 +9,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <stdio.h>
 #include "mm_alloc.h"
 
 /* Your final implementation should comment out this macro. */
-#define MM_USE_STUBS
+//#define MM_USE_STUBS
 
 void *mm_malloc(size_t size)
 {
@@ -58,12 +59,13 @@ void mm_free(void *ptr)
 #define ERROR -1
 #define SUCCESS 1
 
-const size_t  INIT_MEM_SIZE     = 4096;
+const size_t  INIT_MEM_SIZE     = 2048;
 const int     NODE_HEADER_SIZE  = sizeof(MM_node);
 const int     SPLIT_MINIMUM     = 2 * sizeof(MM_node);
 
 MM_node       *malloc_head      = NULL;
 MM_node       *malloc_tail      = NULL;
+pthread_mutex_t lock;
 //////////////////////// {A} GLOBALS ////////////////////////
 
 
@@ -72,22 +74,27 @@ void *mm_malloc_ll(size_t size)
 {
         if(size == 0)
         {
+                printf("SIZE REQUEST 0\n");
                 return NULL;
         }
         else
         {
-                int status;
+                int status = SUCCESS;
                 void *ptr;
                 ////printf("requested size: %lu, new size: %lu\n", size, pad_mem_size(size));
 
                 size = pad_mem_size(size);
 
+                pthread_mutex_lock(&lock);
                 if(malloc_head == NULL)
                 {
                         status = initialize(size);
                 }
                 if(status == ERROR)
+                {
+                        pthread_mutex_unlock(&lock);
                         return NULL;
+                }
 
                 //print_free_blocks();
                 ptr = req_free_mem(size);
@@ -97,11 +104,16 @@ void *mm_malloc_ll(size_t size)
                         ptr = req_free_mem(size);
                 }
                 if(status == ERROR)
+                {
+                        printf("Failure to allocate.\n");
                         return NULL;
+                        pthread_mutex_unlock(&lock);
+                }
 
                 sanity_free_head();
+                zero_mem(ptr);
+                pthread_mutex_unlock(&lock);
                 return ptr;
-                //return calloc(1, size);
         }
 }
 
@@ -144,15 +156,23 @@ void mm_free_ll(void *ptr)
         ////printf("head pointed to %p\n", malloc_head->next_free);
         ////printf("call to free on %p\n", get_header(ptr));
         ////printf("prev of ptr is %p\n", get_header(ptr)->prev);
+        pthread_mutex_lock(&lock);
+
         MM_node *node = get_header(ptr);
-        append_node(node, node->size);
+        if(node->next_free != NULL)
+                mm_malloc_had_a_problem();
+
         node->status = FREE;
+        MM_node *old_free = malloc_head->next_free;
+        malloc_head->next_free = node;
+        node->next_free = old_free;
+
         //coalesce_right(node);
         //coalesce_left(node);
 
-        //print_free_blocks();
         ////printf("head now points to %p\n", malloc_head->next_free);
         sanity_free_head();
+        pthread_mutex_unlock(&lock);
         return;
 }
 //////////////////////// {B} CORE FUNCTIONS  ////////////////////////
@@ -187,7 +207,9 @@ int initialize(size_t req_mem_size)
                 // the actual first node, so malloc_head will always point to a 'free node'
                 malloc_tail = construct_node((char *)heap_bottom - req_mem_size + NODE_HEADER_SIZE);
                 malloc_head->next_free = malloc_tail;
+                malloc_head->size = 0;
                 malloc_tail->prev = malloc_head;
+                malloc_tail->next_free = NULL;
                 malloc_tail->size = req_mem_size - 2 * NODE_HEADER_SIZE;
                 //printf("heap bottom: %p, %p,  %li\n", heap_bottom, malloc_head, (size_t)heap_bottom % 8);
                 //printf("top malloc_head: %lu, %p, %p, %d\n", malloc_head->size, malloc_head->next_free, malloc_head->prev, malloc_head->status);
@@ -203,6 +225,10 @@ int initialize(size_t req_mem_size)
  */
 void *req_free_mem(size_t req_size)
 {
+        if(req_size < 1)
+        {
+                return NULL;
+        }
         MM_node *prev_node = NULL;
         MM_node *cur_node = malloc_head;
 
@@ -214,6 +240,7 @@ void *req_free_mem(size_t req_size)
                         mm_malloc_had_a_problem();
                 }
                 // We have enough memory in this chunk to split it into two pieces
+
                 if(cur_node->size > req_size + SPLIT_MINIMUM)
                 {
                         MM_node *new_node = split_node(cur_node, req_size);
@@ -223,9 +250,11 @@ void *req_free_mem(size_t req_size)
                         return (void *)((char *)cur_node + NODE_HEADER_SIZE);
                 }
                 // Just enough memory in this chunk to return it.
-                else if(cur_node->size >= req_size)
+                else if(cur_node->size > req_size)
                 {
                         cur_node->status = USED;
+                        cur_node->next_free = NULL;
+
                         prev_node->next_free = cur_node->next_free;
 
                         return (void *)((char *)cur_node + NODE_HEADER_SIZE);
@@ -247,18 +276,29 @@ int add_new_mem(size_t size)
 
         size = get_mem_size(size);
         ////printf("allocating %lu bytes of memory...\n", size);
+        //printf("%p, %p", sbrk(0), (char *)malloc_tail + malloc_tail->size + NODE_HEADER_SIZE);
 
-        if((heap_bottom = sbrk(size)) == NULL)
+        heap_bottom = sbrk(size + NODE_HEADER_SIZE);
+        if(heap_bottom == NULL)
         {
                 // unable to sbrk successfully
                 return ERROR;
         }
         else
         {
-                heap_bottom = align_addr(heap_bottom);
+                //printf("heap_bottom %p", sbrk(0));
+                if((long unsigned)((char *)malloc_tail + NODE_HEADER_SIZE + malloc_tail->size + NODE_HEADER_SIZE + size) > (long unsigned)sbrk(0))
+                        mm_malloc_had_a_problem();
+
+
                 // TODO on address align heap_bottom - req_mem_size may spill over top of heap
-                new_node = append_node(construct_node(
-                        (char *)malloc_tail + NODE_HEADER_SIZE + malloc_tail->size) , size);
+                new_node = construct_node((char *)malloc_tail + NODE_HEADER_SIZE + malloc_tail->size);
+                new_node->status = FREE;
+                new_node->size = size;
+                MM_node *old_free = malloc_head->next_free;
+                malloc_head->next_free = new_node;
+                new_node->next_free = old_free;
+
                 new_node->prev = malloc_tail;
                 malloc_tail = new_node;
                 return SUCCESS;
@@ -281,10 +321,15 @@ MM_node *split_node(MM_node *node, size_t req_size)
         }
 
         size_t new_node_size = node->size - req_size - NODE_HEADER_SIZE;
-        MM_node *new_node_addr = (void *)((char *)node + NODE_HEADER_SIZE + req_size);
+        MM_node *new_node_addr = (MM_node *)((char *)node + NODE_HEADER_SIZE + req_size);
         MM_node *new_node = construct_node(new_node_addr);
+
         new_node->size = new_node_size;
         new_node->next_free = node->next_free;
+        new_node->status = FREE;
+        new_node->prev = node;
+
+        node->size = req_size;
         node->next_free = NULL;
         node->status = USED;
 
@@ -293,8 +338,6 @@ MM_node *split_node(MM_node *node, size_t req_size)
                 malloc_tail = new_node;
         }
 
-        node->size = req_size;
-        new_node->prev = node;
         return new_node;
 }
 
@@ -428,6 +471,13 @@ size_t pad_mem_size(size_t size)
                 return size;
         else
                 return NODE_HEADER_SIZE * (size / NODE_HEADER_SIZE + 1);
+}
+
+void zero_mem(void *ptr)
+{
+        MM_node *node = get_header(ptr);
+        memset((char *)node + NODE_HEADER_SIZE, 0, node->size);
+
 }
 //////////////////////// {D} UTILITIES ////////////////////////
 

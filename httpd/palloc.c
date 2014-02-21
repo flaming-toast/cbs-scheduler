@@ -69,21 +69,18 @@ static int _pfree(const void *ptr, bool external);
 static void _palloc_print_tree(struct block *blk, int level);
 
 
-palloc_env palloc_init(const char *format, ...)
+palloc_env palloc_init(const char *format)
 {
-    va_list args;
     struct block *blk;
-    char *pool_name;
+    char *pool_name = (char *)mm_malloc(strlen(format) + 1);
     pthread_mutex_t mutex;
 
     blk = block_new(0);
     if (blk == NULL) {
     	return NULL;
     }
+    strcpy(pool_name, format);
 
-    va_start(args, format);
-    vasprintf(&pool_name, format, args);
-    va_end(args);
 
     blk->pool_name = pool_name;
     pthread_mutex_init(&mutex, NULL);
@@ -96,7 +93,7 @@ palloc_env palloc_init(const char *format, ...)
 void *prealloc(const void *ptr, size_t size)
 {
     struct block *oblk, *nblk;
-    if (size != 0) { 
+    if (size != 0) {
     	oblk = PTR_BLK(ptr);
     	if (oblk != NULL) {
     		pthread_mutex_lock(&(oblk->mutex));
@@ -104,7 +101,7 @@ void *prealloc(const void *ptr, size_t size)
     	nblk = mm_realloc(oblk, size + sizeof(*oblk));
     } else if (ptr == NULL) {
     	return NULL;
-    } else { 
+    } else {
     	nblk = NULL;
     }
     if (nblk == NULL) {

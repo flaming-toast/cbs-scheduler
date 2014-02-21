@@ -35,6 +35,7 @@ typedef struct mm_node
 void *mm_malloc_ll(size_t size);
 void *mm_realloc_ll(void *ptr, size_t size);
 void mm_free_ll(void *ptr);
+void zero_mem(void *ptr);
 // {C} CORE HELPERS //
 int initialize(size_t mem_init_size);
 void *req_free_mem(size_t size);

@@ -26,7 +26,7 @@ using namespace std;
 const int ROUNDS = 10;
 
 /* Maximum number of test threads. */
-const int MAX_THREADS = 16;
+const int MAX_THREADS = 6;
 
 static vector< pthread_t > pthread_vector;
 
@@ -51,6 +51,8 @@ static char magic(size_t n)
 static void genptr(int thread_num)
 {
     size_t n = ((size_t) rand()) % MAX_SIZE;
+    if(n == 0)
+        n = 1;
     char* p = (char*) mm_malloc(n);
 
     CU_ASSERT(p != NULL);
@@ -143,7 +145,7 @@ void test(void)
     {
         //size_t N = ((size_t) rand()) % NPTRS;
         //fixup_pointers(N);
-        int total_threads = 16;//((int) rand()) % MAX_THREADS;
+        int total_threads = ((int) rand()) % MAX_THREADS;
         for (j = 0; j < total_threads; j++)
         {
             thread_nums[j] = j;

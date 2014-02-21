@@ -4,11 +4,11 @@ HTTPD_HDR := $(wildcard ./httpd/*.h)
 HTTPD_OBJ := $(HTTPD_SRC:%.c=%.o)
 HTTPD_OBJ := $(HTTPD_OBJ:./httpd/%=./.httpd/httpd.d/%)
 HTTPD_DEP := $(HTTPD_OBJ:%.o:%.d)
-HTTPD_FLAGS := -fms-extensions
+HTTPD_FLAGS := -fms-extensions -pthread
 MMTEST_FLAGS := -DMM_TEST $(HTTPD_FLAGS) -Wno-write-strings -pthread
 PATEST_FLAGS := -DPALLOC_TEST $(HTTPD_FLAGS)
 
--include $(HTTPD_DEP) 
+-include $(HTTPD_DEP)
 
 all: .httpd/httpd
 .httpd/httpd: $(HTTPD_OBJ)
@@ -30,7 +30,7 @@ all: .httpd/test_mm
 check: .httpd/test_mm.cunit_out
 
 all: .httpd/test_fuzz
-.httpd/test_fuzz: .httpd/test_mm.d/mm_alloc.o ./httpd/test_fuzz.cc 
+.httpd/test_fuzz: .httpd/test_mm.d/mm_alloc.o ./httpd/test_fuzz.cc
 	g++ -O2 -static -Wall -Werror -std=c++11 $(MMTEST_FLAGS) $(CXXFLAGS) \
 		-o $@ $^ -lcunit
 
