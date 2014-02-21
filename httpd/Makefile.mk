@@ -49,3 +49,9 @@ all: .httpd/test_palloc
 
 check: .httpd/test_palloc.cunit_out
 
+all: .httpd/test_prctl
+.httpd/test_prctl: .httpd/test_prctl.d/test_prctl.o
+	gcc -g -static -DPRCTL_TEST $(CFLAGS) -o "$@" $^ -lcunit
+.httpd/test_prctl.d/test_prctl.o: httpd/test_prctl.c
+	mkdir -p `dirname $@`
+	gcc -g -c -o $@ -DPRCTL_TEST $(CFLAGS) httpd/test_prctl.c -static -lcunit

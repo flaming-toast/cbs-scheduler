@@ -2002,7 +2002,7 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 	/* [LAB1]: threadlimit prctl calls */
 	case PR_SET_THREADLIMIT:
 	  if (!(me->sp_limit_block)) {
-	    me->sp_limit_block = kmalloc(sizeof(struct thread_limit_block), GFP_KERNEL);
+	    me->sp_limit_block = kmalloc(sizeof(struct thread_limit_struct), GFP_KERNEL);
 	    if (!(me->sp_limit_block)) {
 	      error = -EINVAL;
 	      break;
@@ -2017,7 +2017,7 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 	    atomic_set(me->sp_limit_block->sp_used, 1);
 	    atomic_set(me->sp_limit_block->sp_limit, arg2);
 	  } else {
-	    error = -ENOTSUP;
+	    error = -EINVAL;
 	  }
 	  break;
 	case PR_GET_THREADLIMIT:
