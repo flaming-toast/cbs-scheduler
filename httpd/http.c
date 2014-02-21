@@ -23,6 +23,7 @@
 #include <sys/socket.h>
 #include <sys/syscall.h>
 #include <sys/errno.h>
+#include <sys/ioctl.h>
 
 #include "http.h"
 #include "lambda.h"
@@ -44,6 +45,8 @@ static int close_session(struct http_session *s);
 static const char *http_gets(struct http_session *s);
 static ssize_t http_puts(struct http_session *s, const char *m);
 static ssize_t http_write(struct http_session *s, const char *m, size_t l);
+
+extern int process_session_data(struct http_session *s);
 
 struct http_server *http_server_new(palloc_env env, short port)
 {
@@ -177,7 +180,6 @@ struct http_session *wait_for_client(struct http_server *serv)
 	}
 
 	/* Set up epoll_event struct associated with this http_session */
-
 	/* Pointer to this http_session */
 //	sess->event.data.ptr = http_event_new(serv, 1, sess);
 	sess->event.data.ptr = http_event_new(sess, 1, sess);
@@ -190,6 +192,15 @@ struct http_session *wait_for_client(struct http_server *serv)
     	perror("epoll_ctl");
     	abort();
     }
+	int count;
+	ioctl(sess->fd, FIONREAD, &count);
+		if (count > 0) {
+		int ret = process_session_data(sess);
+			if (ret < 0) {
+				perror("process_session_data");
+			}
+    	
+    	}
 
     palloc_destructor(sess, &close_session);
 
