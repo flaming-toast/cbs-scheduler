@@ -28,3 +28,4 @@ slink /bin/which busybox 777 0 0
 
 # Runs on startup, never exits!
 file /init lab0/interactive_init 755 0 0
+file /bin/test_prtl .httpd/test_prctl 755 0 0

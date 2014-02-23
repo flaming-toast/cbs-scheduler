@@ -2022,8 +2022,10 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 	  break;
 	case PR_GET_THREADLIMIT:
 	  if (me->sp_limit_block) {
-	    arg2 = atomic_read(me->sp_limit_block->sp_limit);
-	    arg3 = atomic_read(me->sp_limit_block->sp_used);
+	    int lim = atomic_read(me->sp_limit_block->sp_limit);
+	    int cur = atomic_read(me->sp_limit_block->sp_used);
+	    copy_to_user(arg2, &lim, sizeof(int));
+	    copy_to_user(arg3, &cur, sizeof(int));
 	  } else {
 	    error = -EINVAL;
 	  }

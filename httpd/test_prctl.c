@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
+#include <sys/mman.h>
 #include <sched.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -25,6 +26,14 @@ static int nop_clean_suite(void) {
 
 /* Utility functions used in test routines */
 
+void* get_new_stack() {
+  return mmap(NULL, BASIC_STACK_SIZE * sizeof(int), PROT_EXEC | PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
+}
+
+void unset_stack(void* stack) {
+  munmap(stack, BASIC_STACK_SIZE * sizeof(int));
+}
+
 int wait_for_start_and_exit(void* ign) {
   while(!startFlag) { 
     /* spin, we don't really care */
@@ -46,7 +55,7 @@ int clone_new_dummy_fn(void* fn) {
 }
 
 int clone_new_and_ret_pid(void* fn) {
-  void* c_stack = malloc(BASIC_STACK_SIZE*sizeof(int));
+  void* c_stack = get_new_stack();
   if (c_stack == NULL) {
     CU_ASSERT(1 == 0);
     return 0;
@@ -56,7 +65,7 @@ int clone_new_and_ret_pid(void* fn) {
   if (npid > 0) {
     wait(&ign);
   }
-  free(c_stack);
+  unset_stack(c_stack);
   return npid;
 }
 
@@ -73,7 +82,7 @@ int run_test_prctl_limit1(void* ign) {
 }
 
 static void test_prctl_limit1_fail(void) {
-  void* c_stack = malloc(BASIC_STACK_SIZE*sizeof(int));
+  void* c_stack = get_new_stack();
   if (c_stack == NULL) {
     CU_ASSERT(1 == 0);
     return;
@@ -85,7 +94,7 @@ static void test_prctl_limit1_fail(void) {
     wait(&res);
     CU_ASSERT(res == -1);
   }   
-  free(c_stack);
+  unset_stack(c_stack);
 }
 
 int run_test_prctl_limit2_success(void* ign) {
@@ -99,7 +108,7 @@ int run_test_prctl_limit2_success(void* ign) {
 }
 
 static void test_prctl_limit2_success(void) {
-  void* c_stack = malloc(BASIC_STACK_SIZE*sizeof(int));
+  void* c_stack = get_new_stack();
   if (c_stack == NULL) {
     CU_ASSERT(1 == 0);
     return;
@@ -111,12 +120,12 @@ static void test_prctl_limit2_success(void) {
     wait(&res);
     CU_ASSERT(res > 0);
   }
-  free(c_stack);
+  unset_stack(c_stack);
 }
 
 int run_test_prctl_limit2_failch(void* ign) {
   prctl(SET_TL_DUMMY, 2);
-  void* c_stack = malloc(BASIC_STACK_SIZE*sizeof(int));
+  void* c_stack = get_new_stack();
   if (c_stack == NULL) {
     CU_ASSERT(1 == 0);
     return 0;
@@ -126,12 +135,12 @@ int run_test_prctl_limit2_failch(void* ign) {
   if (npid > 0) {
     wait(&res);
   }
-  free(c_stack);
+  unset_stack(c_stack);
   return res;
 }
 
 static void test_prctl_limit2_failch(void) {
-  void* c_stack = malloc(BASIC_STACK_SIZE*sizeof(int));
+  void* c_stack = get_new_stack();
   if (c_stack == NULL) {
     CU_ASSERT(1 == 0);
     return;
@@ -143,19 +152,19 @@ static void test_prctl_limit2_failch(void) {
     wait(&res);
     CU_ASSERT(res == -1);
   }
-  free(c_stack);
+  unset_stack(c_stack);
 }
 
 int run_test_prctl_limit2_failsi(void* ign) {
   prctl(SET_TL_DUMMY, 2);
-  void* c_stack1 = malloc(BASIC_STACK_SIZE*sizeof(int));
+  void* c_stack1 = get_new_stack();
   if (c_stack1 == NULL) {
     CU_ASSERT(1 == 0);
     return 0;
   }
-  void* c_stack2 = malloc(BASIC_STACK_SIZE*sizeof(int));
+  void* c_stack2 = get_new_stack();
   if (c_stack2 == NULL) {
-    free(c_stack1);
+    unset_stack(c_stack1);
     CU_ASSERT(1 == 0);
     return 0;
   }
@@ -173,13 +182,13 @@ int run_test_prctl_limit2_failsi(void* ign) {
       rval = -1;
     }
   }
-  free(c_stack1);
-  free(c_stack2);
+  unset_stack(c_stack1);
+  unset_stack(c_stack2);
   return rval;
 }
 
 static void test_prctl_limit2_failsi(void) {
-  void* c_stack = malloc(BASIC_STACK_SIZE*sizeof(int));
+  void* c_stack = get_new_stack();
   if (c_stack == NULL) {
     CU_ASSERT(1 == 0);
     return;
@@ -192,7 +201,7 @@ static void test_prctl_limit2_failsi(void) {
     CU_ASSERT(res < 0); /* The first task was created successfully */
     CU_ASSERT(res == -2); /* The second task was not created */
   }
-  free(c_stack);
+  unset_stack(c_stack);
 }
 
 int main(int argc, char **argv)
