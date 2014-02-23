@@ -3,10 +3,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
-#include <sys/mman.h>
+#include <pthread.h>
 #include <sched.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <signal.h>
 
 #define SET_TL_DUMMY 41
@@ -26,182 +27,133 @@ static int nop_clean_suite(void) {
 
 /* Utility functions used in test routines */
 
-void* get_new_stack() {
-  return mmap(NULL, BASIC_STACK_SIZE * sizeof(int), PROT_EXEC | PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_STACK, -1, 0);
+/* Needed for passing ints around in pthread functions. */
+int* gen_mp_int(int val) {
+  int* v = (int*) malloc(sizeof(int));
+  *v = val;
+  return v;
 }
 
-void unset_stack(void* stack) {
-  munmap(stack, BASIC_STACK_SIZE * sizeof(int));
-}
-
-int wait_for_start_and_exit(void* ign) {
+void* wait_for_start_and_exit(void* ign) {
   while(!startFlag) { 
     /* spin, we don't really care */
   }
-  return 0;
+  return (void*)gen_mp_int(0);
 }
 
-int fork_new_and_ret_pid() {
-  int npid = fork();
-  if (npid == 0) {
-    exit(0);
-    return 0;
-  }
-  return npid;
+void* clone_new_dummy_fn(void* fn) {
+  return (void*)gen_mp_int(0);
 }
 
-int clone_new_dummy_fn(void* fn) {
-  return 0;
-}
-
-int clone_new_and_ret_pid(void* fn) {
-  void* c_stack = get_new_stack();
-  if (c_stack == NULL) {
-    CU_ASSERT(1 == 0);
-    return 0;
+void* clone_new_and_ret_pid(void* fn) {
+  pthread_t th1;
+  int* resTh = gen_mp_int(pthread_create(&th1, NULL, clone_new_dummy_fn, NULL));
+  int* ign;
+  if (*resTh > 0) {
+    pthread_join(th1, ((void**)&ign));
+    free(ign);
   }
-  int npid = clone(clone_new_dummy_fn, c_stack, SIGCHLD, NULL);
-  int ign = 0;
-  if (npid > 0) {
-    wait(&ign);
-  }
-  unset_stack(c_stack);
-  return npid;
+  return (void*)resTh;
 }
 
 /* Test routines */
 
-int run_test_prctl_limit1(void* ign) {
+void* run_test_prctl_limit1(void* ign) {
   prctl(SET_TL_DUMMY, 1);
-  int npid = fork();
-  if (npid == 0) {
-    exit(0);
-    return npid;
-  }
-  return npid;
+  return clone_new_and_ret_pid(NULL);
 }
 
 static void test_prctl_limit1_fail(void) {
-  void* c_stack = get_new_stack();
-  if (c_stack == NULL) {
-    CU_ASSERT(1 == 0);
-    return;
-  }
-  int npid = clone(run_test_prctl_limit1, c_stack, SIGCHLD, NULL);
-  int res = 0;
-  CU_ASSERT(npid > 0);
-  if (npid > 0) {
-    wait(&res);
-    CU_ASSERT(res == -1);
+  pthread_t th1;
+  int resTh = pthread_create(&th1, NULL, run_test_prctl_limit1, NULL);
+  int* res;
+  CU_ASSERT(resTh == 0);
+  if (resTh == 0) {
+    pthread_join(th1, ((void**)&res));
+    CU_ASSERT(*res != 0);
+    free(res);
   }   
-  unset_stack(c_stack);
 }
 
-int run_test_prctl_limit2_success(void* ign) {
+void* run_test_prctl_limit2_success(void* ign) {
   prctl(SET_TL_DUMMY, 2);
-  int npid = fork();
-  if (npid == 0) {
-    exit(0);
-    return npid;
+  int* npid = gen_mp_int(fork());
+  if (*npid == 0) {
+    return (void*)npid;
   }
-  return npid;
+  return (void*)npid;
 }
 
 static void test_prctl_limit2_success(void) {
-  void* c_stack = get_new_stack();
-  if (c_stack == NULL) {
-    CU_ASSERT(1 == 0);
-    return;
+  pthread_t th1;
+  int resTh = pthread_create(&th1, NULL, run_test_prctl_limit2_success, NULL);
+  int* res;
+  CU_ASSERT(resTh == 0);
+  if (resTh == 0) {
+    pthread_join(th1, ((void**)&res));
+    CU_ASSERT(*res > 0);
   }
-  int npid = clone(run_test_prctl_limit2_success, c_stack, SIGCHLD, NULL);
-  int res = 0;
-  CU_ASSERT(npid > 0);
-  if (npid > 0) {
-    wait(&res);
-    CU_ASSERT(res > 0);
-  }
-  unset_stack(c_stack);
 }
 
-int run_test_prctl_limit2_failch(void* ign) {
+void* run_test_prctl_limit2_failch(void* ign) {
   prctl(SET_TL_DUMMY, 2);
-  void* c_stack = get_new_stack();
-  if (c_stack == NULL) {
-    CU_ASSERT(1 == 0);
-    return 0;
+  pthread_t th1;
+  int resTh = pthread_create(&th1, NULL, clone_new_and_ret_pid, NULL);
+  int* res;
+  if (resTh == 0) {
+    pthread_join(th1, ((void**)&res));
   }
-  int npid = clone(clone_new_and_ret_pid, c_stack, SIGCHLD, NULL);
-  int res = 0;
-  if (npid > 0) {
-    wait(&res);
-  }
-  unset_stack(c_stack);
-  return res;
+  return (void*)res;
 }
 
 static void test_prctl_limit2_failch(void) {
-  void* c_stack = get_new_stack();
-  if (c_stack == NULL) {
-    CU_ASSERT(1 == 0);
-    return;
+  pthread_t th1;
+  int resTh = pthread_create(&th1, NULL, run_test_prctl_limit2_failch, NULL);
+  int* res;
+  CU_ASSERT(resTh == 0);
+  if (resTh == 0) {
+    pthread_join(th1, ((void**)&res));
+    CU_ASSERT(*res != 0);
+    free(res);
   }
-  int npid = clone(run_test_prctl_limit2_failch, c_stack, SIGCHLD, NULL);
-  int res = 0;
-  CU_ASSERT(npid > 0);
-  if (npid > 0) {
-    wait(&res);
-    CU_ASSERT(res == -1);
-  }
-  unset_stack(c_stack);
 }
 
-int run_test_prctl_limit2_failsi(void* ign) {
+void* run_test_prctl_limit2_failsi(void* ign) {
   prctl(SET_TL_DUMMY, 2);
-  void* c_stack1 = get_new_stack();
-  if (c_stack1 == NULL) {
-    CU_ASSERT(1 == 0);
-    return 0;
-  }
-  void* c_stack2 = get_new_stack();
-  if (c_stack2 == NULL) {
-    unset_stack(c_stack1);
-    CU_ASSERT(1 == 0);
-    return 0;
-  }
-  int pid1 = clone(wait_for_start_and_exit, c_stack1, SIGCHLD, NULL);
-  int pid2 = clone(wait_for_start_and_exit, c_stack2, SIGCHLD, NULL);
-  int ign2 = 0;
-  int rval = 0;
+  pthread_t th1;
+  pthread_t th2;
+  int resTh1 = pthread_create(&th1, NULL, wait_for_start_and_exit, NULL);
+  int resTh2 = pthread_create(&th2, NULL, wait_for_start_and_exit, NULL);
+  int* ign2;
+  int* rval;
   startFlag = 1;
-  if (pid1 > 0) {
-    wait(&ign2);
-    if (pid2 == -1) {
-      rval = -2;
+  if (resTh1 == 0) {
+    pthread_join(th1, ((void**)&ign2));
+    free(ign2);
+    if (resTh2 != 0) {
+      rval = gen_mp_int(-2);
     } else {
-      wait(&ign2);
-      rval = -1;
+      pthread_join(th2, ((void**)&ign2));
+      free(ign2);
+      rval = gen_mp_int(-1);
     }
+  } else {
+    rval = gen_mp_int(0);
   }
-  unset_stack(c_stack1);
-  unset_stack(c_stack2);
-  return rval;
+  return (void*)rval;
 }
 
 static void test_prctl_limit2_failsi(void) {
-  void* c_stack = get_new_stack();
-  if (c_stack == NULL) {
-    CU_ASSERT(1 == 0);
-    return;
+  pthread_t th1;
+  int resTh = pthread_create(&th1, NULL, run_test_prctl_limit2_failsi, NULL);
+  int* res;
+  CU_ASSERT(resTh == 0);
+  if (resTh == 0) {
+    pthread_join(th1, ((void**)&res));
+    CU_ASSERT(*res < 0); /* The first task was created successfully */
+    CU_ASSERT(*res == -2); /* The second task was not created */
+    free(res);
   }
-  int npid = clone(run_test_prctl_limit2_failsi, c_stack, SIGCHLD, NULL);
-  int res = 0;
-  CU_ASSERT(npid > 0);
-  if (npid > 0) {
-    wait(&res);
-    CU_ASSERT(res < 0); /* The first task was created successfully */
-    CU_ASSERT(res == -2); /* The second task was not created */
-  }
-  unset_stack(c_stack);
 }
 
 int main(int argc, char **argv)
@@ -214,10 +166,10 @@ int main(int argc, char **argv)
                                    &nop_init_suite,
                                    &nop_clean_suite);
 
-        CU_add_test(prctlSuite, "Test of prctl(1) disabling new thread formation", &test_prctl_limit1_fail);
-	CU_add_test(prctlSuite, "Test of prctl(2) allowing a child thread to be formed", &test_prctl_limit2_success);
-	CU_add_test(prctlSuite, "Test of prctl(2) preventing child thread from forming another child", &test_prctl_limit2_failch);
-	CU_add_test(prctlSuite, "Test of prctl(2) preventing a second child of the original thread from being formed", &test_prctl_limit2_failsi);
+        CU_add_test(prctlSuite, "Test of prctl(1) disabling new thread formation", test_prctl_limit1_fail);
+	CU_add_test(prctlSuite, "Test of prctl(2) allowing a child thread to be formed", test_prctl_limit2_success);
+	CU_add_test(prctlSuite, "Test of prctl(2) preventing child thread from forming another child", test_prctl_limit2_failch);
+	CU_add_test(prctlSuite, "Test of prctl(2) preventing a second child of the original thread from being formed", test_prctl_limit2_failsi);
     }
 
     /* Actually run your tests here. */
