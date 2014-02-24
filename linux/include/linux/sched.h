@@ -1021,8 +1021,8 @@ enum perf_event_task_context {
 };
 
 struct thread_limit_struct {
-        atomic_t* sp_limit;
-        atomic_t* sp_used;
+        atomic_t sp_limit;
+        atomic_t sp_used;
 };
 
 struct task_struct {

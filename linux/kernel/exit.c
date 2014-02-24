@@ -767,9 +767,12 @@ void do_exit(long code)
 	}
 
 	/* [LAB1]: If this was in a clone jail, decrement the number of threads
-	 * used */
+	 * used. If this leaves this block with 0 threads in its clone jail,
+	 * go ahead and free the limit block. */
 	if (tsk->sp_limit_block) {
-	  atomic_dec(tsk->sp_limit_block->sp_used);
+	  if (atomic_dec_and_test(&(tsk->sp_limit_block->sp_used))) {
+	    kfree(tsk->sp_limit_block);
+	  }
 	}
 
 	acct_collect(code, group_dead);
