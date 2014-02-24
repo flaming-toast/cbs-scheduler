@@ -194,18 +194,18 @@ void* run_test_prctl_large_alloc(void* ign) {
   CU_ASSERT(lastStat != 0);
   check_limit_block_stats(12, 12);
   startFlag = 1;
-  int* ign;
+  int* ign2;
   for (i = 0; i < 11; i++) {
-    pthread_join(threads[i], ((void**)&ign));
+    pthread_join(threads[i], ((void**)&ign2));
   }
   if (lastStat == 0) {
-    pthread_join(threads[11], ((void**)&ign));
+    pthread_join(threads[11], ((void**)&ign2));
   }
   check_limit_block_stats(12, 1);
   return NULL;
 }
 
-static void test_prctl_limit2_failsi(void) {
+static void test_prctl_large_alloc(void) {
   pthread_t th1;
   int resTh = pthread_create(&th1, NULL, run_test_prctl_large_alloc, NULL);
   int* ign;
@@ -230,6 +230,7 @@ int main(int argc, char **argv)
 	CU_add_test(prctlSuite, "Test of prctl(2) allowing a child thread to be formed", test_prctl_limit2_success);
 	CU_add_test(prctlSuite, "Test of prctl(2) preventing child thread from forming another child", test_prctl_limit2_failch);
 	CU_add_test(prctlSuite, "Test of prctl(2) preventing a second child of the original thread from being formed", test_prctl_limit2_failsi);
+	CU_add_test(prctlSuite, "Test of prctl(12) for larger threadcount limits", test_prctl_large_alloc);
     }
 
     /* Actually run your tests here. */
