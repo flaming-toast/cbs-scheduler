@@ -1185,9 +1185,9 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	/* [LAB1]: If the forking task is breaking its sp_limit, don't fork. If
 	*  we do fork, make sure to increment the counter. */
 	if (current->sp_limit_block) {
-	  atomic_inc(current->sp_limit_block->sp_used);
-	  if (atomic_read(current->sp_limit_block->sp_used) > atomic_read(current->sp_limit_block->sp_limit)) {
-	    atomic_dec(current->sp_limit_block->sp_used);
+	  atomic_inc(&(current->sp_limit_block->sp_used));
+	  if (atomic_read(&(current->sp_limit_block->sp_used)) > atomic_read(&(current->sp_limit_block->sp_limit))) {
+	    atomic_dec(&(current->sp_limit_block->sp_used));
 	    return ERR_PTR(-EINVAL);
 	  }
 	}
