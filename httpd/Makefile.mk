@@ -30,9 +30,12 @@ all: .httpd/test_mm
 check: .httpd/test_mm.cunit_out
 
 all: .httpd/test_cache
-.httpd/test_cache: .httpd/test_cache.d/cache.o ./httpd/test_cache.c
-	g++ -O2 -static -Wall -Werror -std=c++11 $(MMTEST_FLAGS) $(CXXFLAGS) \
+.httpd/test_cache: .httpd/test_cache.d/mm_alloc.o .httpd/test_cache.d/palloc.o .httpd/test_cache.d/cache.o .httpd/test_cache.d/test_cache.o
+	g++ -O2 -static -Wall -pthread -Werror -std=c++11 $(CXXFLAGS) \
 		-o $@ $^ -lcunit
+.httpd/test_cache.d/%.o: httpd/%.c $(HTTPD_HDR)
+	mkdir -p `dirname $@`
+	gcc -g -c -pthread -o $@ $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
 
 check: .httpd/test_cache.cunit_out
 
@@ -61,4 +64,4 @@ all: .httpd/test_prctl
 	gcc -g -static -DPRCTL_TEST $(CFLAGS) -o "$@" $^ -lcunit
 .httpd/test_prctl.d/test_prctl.o: httpd/test_prctl.c
 	mkdir -p `dirname $@`
-	gcc -g -c -o $@ -DPRCTL_TEST $(CFLAGS) httpd/test_prctl.c -static -lcunit
+	gcc -g -c -o $@ -pthread -DPRCTL_TEST $(CFLAGS) httpd/test_prctl.c -static -lcunit

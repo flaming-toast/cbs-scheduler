@@ -5,17 +5,16 @@
 
 #include <pthread.h>
 #include "palloc.h"
-#include <asm/atomic.h>
 
 #define CACHE_SIZE 1024
 
 struct cache_entry {
     const char *request;
     const char *response;
-    atomic_t reference_count;
+    int reference_count;
 };
 
-int cache_init(palloc_env env);
+void cache_init(palloc_env env);
 
 int cache_add(const char *request, const char *response);
 
