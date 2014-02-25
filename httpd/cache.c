@@ -22,7 +22,7 @@ int cache_init(palloc_env env)
         int i;
         for (i = 0; i < CACHE_SIZE; i++)
         {
-                lock_array[i] = PTHREAD_MUTEX_INITIALIZER;
+	  lock_array[i] = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
         }
         cache_env = env;
 }
