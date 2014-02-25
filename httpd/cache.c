@@ -120,7 +120,9 @@ int hash(const char *str)
 {
         int hash = 5381;
         int c;
-
+	if (str == NULL) {
+	  return 0;
+	}
         while ((c = *str++))
         {
                 hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
@@ -138,7 +140,7 @@ static struct cache_entry *swap_cache_entry(int cache_index, struct cache_entry 
 {
         struct cache_entry *old_entry;
 
-	old_entry = __sync_val_compare_and_swap(&(cache_array[cache_index]), &(cache_array[cache_index]), new_entry);
+	old_entry = __sync_val_compare_and_swap(&(cache_array[cache_index]), cache_array[cache_index], new_entry);
         /*old_entry = cache_array[cache_index];
 	  cache_array[cache_index] = new_entry; */
 

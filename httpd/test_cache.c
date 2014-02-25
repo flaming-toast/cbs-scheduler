@@ -20,7 +20,8 @@ static palloc_env env = NULL;
 static int init_suite(void)
 {
     env = palloc_init("cache test env");
-    return cache_init(env);
+    cache_init(env);
+    return 0;
 }
 
 static int clean_suite(void)
@@ -61,17 +62,12 @@ static void test_cache_simple_2(void)
 {
     int status;
     char *fetched_response;
-    char *fetched_response_2;
-    char *fetched_response_3;
-    char *fetched_again_response_1;
-    char *fetched_again_response_2;
-    char *fetched_again_response_3;
-    char *input_request_1 = "random request 0001";
-    char *input_response_1 = "random response 0001";
-    char *input_request_2 = "random request 0002";
-    char *input_response_2 = "random response 0002";
-    char *input_request_3 = "random request 0003";
-    char *input_response_3 = "random response 0003";
+    char *input_request_1 = "random request 0002";
+    char *input_response_1 = "random response 0002";
+    char *input_request_2 = "random request 0003";
+    char *input_response_2 = "random response 0003";
+    char *input_request_3 = "random request 0004";
+    char *input_response_3 = "random response 0004";
 
     CU_ASSERT_FATAL(CACHE_SIZE >= 3);
     CU_ASSERT_PTR_NULL(cache_get(input_request_1));
@@ -111,9 +107,9 @@ static void test_cache_simple_3(void)
 {
     int status;
     char *fetched_response;
-    char *input_request = "random request 0001";
-    char *input_response_1 = "random response 0001";
-    char *input_response_2 = "random response 0002";
+    char *input_request = "random request 0005";
+    char *input_response_1 = "random response 0005";
+    char *input_response_2 = "random response 0006";
     
     CU_ASSERT_FATAL(CACHE_SIZE >= 1);
     CU_ASSERT_PTR_NULL(cache_get(input_request));
@@ -143,12 +139,12 @@ static void test_cache_simple_4(void)
 {
     int status;
     char *fetched_response;
-    char *input_request_1 = "random request 0001";
-    char *input_response_1 = "random response 0001";
-    char *input_request_2 = "random request 0002";
-    char *input_response_2 = "random response 0002";
-    char *input_request_3 = "random request 0003";
-    char *input_response_3 = "random response 0003";
+    char *input_request_1 = "random request 0007";
+    char *input_response_1 = "random response 0007";
+    char *input_request_2 = "random request 0008";
+    char *input_response_2 = "random response 0008";
+    char *input_request_3 = "random request 0009";
+    char *input_response_3 = "random response 0009";
 
     CU_ASSERT_FATAL(CACHE_SIZE >= 3);
     CU_ASSERT_PTR_NULL(cache_get(input_request_1));
@@ -190,8 +186,21 @@ static void test_cache_simple_5(void)
     int status;
     int i;
     char *fetched_response;
-    char *input_request = "random request 0001";
-    char *input_response = "random response 0001";
+    char input_request[21];
+    char input_response[22];
+    int j;
+    for (j = 0; j < 20; j++) {
+      if ((j % 2) == 0) {
+	input_request[j] = 'o';
+	input_response[j] = 'q';
+      } else {
+	input_request[j] = 'e';
+	input_response[j] = 'h';
+      }
+    }
+    input_response[20] = 'h';
+    input_request[20] = 0;
+    input_response[21] = 0;
     int request_length = strlen(input_request);
     int response_length = strlen(input_response);
 
@@ -201,14 +210,16 @@ static void test_cache_simple_5(void)
     // Add enough entries to cause at least 1 replacement in cache.
     for (i = 1; i <= CACHE_SIZE+1; i++)
     {
-        input_request[request_length - 4] = '0' + i/1000;
-        input_request[request_length - 3] = '0' + i/100;
-        input_request[request_length - 2] = '0' + i/10;
-        input_request[request_length - 1] = '0' + i/1;
-        input_response[response_length - 4] = '0' + i/1000;
-        input_response[response_length - 3] = '0' + i/100;
-        input_response[response_length - 2] = '0' + i/10;
-        input_response[response_length - 1] = '0' + i/1;
+      *(input_request + request_length - 5) = (char)('0' + ((char)(i/1000)));
+      *(input_request + request_length - 4) = (char)('0' + ((char)((i % 1000)/100)));
+      *(input_request + request_length - 3) = (char)('0' + ((char)((i % 100)/10)));
+      *(input_request + request_length - 2) = (char)('0' + ((char)((i % 10)/1)));
+      *(input_request + request_length - 1) = (char)('L');
+      *(input_response + response_length - 5) = (char)('0' + ((char)(i/1000)));
+      *(input_response + response_length - 4) = (char)('0' + ((char)((i % 1000)/100)));
+      *(input_response + response_length - 3) = (char)('0' + ((char)((i % 100)/10)));
+      *(input_response + response_length - 2) = (char)('0' + ((char)((i % 10)/1)));
+      *(input_response + response_length - 1) = (char)('L');
 
         status = cache_add(input_request, input_response);
         CU_ASSERT_FATAL(status == 0);
@@ -220,14 +231,16 @@ static void test_cache_simple_5(void)
     // Find possible conflict in cache from replacement.
     for (i = CACHE_SIZE+1; i >= 1; i--)
     {
-        input_request[request_length - 4] = '0' + i/1000;
-        input_request[request_length - 3] = '0' + i/100;
-        input_request[request_length - 2] = '0' + i/10;
-        input_request[request_length - 1] = '0' + i/1;
-        input_response[response_length - 4] = '0' + i/1000;
-        input_response[response_length - 3] = '0' + i/100;
-        input_response[response_length - 2] = '0' + i/10;
-        input_response[response_length - 1] = '0' + i/1;
+      *(input_request + request_length - 5) = (char)('0' + ((char)(i/1000)));
+      *(input_request + request_length - 4) = (char)('0' + ((char)((i % 1000)/100)));
+      *(input_request + request_length - 3) = (char)('0' + ((char)((i % 100)/10)));
+      *(input_request + request_length - 2) = (char)('0' + ((char)((i % 10)/1)));
+      *(input_request + request_length - 1) = (char)('L');
+      *(input_response + response_length - 5) = (char)('0' + ((char)(i/1000)));
+      *(input_response + response_length - 4) = (char)('0' + ((char)((i % 1000)/100)));
+      *(input_response + response_length - 3) = (char)('0' + ((char)((i % 100)/10)));
+      *(input_response + response_length - 2) = (char)('0' + ((char)((i % 10)/1)));
+      *(input_response + response_length - 1) = (char)('L');
 
         fetched_response = cache_get(input_request);
         if (fetched_response == NULL)
@@ -245,8 +258,8 @@ static void test_cache_simple_6(void)
 {
     int status;
     char *fetched_response;
-    char *input_request = "random request 0001";
-    char *input_response = "random response 0001";
+    char *input_request = "random request 00016";
+    char *input_response = "random response 00016";
     
     CU_ASSERT_FATAL(CACHE_SIZE >= 1);
     CU_ASSERT_PTR_NULL(cache_get(input_request));
@@ -293,8 +306,8 @@ static void test_cache_simple_7(void)
 {
     int status;
     char *fetched_response;
-    char *input_request_stack = "random request 0001";
-    char *input_response_stack = "random response 0001";
+    char *input_request_stack = "random request 00017";
+    char *input_response_stack = "random response 00017";
     char *input_request_heap = palloc_strdup(env, input_request_stack);
     char *input_response_heap = palloc_strdup(env, input_response_stack);
     
@@ -310,13 +323,13 @@ static void test_cache_simple_7(void)
     CU_ASSERT_PTR_NOT_NULL_FATAL(fetched_response);
     CU_ASSERT_STRING_EQUAL_FATAL(fetched_response, input_response_stack);
 
-    pfree(input_request);
+    pfree(input_request_heap);
 
     fetched_response = cache_get(input_request_stack);
     CU_ASSERT_PTR_NOT_NULL_FATAL(fetched_response);
     CU_ASSERT_STRING_EQUAL_FATAL(fetched_response, input_response_stack);
 
-    pfree(input_response);
+    pfree(input_response_heap);
 
     fetched_response = cache_get(input_request_stack);
     CU_ASSERT_PTR_NOT_NULL_FATAL(fetched_response);
@@ -352,7 +365,7 @@ static void test_cache_fuzz_3(void)
 
 }
 
-int main()
+int main(int argc, char** argv)
 {
     if (CUE_SUCCESS != CU_initialize_registry())
         return CU_get_error();
@@ -363,47 +376,45 @@ int main()
         return CU_get_error();
     }
 
-    {
-        if (NULL == CU_add_test(pSuite, "Simple Test #1", test_cache_simple_1)) {
-            CU_cleanup_registry();
-            return CU_get_error();
-        }
-        if (NULL == CU_add_test(pSuite, "Simple Test #2", test_cache_simple_2)) {
-            CU_cleanup_registry();
-            return CU_get_error();
-        }
-        if (NULL == CU_add_test(pSuite, "Simple Test #3", test_cache_simple_3)) {
-            CU_cleanup_registry();
-            return CU_get_error();
-        }
-        if (NULL == CU_add_test(pSuite, "Simple Test #4", test_cache_simple_4)) {
-            CU_cleanup_registry();
-            return CU_get_error();
-        }
-        if (NULL == CU_add_test(pSuite, "Simple Test #5", test_cache_simple_5)) {
-            CU_cleanup_registry();
-            return CU_get_error();
-        }
-        if (NULL == CU_add_test(pSuite, "Simple Test #6", test_cache_simple_6)) {
-            CU_cleanup_registry();
-            return CU_get_error();
-        }
-        if (NULL == CU_add_test(pSuite, "Simple Test #7", test_cache_simple_7)) {
-            CU_cleanup_registry();
-            return CU_get_error();
-        }
-        if (NULL == CU_add_test(pSuite, "Fuzz Test #1", test_cache_fuzz_1)) {
-            CU_cleanup_registry();
-            return CU_get_error();
-        }
-        if (NULL == CU_add_test(pSuite, "Fuzz Test #2", test_cache_fuzz_2)) {
-            CU_cleanup_registry();
-            return CU_get_error();
-        }
-        if (NULL == CU_add_test(pSuite, "Fuzz Test #3", test_cache_fuzz_3)) {
-            CU_cleanup_registry();
-            return CU_get_error();
-        }
+    if (NULL == CU_add_test(pSuite, "Simple Test #1", test_cache_simple_1)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+    }
+    if (NULL == CU_add_test(pSuite, "Simple Test #2", test_cache_simple_2)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+    }
+    if (NULL == CU_add_test(pSuite, "Simple Test #3", test_cache_simple_3)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+    }
+    if (NULL == CU_add_test(pSuite, "Simple Test #4", test_cache_simple_4)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+    }
+    if (NULL == CU_add_test(pSuite, "Simple Test #5", test_cache_simple_5)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+    }
+    if (NULL == CU_add_test(pSuite, "Simple Test #6", test_cache_simple_6)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+    }
+    if (NULL == CU_add_test(pSuite, "Simple Test #7", test_cache_simple_7)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+    }
+    if (NULL == CU_add_test(pSuite, "Fuzz Test #1", test_cache_fuzz_1)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+    }
+    if (NULL == CU_add_test(pSuite, "Fuzz Test #2", test_cache_fuzz_2)) {
+      CU_cleanup_registry();
+      return CU_get_error();
+    }
+    if (NULL == CU_add_test(pSuite, "Fuzz Test #3", test_cache_fuzz_3)) {
+      CU_cleanup_registry();
+      return CU_get_error();
     }
 
     CU_basic_set_mode(CU_BRM_VERBOSE);
