@@ -105,52 +105,57 @@ int event_loop(struct http_server *server) {
 				 * While loop drains the pending connection buffer, important if concurrent requests are being made.
 				 * Can't just accept 1 connection per run */
 				if (ev.events & EPOLLIN) {
-				while ((session = server->wait_for_client(server)) != NULL)
-				{
-					//fprintf(stderr, "Thread %ld: accepted a new client connection\n", tid);
-          }
+					while ((session = server->wait_for_client(server)) != NULL)
+					{
+						//fprintf(stderr, "Thread %ld: accepted a new client connection\n", tid);
+          			}
 				}
 				/*
-				if (session == NULL)
-				{
-	    			perror("server->wait_for_client() returned NULL...");
-	    			pfree(server);
-	    			return 1;
-				}
-				*/
+				   if (session == NULL)
+				   {
+	    		   perror("server->wait_for_client() returned NULL...");
+	    		   pfree(server);
+	    		   return 1;
+				   }
+				   */
 			} else { // it is not the listening socket fd, but one of the accept'd session fd's
 
 				session = (struct http_session *)he->ptr; /* points to a http_session struct */
 				//fprintf(stderr, "Thread %ld: Session fd received event from session %d\n", tid, session->fd);
 
-				if ((ev.events & EPOLLOUT) && !(ev.events & EPOLLIN)) { // If I had only registered EPOLLOUT events
-					// retry the request and see if you can write to session fd now
-					int mterr = session->mt->http_get(session->mt, session);
-					if (mterr != 0) {
-						perror("unrecoverable error while processing a client");
-						abort();
-					}
-				} // I DONT THINK THIS IS EVER BEING CALLED :'(
+				/* Ensure only one thread processes a session fd at a time */
+				if (pthread_mutex_trylock(&session->fd_lock) == 0) {
+					if ((ev.events & EPOLLOUT) && !(ev.events & EPOLLIN)) { // If I had only registered EPOLLOUT events
+						// retry the request and see if you can write to session fd now
+						int mterr = session->mt->http_get(session->mt, session);
+						if (mterr != 0) {
+							perror("unrecoverable error while processing a client");
+							abort();
+						}
+					} // I DONT THINK THIS IS EVER BEING CALLED :'(
 
 
-				/* Read everything available from sess->fd until we hit EAGAIN*/
-				if (((ev.events & EPOLLIN) == EPOLLIN) && session->fd > 0) { // htf did a -1 sess->fd get in epoll???
+					/* Read everything available from sess->fd until we hit EAGAIN*/
+					if (((ev.events & EPOLLIN) == EPOLLIN) && session->fd > 0) { // htf did a -1 sess->fd get in epoll???
 
-    			/* when session->gets() encounters EAGAIN it returns null */
-				/* Got a bunch of data from the session fd, they are a bunch of lines like
-				 * Host: .....
-				 * User-Agent: .....
-				 * We are only interested in GET's, ignore everything else.
-				 */
-					/* read lines from session->fd until we get no more lines */
-					ret = process_session_data(session);
-					if (ret < 0) {
-						perror("process_session_data failed");
-					//	abort();
-					}
-//					close(session->fd);
-				} // We got notified but the session was not ready for reading???
+    					/* when session->gets() encounters EAGAIN it returns null */
+						/* Got a bunch of data from the session fd, they are a bunch of lines like
+				 		 * Host: .....
+				 		 * User-Agent: .....
+				 		 * We are only interested in GET's, ignore everything else.
+				 		 */
+						/* read lines from session->fd until we get no more lines */
+						ret = process_session_data(session);
+						if (ret < 0) {
+							perror("process_session_data failed");
+							//	abort();
+						}
+						//					close(session->fd);
+					} // We got notified but the session was not ready for reading???
 
+					/* We are done processing this session fd for now. Release it. */
+					pthread_mutex_unlock(&session->fd_lock);
+				}
     		}
     	}
     }
@@ -219,21 +224,21 @@ cleanup:
 
 int process_session_data(struct http_session* session) {
 
-		//long tid;
-		//tid = syscall(SYS_gettid);
-		const char *line;
-		int ret;
-					while ((line = session->gets(session)) != NULL) {
-						// readed = read(session->fd, buf + buf_used, DEFAULT_BUFFER_SIZE - buf_used);
-						/* Process each line we receive */
-						ret = process_session_line(session, line);
-						if (ret != 0) {
-							perror("process_session_data encountered a problem");
-							//abort();
-							return ret;
-						}
-					} // after this while loop ends, should have read everything we could have
-					//fprintf(stderr, "Thread %ld closing session fd %d \n", tid, session->fd);
-					close(session->fd);
-					return 0;
+	//long tid;
+	//tid = syscall(SYS_gettid);
+	const char *line;
+	int ret;
+	while ((line = session->gets(session)) != NULL) {
+		// readed = read(session->fd, buf + buf_used, DEFAULT_BUFFER_SIZE - buf_used);
+		/* Process each line we receive */
+		ret = process_session_line(session, line);
+		if (ret != 0) {
+			perror("process_session_data encountered a problem");
+			//abort();
+			return ret;
+		}
+	} // after this while loop ends, should have read everything we could have
+	//fprintf(stderr, "Thread %ld closing session fd %d \n", tid, session->fd);
+	close(session->fd);
+	return 0;
 }

@@ -5,6 +5,7 @@
 #define HTTP_H
 
 #include <sys/epoll.h>
+#include <pthread.h>
 
 #include "palloc.h"
 
@@ -31,6 +32,8 @@ struct http_session
 
     int fd;
 
+	/* Ensure that only one thread gets to process this session @ a time */
+ 	pthread_mutex_t fd_lock;
 };
 
 /* A server that listens for HTTP connections on a given port. */
