@@ -37,9 +37,14 @@ linux:
 all: linux
 
 .PHONY: qemu
-qemu:
+qemu: qemu/qemu-options.def
 	$(MAKE) -C qemu
 all: qemu
+
+# Apparently we can't cache configure because it does some dependency
+# checking.
+qemu/qemu-options.def: qemu/configure
+       cd qemu && ./configure --target-list=x86_64-softmmu
 
 # We can't track dependencies through those recursive builds, but we
 # can kind of do it -- this always rebuilds the subprojects, but only
