@@ -10,7 +10,7 @@
 #include "palloc.h"
 
 static palloc_env cache_env = NULL;
-static struct cache_entry *cache_array[CACHE_SIZE];
+static atomic64_t cache_array[CACHE_SIZE];
 static pthread_mutex_t lock_array[CACHE_SIZE];
 
 static int hash(const char *str);
@@ -35,16 +35,14 @@ int cache_add(const char *request, const char *response)
         new_entry = palloc(cache_env, struct cache_entry);
         new_entry->request = palloc_strdup(new_entry, request);
         new_entry->response = palloc_strdup(new_entry, response);
-        new_entry->reference_count = 1;    // Count cache as one of them.
-        new_entry->lock = PTHREAD_MUTEX_INITIALIZER;
+        new_entry->reference_count = ATOMIC_INIT(1);    // Count cache as one of them.
+        new_entry->lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 
-        pthread_mutex_lock(&lock_array[cache_index]);
+	pthread_mutex_lock(&lock_array[cache_index]);
         old_entry = swap_cache_entry(cache_index, new_entry);
-        pthread_mutex_unlock(&lock_array[cache_index]);
+	pthread_mutex_unlock(&lock_array[cache_index]);
 
-        pthread_mutex_lock(&lock_array[cache_index]);
         decrement_and_free(old_entry);
-        pthread_mutex_unlock(&lock_array[cache_index]);
 
         return 0;
 }
@@ -56,33 +54,32 @@ char* cache_get(const char *request)
         char *response;
 
         pthread_mutex_lock(&lock_array[cache_index]);
-        cur_entry = cache_array[cache_index];
+	cur_entry = cache_array[cache_index];
         if (cur_entry == NULL)
         {
-                pthread_mutex_unlock(&lock_array[cache_index]);
+	        pthread_mutex_unlock(&lock_array[cache_index]);
                 return NULL;
         }
+	atomic_inc(&(cur_entry->reference_count)); // The cache lock will not necessarily ensure atomicity on this count since the cache is not the only thing which might change it.
+	pthread_mutex_unlock(&lock_array[cache_index]);
+	//At this point, it shouldn't be deleted b/c we've already incremented the reference_count
 
         if (strcmp(cur_entry->request, request) != 0)
         {
-                pthread_mutex_unlock(&lock_array[cache_index]);
-                return NULL;                // Entry not exist, even if share hash
+	  if (atomic_dec_and_test(&(cur_entry->reference_count))) {
+	    pfree(cur_entry); //Everyone else let go in the meantime
+	  }
+          return NULL;                // Entry not exist, even if share hash
         }
 
-        cur_entry->reference_count++;   // Atomic increment
-        if (cur_entry->reference_count <= 0)
+        if (atomic_read(&(cur_entry->reference_count)) <= 0)
         {
                 printf("FATAL ERROR IN cache_get: cur_entry->reference_count <= 0\n");
                 exit(1);
         }
-        pthread_mutex_unlock(&lock_array[cache_index]);
         //At this point, it shouldn't be deleted b/c reference_count is non-zero
 
         response = palloc_strdup(cache_env, cur_entry->response);
-
-        pthread_mutex_lock(&lock_array[cache_index]);
-        decrement_and_free(old_entry);
-        pthread_mutex_unlock(&lock_array[cache_index]);
 
         return response;
 }
@@ -106,12 +103,9 @@ int cache_remove(const char *request)
         else
         {
                 old_entry = swap_cache_entry(cache_index, NULL);
+		decrement_and_free(old_entry);
         }
 
-        pthread_mutex_unlock(&lock_array[cache_index]);
-
-        pthread_mutex_lock(&lock_array[cache_index]);
-        decrement_and_free(old_entry);
         pthread_mutex_unlock(&lock_array[cache_index]);
 
         return result;
@@ -143,29 +137,25 @@ static struct cache_entry *swap_cache_entry(int cache_index, struct cache_entry 
         struct cache_entry *old_entry;
 
         old_entry = cache_array[cache_index];
-        cache_array[cache_index] = new_entry;
+	cache_array[cache_index] = new_entry;
 
         return old_entry;
 }
 
-/* Assuming that lock is already obtained. */
+/*Does not require cache lock to be held since this should be called on entries
+ * either 1) after they have been removed from the cache or 2) by entities other
+ * than the cache. Since the ref_count can only become zero after removal from
+ * the cache, no lock is needed to bind atomic_dec_and_test() and pfree() into
+ * a critical section. */
 static void decrement_and_free(struct cache_entry *cur_entry)
 {
         if (cur_entry == NULL)
         {
                 return;
         }
-
-        cur_entry->reference_count--;
-        if (cur_entry->reference_count < 0)
+        if (atomic_dec_and_test(&(cur_entry->reference_count)))
         {
-                printf("FATAL ERROR IN cache_get: cur_entry->reference_count < 0\n");
-                exit(1);
-        }
-
-        if (cur_entry->reference_count == 0)
-        {
-                pfree(cur_entry);
+	  pfree(cur_entry);
         }
 }
 
