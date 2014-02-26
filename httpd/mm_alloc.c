@@ -72,12 +72,9 @@ pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 //////////////////////// {B} CORE FUNCTIONS  ////////////////////////
 void *mm_malloc_ll(size_t size)
 {
-<<<<<<< Updated upstream
-=======
         printf("requested size: %lu, new size: %lu\n", size, pad_mem_size(size));
         //fprintf(stderr, "[Malloc] %lu\n", size);
         //perror("[ALLOCATE] %lu\n", size);
->>>>>>> Stashed changes
         if(size == 0)
         {
                 printf("SIZE REQUEST 0\n");
