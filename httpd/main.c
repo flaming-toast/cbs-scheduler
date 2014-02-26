@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 
     /* create socket, bind, make non-blocking, listen */
     /* also set up epoll events */
-    server = http_server_new(env, PORT); 
+    server = http_server_new(env, PORT);
     if (server == NULL)
     {
 		perror("main(): Unable to open HTTP server");
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
     	ret = pthread_create(&thread[i], NULL, (void *)&event_loop, server);
 
     	if(ret != 0) {
-    		fprintf (stderr, "Create pthread error!\n");
+    		////fprintf (stderr, "Create pthread error!\n");
     		exit (1);
     	}
     }
@@ -67,18 +67,18 @@ int event_loop(struct http_server *server) {
 
     while (true) /* main event loop */
     {
-		long tid;
-		tid = syscall(SYS_gettid);
-		fprintf(stderr, "Thread %ld event loop() \n", tid);
+		//long tid;
+		//tid = syscall(SYS_gettid);
+		////fprintf(stderr, "Thread %ld event loop() \n", tid);
 
 		struct http_session *session;
 		int num_events_ready;
 		int i, ret;
 
 		/* Apparently epoll in edge-triggered mode, it only wakes up one thread at a time */
-		fprintf(stderr, "Thread %ld in epoll_wait()\n", tid);
+		////fprintf(stderr, "Thread %ld in epoll_wait()\n", tid);
 		num_events_ready = epoll_wait(server->efd, server->events_buf, 5, -1);
-		fprintf(stderr, "Thread %ld return from epoll_wait()\n", tid);
+		////fprintf(stderr, "Thread %ld return from epoll_wait()\n", tid);
 
 		for (i = 0; i < num_events_ready; i++) { // loop through available events
 
@@ -91,23 +91,24 @@ int event_loop(struct http_server *server) {
 					(!(ev.events & EPOLLIN)))
 			{
 			 	/* An error occured on this fd.... */
-			 	fprintf(stderr, "epoll error\n");
+			 	////fprintf(stderr, "epoll error\n");
 			 	(he->session) ? close(((struct http_session *)he->ptr)->fd) : close(((struct http_server *)he->ptr)->fd);
 			 	continue;
 			}
 
 			/* We got a notification on the listening socket, which means 1+ incoming connection reqs */
-			else if (!he->session && server->fd == ((struct http_server *)he->ptr)->fd) { 
+			else if (!he->session && server->fd == ((struct http_server *)he->ptr)->fd) {
 
-				/* accept() extracts the first connection request on the queue of pending connections 
-				 * for the listening socket, creates a new connected socket, 
+				/* accept() extracts the first connection request on the queue of pending connections
+				 * for the listening socket, creates a new connected socket,
 				 * and returns a new file descriptor referring to that socket.
 				 * While loop drains the pending connection buffer, important if concurrent requests are being made.
 				 * Can't just accept 1 connection per run */
 				if (ev.events & EPOLLIN) {
-				while ((session = server->wait_for_client(server)) != NULL) 
+				while ((session = server->wait_for_client(server)) != NULL)
 				{
-					fprintf(stderr, "Thread %ld: accepted a new client connection\n", tid); }
+					//fprintf(stderr, "Thread %ld: accepted a new client connection\n", tid);
+          }
 				}
 				/*
 				if (session == NULL)
@@ -120,9 +121,9 @@ int event_loop(struct http_server *server) {
 			} else { // it is not the listening socket fd, but one of the accept'd session fd's
 
 				session = (struct http_session *)he->ptr; /* points to a http_session struct */
-				fprintf(stderr, "Thread %ld: Session fd received event from session %d\n", tid, session->fd);
+				//fprintf(stderr, "Thread %ld: Session fd received event from session %d\n", tid, session->fd);
 
-				if ((ev.events & EPOLLOUT) && !(ev.events & EPOLLIN)) { // If I had only registered EPOLLOUT events 
+				if ((ev.events & EPOLLOUT) && !(ev.events & EPOLLIN)) { // If I had only registered EPOLLOUT events
 					// retry the request and see if you can write to session fd now
 					int mterr = session->mt->http_get(session->mt, session);
 					if (mterr != 0) {
@@ -148,7 +149,7 @@ int event_loop(struct http_server *server) {
 					//	abort();
 					}
 //					close(session->fd);
-				} // We got notified but the session was not ready for reading??? 
+				} // We got notified but the session was not ready for reading???
 
     		}
     	}
@@ -160,7 +161,7 @@ int process_session_line(struct http_session *session, const char *line) {
 	char *method, *file, *version;
 	struct mimetype *mt;
 	int mterr;
-	long tid = syscall(SYS_gettid);
+	//long tid = syscall(SYS_gettid);
 
 	/* What if 2 session fd's signaled events? */
 	/* What if 2 threads are handling the same session fd? */
@@ -171,12 +172,12 @@ int process_session_line(struct http_session *session, const char *line) {
 	if (sscanf(line, "%s %s %s", method, file, version) != 3 || strcasecmp(method, "GET") != 0)
 	{
 		/* just ignore the line */
-		fprintf(stderr, "Thread %ld : Ignoring this line from session %d: %s\n", tid, session->fd, line);
-		return 0; 
+		//fprintf(stderr, "Thread %ld : Ignoring this line from session %d: %s\n", tid, session->fd, line);
+		return 0;
 
 	} else {
 
-		fprintf(stderr, "Thread %ld  < '%s' '%s' '%s' from session %d \n", tid,  method, file, version, session->fd);
+		//fprintf(stderr, "Thread %ld  < '%s' '%s' '%s' from session %d \n", tid,  method, file, version, session->fd);
 		mt = mimetype_new(session, file);
 
 		if (strcasecmp(method, "GET") == 0)
@@ -193,7 +194,7 @@ int process_session_line(struct http_session *session, const char *line) {
 	    }
 		else
 		{
-	    	fprintf(stderr, "Unknown method: '%s'\n", method);
+	    	//fprintf(stderr, "Unknown method: '%s'\n", method);
 	    	goto cleanup;
 		}
 
@@ -212,14 +213,14 @@ cleanup:
 	/* should call palloc destructor close_session
 	 * which closes the session fd and should automatically be
 	 * removed from the epoll set */
-	pfree(session); 
+	pfree(session);
 	return -1;
 }
 
 int process_session_data(struct http_session* session) {
 
-		long tid;
-		tid = syscall(SYS_gettid);
+		//long tid;
+		//tid = syscall(SYS_gettid);
 		const char *line;
 		int ret;
 					while ((line = session->gets(session)) != NULL) {
@@ -232,7 +233,7 @@ int process_session_data(struct http_session* session) {
 							return ret;
 						}
 					} // after this while loop ends, should have read everything we could have
-					fprintf(stderr, "Thread %ld closing session fd %d \n", tid, session->fd);
+					//fprintf(stderr, "Thread %ld closing session fd %d \n", tid, session->fd);
 					close(session->fd);
 					return 0;
 }

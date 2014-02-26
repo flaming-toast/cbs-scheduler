@@ -68,8 +68,8 @@ int http_get(struct mimetype *mt, struct http_session *s)
     s->puts(s, "HTTP/1.1 200 OK\r\n");
     s->puts(s, "Content-Type: text/html\r\n");
     s->puts(s, "\r\n");
-    long tid = syscall(SYS_gettid);
-    fprintf(stderr,"Thread %ld: Printed out HTTP 200 OK\n", tid);
+    //long tid = syscall(SYS_gettid);
+    //fprintf(stderr,"Thread %ld: Printed out HTTP 200 OK\n", tid);
 
 	//		close(pipefd[0]);
 	close(pipefd[1]); //stop communcation, signal end of data
@@ -77,7 +77,7 @@ int http_get(struct mimetype *mt, struct http_session *s)
 	/* see http://stackoverflow.com/questions/8057892/epoll-on-regular-files */
 	/* It is considered correct to block on disk I/O requests */
 
-	// set to listen to epollout events only. 
+	// set to listen to epollout events only.
     while ((readed = read(fd, buf, BUF_COUNT)) > 0)
     {
 		ssize_t written;
@@ -94,22 +94,22 @@ int http_get(struct mimetype *mt, struct http_session *s)
 				s->mt = mt; // save for next event loop run
 				s->event.events = EPOLLOUT | EPOLLET; // listen only for epollout events, in edge triggered mode
 				if(epoll_ctl(s->server->efd, EPOLL_CTL_MOD, s->fd, &s->event) < 0) {
-    				fprintf(stderr, "Thread %ld: epoll_ctl failed to modify session fd %d to listen for only EPOLLOUT", tid, s->fd);
+    				//fprintf(stderr, "Thread %ld: epoll_ctl failed to modify session fd %d to listen for only EPOLLOUT", tid, s->fd);
     			}
 			}
 		}
-    	fprintf(stderr,"Thread %ld: written %d to session # %d\n", tid, (int)written, s->fd);
+    	//fprintf(stderr,"Thread %ld: written %d to session # %d\n", tid, (int)written, s->fd);
     }
-    fprintf(stderr,"Thread %ld: Printed out RESPONSE to session # %d \n", tid, s->fd);
+    //fprintf(stderr,"Thread %ld: Printed out RESPONSE to session # %d \n", tid, s->fd);
 
 	s->event.events = EPOLLIN | EPOLLET; // if we happen to have switched to EPOLLOUT in the meantime and we succeed this time, switch back to EPOLLIN
 	if(epoll_ctl(s->server->efd, EPOLL_CTL_MOD, s->fd, &s->event) < 0) {
-    	fprintf(stderr, "Thread %ld: epoll_ctl failed to modify session fd %d to listen for only EPOLLOUT", tid, s->fd);
+    	//fprintf(stderr, "Thread %ld: epoll_ctl failed to modify session fd %d to listen for only EPOLLOUT", tid, s->fd);
     }
 
     close(fd);
-    close(pipefd[0]); 
-    perror("close() requested file");
+    close(pipefd[0]);
+    //perror("close() requested file");
 
     return 0;
 }
