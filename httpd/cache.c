@@ -22,7 +22,7 @@ int cache_init(palloc_env env)
         int i;
         for (i = 0; i < CACHE_SIZE; i++)
         {
-                lock_array[i] = PTHREAD_MUTEX_INITIALIZER;
+                lock_array[i] = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
         }
         cache_env = env;
 }
@@ -62,13 +62,16 @@ char* cache_get(const char *request)
                 pthread_mutex_unlock(&lock_array[cache_index]);
                 return NULL;
         }
+
         if (strcmp(cur_entry->request, request) != 0)
         {
                 pthread_mutex_unlock(&lock_array[cache_index]);
                 return NULL;                // Entry not exist, even if share hash
         }
+
         cur_entry->reference_count++;   // Atomic increment
-        if (cur_entry->reference_count <= 0) {
+        if (cur_entry->reference_count <= 0)
+        {
                 printf("FATAL ERROR IN cache_get: cur_entry->reference_count <= 0\n");
                 exit(1);
         }
@@ -93,11 +96,18 @@ int cache_remove(const char *request)
         pthread_mutex_lock(&lock_array[cache_index]);
         old_entry = cache_array[cache_index];
         if (old_entry == NULL)
+        {
                 result = -1;
+        }
         else if (strcmp(old_entry->request, request) != 0)
+        {
                 result = -1;
+        }
         else
+        {
                 old_entry = swap_cache_entry(cache_index, NULL);
+        }
+
         pthread_mutex_unlock(&lock_array[cache_index]);
 
         pthread_mutex_lock(&lock_array[cache_index]);
@@ -142,16 +152,21 @@ static struct cache_entry *swap_cache_entry(int cache_index, struct cache_entry 
 static void decrement_and_free(struct cache_entry *cur_entry)
 {
         if (cur_entry == NULL)
+        {
                 return;
+        }
 
         cur_entry->reference_count--;
-        if (cur_entry->reference_count < 0) {
+        if (cur_entry->reference_count < 0)
+        {
                 printf("FATAL ERROR IN cache_get: cur_entry->reference_count < 0\n");
                 exit(1);
         }
 
         if (cur_entry->reference_count == 0)
+        {
                 pfree(cur_entry);
+        }
 }
 
 
