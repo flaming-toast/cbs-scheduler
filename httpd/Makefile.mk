@@ -29,6 +29,13 @@ all: .httpd/test_mm
 
 check: .httpd/test_mm.cunit_out
 
+all: .httpd/test_cache
+.httpd/test_cache: .httpd/test_cache.d/cache.o ./httpd/test_cache.c
+	g++ -O2 -static -Wall -Werror -std=c++11 $(MMTEST_FLAGS) $(CXXFLAGS) \
+		-o $@ $^ -lcunit
+
+check: .httpd/test_cache.cunit_out
+
 all: .httpd/test_fuzz
 .httpd/test_fuzz: .httpd/test_mm.d/mm_alloc.o ./httpd/test_fuzz.cc
 	g++ -O2 -static -Wall -Werror -std=c++11 $(MMTEST_FLAGS) $(CXXFLAGS) \
