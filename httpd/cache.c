@@ -110,15 +110,19 @@ int cache_remove(const char *request)
 
 
 
-int hash(const char *str);
+int hash(const char *str)
 {
         int hash = 5381;
         int c;
 
         while (c = *str++)
+        {
                 hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+        }
         if (hash < 0)
+        {
                 hash *= -1;
+        }
 
         return hash;
 }
