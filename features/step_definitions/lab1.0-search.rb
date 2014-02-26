@@ -11,12 +11,11 @@ Given /^the web server is running$/ do
         `ps aux | grep httpd/http[d]`.strip.should_not be_empty
 end
 
-
 When /^I am on the index page$/ do
         visit '/index.html'
 end
 
-When /^I (visit|am on) "(.*?)"$/ do |url|
+When /^I visit "(.*?)"$/ do |url|
         visit url
 end
 
@@ -26,6 +25,16 @@ end
 
 Then /^I should see "(.*?)"$/ do |text|
         page.should have_content text
+end
+
+Then /^I (should|should not) see (the current year|last year)$/ do |should, year|
+        expected_year = Time.now.year
+        expected_year -= 1 if year == 'last year'
+        if should == 'should'
+                page.should have_content expected_year
+        else
+                page.should_not have_content expected_year
+        end
 end
 
 When /^I search for "(.*?)"$/ do |keyword|

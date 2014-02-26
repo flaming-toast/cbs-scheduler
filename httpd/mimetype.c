@@ -8,7 +8,7 @@
 #include <string.h>
 
 #ifndef HTTPD_ROOT
-#define HTTPD_ROOT "/var/www"
+#define HTTPD_ROOT "/home/user/cs194-24/www"
 #endif
 
 void mimetype_init(struct mimetype *mt)
