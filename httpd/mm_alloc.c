@@ -14,7 +14,7 @@
 #include "mm_alloc.h"
 
 /* Your final implementation should comment out this macro. */
-#define MM_USE_STUBS
+//#define MM_USE_STUBS
 
 void *mm_malloc(size_t size)
 {
@@ -72,7 +72,6 @@ pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 //////////////////////// {B} CORE FUNCTIONS  ////////////////////////
 void *mm_malloc_ll(size_t size)
 {
-        //fprintf(stderr, "[Malloc] %lu\n", size);
         //perror("[ALLOCATE] %lu\n", size);
         if(size == 0)
         {
@@ -86,6 +85,7 @@ void *mm_malloc_ll(size_t size)
                 ////printf("requested size: %lu, new size: %lu\n", size, pad_mem_size(size));
 
                 size = pad_mem_size(size);
+                //fprintf(stderr, "[Malloc] %lu\n", size);
 
                 pthread_mutex_lock(&lock);
                 if(malloc_head == NULL)
