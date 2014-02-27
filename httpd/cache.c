@@ -29,7 +29,7 @@ void cache_init(palloc_env env)
         cache_env = env;
 }
 
-int cache_add(const char *request, const char *response)
+int cache_add(const char *request, const char *response, const char *expires, const char* etag)
 {
         int cache_index = hash(request) % CACHE_SIZE;
         struct cache_entry *new_entry, *old_entry;
@@ -37,6 +37,8 @@ int cache_add(const char *request, const char *response)
         new_entry = palloc(cache_env, struct cache_entry);
         new_entry->request = palloc_strdup(new_entry, request);
         new_entry->response = palloc_strdup(new_entry, response);
+	new_entry->expires = palloc_strdup(new_entry, expires);
+	new_entry->etag = palloc_strdup(new_entry, etag);
         new_entry->reference_count = 1;   // Count cache as one of them.
         //new_entry->lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 
@@ -49,11 +51,10 @@ int cache_add(const char *request, const char *response)
         return 0;
 }
 
-char* cache_get(const char *request)
+struct cache_entry* cache_get(const char *request)
 {
         int cache_index = hash(request) % CACHE_SIZE;
         struct cache_entry *cur_entry;
-        char *response;
 
         pthread_mutex_lock(&lock_array[cache_index]);
 	cur_entry = cache_array[cache_index];
@@ -81,9 +82,7 @@ char* cache_get(const char *request)
         }
         //At this point, it shouldn't be deleted b/c reference_count is non-zero
 
-        response = palloc_strdup(cache_env, cur_entry->response);
-
-        return response;
+        return cur_entry;
 }
 
 int cache_remove(const char *request)

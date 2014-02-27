@@ -11,6 +11,8 @@
 struct cache_entry {
     const char *request;
     const char *response;
+    const char *expires;
+    const char *etag;
     int reference_count;
 };
 
@@ -18,7 +20,7 @@ void cache_init(palloc_env env);
 
 int cache_add(const char *request, const char *response);
 
-char* cache_get(const char *request);
+struct cache_entry* cache_get(const char *request);
 
 int cache_remove(const char *request);
 
