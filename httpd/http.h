@@ -5,6 +5,7 @@
 #define HTTP_H
 
 #include <sys/epoll.h>
+#include <pthread.h>
 
 #include "palloc.h"
 
@@ -27,10 +28,15 @@ struct http_session
 	struct http_server *server;
 
 	/* For retrying requests if could not write to session fd at the time */
-	struct mimetype *mt; 
+	struct mimetype *mt_retry; 
+
+	/* For building the current GET request associated with this session */
+	struct http_get_request *get_req;
 
     int fd;
 
+	/* Ensure that only one thread gets to process this session @ a time */
+ 	pthread_mutex_t fd_lock;
 };
 
 /* A server that listens for HTTP connections on a given port. */
@@ -57,6 +63,19 @@ struct http_event
 {
 	int session;
 	void *ptr;
+};
+
+/* For building GET requests while reading lines from the session fd */
+struct http_get_request 
+{
+	struct http_session *session; 
+	struct mimetype *mt; 
+	/* Expires field */
+	char *cache_control;
+	/* The etag we send to the client */
+	char *if_none_match;
+	/* Add any other HTTP request fields of interest here */
+
 };
 
 #endif

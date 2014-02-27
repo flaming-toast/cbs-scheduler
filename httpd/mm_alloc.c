@@ -42,8 +42,25 @@ void mm_free(void *ptr)
         mm_free_ll(ptr);
 #endif
 }
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////// STANDARD LINKED LIST IMPLEMENTATION /////////////////////
+
+typedef unsigned char* bitmap_t;
+
+void set_bitmap(bitmap_t b, int i) {
+    b[i / 8] |= 1 << (i & 7);
+}
+
+void unset_bitmap(bitmap_t b, int i) {
+    b[i / 8] &= ~(1 << (i & 7));
+}
+
+int get_bitmap(bitmap_t b, int i) {
+    return b[i / 8] & (i & 7) ? 1 : 0;
+}
+
+bitmap_t create_bitmap(int n) {
+    return mm_malloc((n + 7) / 8);
+}
+//////////////////////// Preset Block Size Optimized Malloc /////////////////////
 //////////////////////////////////////////////////////////////////////////////////
 
 /*
@@ -61,6 +78,7 @@ void mm_free(void *ptr)
 
 const size_t  INIT_MEM_SIZE     = 2048;
 const int     NODE_HEADER_SIZE  = sizeof(MM_node);
+const int     BLOCK_HEADER_SIZE  = sizeof(MM_block);
 const int     SPLIT_MINIMUM     = 2 * sizeof(MM_node);
 
 MM_node       *malloc_head      = NULL;
@@ -81,7 +99,7 @@ void *mm_malloc_ll(size_t size)
         }
         else
         {
-                printf("requested size: %lu, new size: %lu\n", size, pad_mem_size(size));
+                //printf("requested size: %lu, new size: %lu\n", size, pad_mem_size(size));
                 int status = SUCCESS;
                 void *ptr;
 
@@ -158,7 +176,6 @@ void mm_free_ll(void *ptr)
 {
         ////printf("head pointed to %p\n", malloc_head->next_free);
         ////printf("call to free on %p\n", get_header(ptr));
-        ////printf("prev of ptr is %p\n", get_header(ptr)->prev);
         pthread_mutex_lock(&lock);
 
         MM_node *node = get_header(ptr);
@@ -168,14 +185,9 @@ void mm_free_ll(void *ptr)
         if(node->next_free != NULL)
                 mm_malloc_had_a_problem();
 
-
-        //coalesce_right(node, 0);
-        //node = coalesce_left(node);
         append_node(node);
         node->status = FREE;
 
-
-        ////printf("head now points to %p\n", malloc_head->next_free);
         sanity_free_head();
         pthread_mutex_unlock(&lock);
         return;
@@ -213,12 +225,9 @@ int initialize(size_t req_mem_size)
                 malloc_tail = construct_node((char *)heap_bottom - req_mem_size + NODE_HEADER_SIZE);
                 malloc_head->next_free = malloc_tail;
                 malloc_head->size = 0;
-                malloc_tail->prev = malloc_head;
                 malloc_tail->next_free = NULL;
                 malloc_tail->size = req_mem_size - 2 * NODE_HEADER_SIZE;
                 //printf("heap bottom: %p, %p,  %li\n", heap_bottom, malloc_head, (size_t)heap_bottom % 8);
-                //printf("top malloc_head: %lu, %p, %p, %d\n", malloc_head->size, malloc_head->next_free, malloc_head->prev, malloc_head->status);
-                //printf("top malloc_tail: %lu, %p, %p, %d\n", malloc_tail->size, malloc_tail->next_free, malloc_tail->prev, malloc_tail->status);
 
                 return SUCCESS;
         }
@@ -306,7 +315,6 @@ int add_new_mem(size_t size)
                 new_node->size = size;
                 append_node(new_node);
 
-                new_node->prev = malloc_tail;
                 malloc_tail = new_node;
                 return SUCCESS;
         }
@@ -335,16 +343,10 @@ MM_node *split_node(MM_node *node, size_t req_size)
         {
                 malloc_tail = new_node;
         }
-        else
-        {
-                MM_node *after = (MM_node *)((char *)node + NODE_HEADER_SIZE + node->size);
-                after->prev = new_node;
-        }
 
         new_node->size = new_node_size;
         new_node->next_free = node->next_free;
         new_node->status = FREE;
-        new_node->prev = node;
 
         node->size = req_size;
         node->next_free = NULL;
@@ -372,85 +374,6 @@ void append_node(MM_node *new_node)
         prev->next_free = new_node;
 }
 
-MM_node *coalesce_left(MM_node *node)
-{
-        if(node == malloc_head->next_free)
-                return node;
-
-        MM_node *prev = node->prev;
-        // dont coalesce the head
-        if(prev == malloc_head || prev == NULL)
-        {
-                return node;
-        }
-        else if(prev->status == FREE)
-        {
-                prev->size += node->size + NODE_HEADER_SIZE;
-
-                if(node == malloc_tail)
-                {
-                        malloc_tail = prev;
-                }
-                else
-                {
-                        MM_node *after = get_next(node);
-                        if(after->prev != node)
-                                mm_malloc_had_a_problem();
-                        after->prev = prev;
-                }
-
-                return coalesce_left(prev);
-        }
-        else
-                return node;
-}
-
-void coalesce_right(MM_node *node, int times_coalesced)
-{
-        MM_node *next = get_next(node);
-        if (node == malloc_tail)    //Cannot merge with NULL.
-        {
-                return;
-        }
-        else if (next != NULL && next->status == FREE)
-        {
-                node->size += (next->size + NODE_HEADER_SIZE);
-                node->next_free = next->next_free;
-
-                if(times_coalesced == 0)
-                {
-                        // find what references the node that is coalesced
-                        MM_node *prev = malloc_head;
-                        MM_node *cur = malloc_head->next_free;
-                        if(cur == NULL)
-                                mm_malloc_had_a_problem();
-                        while((long unsigned)cur < (long unsigned)next)
-                        {
-                                prev = cur;
-                                cur = cur->next_free;
-                        }
-
-                        prev->next_free = node;
-                }
-
-                if (next == malloc_tail)
-                {
-                        malloc_tail = node;
-                        // You can return here. Next recursion just returns.
-                        return;
-                }
-                else
-                {
-                        MM_node *next_of_next = get_next(next);
-                        if(next_of_next == NULL)
-                        {
-                                mm_malloc_had_a_problem();
-                        }
-                        next_of_next->prev = node;
-                }
-                //coalesce_right(node, times_coalesced + 1);
-        }
-}
 //////////////////////// {C} CORE HELPERS ////////////////////////
 
 
@@ -466,7 +389,6 @@ MM_node *construct_node(void *addr)
         MM_node *node = addr;
         node->size = 0;
         node->next_free = NULL;
-        node->prev = NULL;
         node->status = FREE;
         return node;
 }
@@ -569,32 +491,3 @@ void mm_malloc_had_a_problem(void)
 }
 //void print()
 //////////////////////// {E} DEBUG TOOLS ////////////////////////
-
-/*
-   void coalesce_right2(MM_node *node)
-   {
-   MM_node *next = get_next(node);
-   if (node == malloc_tail)    //Cannot merge with NULL.
-   return;
-   if (node == malloc_head)    //Head cannot be merged.
-   return;
-
-   if (next->status == FREE)
-   {
-   node->size += (next->size + NODE_HEADER_SIZE);
-   node->next_free = next->next_free;
-   if (next == malloc_tail)
-   {
-   malloc_tail = node;
-// You can return here. Next recursion just returns.
-return;
-}
-else
-{
-MM_node *next_of_next = get_next(next);
-next_of_next->prev = node;
-}
-coalesce_right(node);
-}
-}
-*/
