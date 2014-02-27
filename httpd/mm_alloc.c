@@ -14,7 +14,7 @@
 #include "mm_alloc.h"
 
 /* Your final implementation should comment out this macro. */
-//#define MM_USE_STUBS
+#define MM_USE_STUBS
 
 void *mm_malloc(size_t size)
 {
@@ -489,5 +489,4 @@ void mm_malloc_had_a_problem(void)
         MM_node *segfault = NULL;
         segfault->size = 9999;
 }
-//void print()
 //////////////////////// {E} DEBUG TOOLS ////////////////////////
