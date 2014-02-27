@@ -1,0 +1,1043 @@
+Thread 27734 event loop() 
+Thread 27734 in epoll_wait()
+Thread 27735 event loop() 
+Thread 27735 in epoll_wait()
+Thread 27735 return from epoll_wait()
+Thread 27735: accept() returns sess->fd = 5
+Thread 27735: accepted a new client connection
+Thread 27735: accept() returns sess->fd = 6
+Thread 27735: accepted a new client connection
+Thread 27735: accept() returns sess->fd = -1
+wait_for_client(): Unable to accept on client socket: Resource temporarily unavailable
+Thread 27735 event loop() 
+Thread 27735 in epoll_wait()
+Thread 27735 return from epoll_wait()
+Thread 27735: accept() returns sess->fd = 7
+Thread 27735: accepted a new client connection
+Thread 27734 return from epoll_wait()
+Thread 27734: accept() returns sess->fd = 8
+Thread 27734: accepted a new client connection
+Thread 27734: accept() returns sess->fd = -1
+wait_for_client(): Unable to accept on client socket: Resource temporarily unavailable
+Thread 27735: accept() returns sess->fd = -1
+wait_for_client(): Unable to accept on client socket: Resource temporarily unavailable
+Thread 27735 event loop() 
+Thread 27735 in epoll_wait()
+Thread 27734 event loop() 
+Thread 27734 in epoll_wait()
+Thread 27734 return from epoll_wait()
+Thread 27734: Session fd received event from session 5
+Thread 27734: read 90 sess->fd = 5
+Returning a line: GET /1MB.html HTTP/1.0
+Thread 27734  < 'GET' '/1MB.html' 'HTTP/1.0' from session 5 
+Thread 27734: Printed out HTTP 200 OK
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27735 return from epoll_wait()
+epoll error
+Thread 27735 event loop() 
+Thread 27735 in epoll_wait()
+Thread 27734: epoll_ctl failed to modify session fd 5 to listen for only EPOLLOUTThread 27734: written 4096 to session # 5
+Thread 27735 return from epoll_wait()
+Thread 27735: Session fd received event from session 6
+Thread 27735: read 90 sess->fd = 6
+Returning a line: GET /1MB.html HTTP/1.0
+Thread 27735  < 'GET' '/1MB.html' 'HTTP/1.0' from session 6 
+Thread 27735: Printed out HTTP 200 OK
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 4096 to session # 6
+Thread 27735: written 3320 to session # 6
+Thread 27735: Printed out RESPONSE to session # 6 
+close() requested file: Resource temporarily unavailable
+Returning a line: Host: 127.0.0.1:8088
+Thread 27735 : Ignoring this line from session 6: Host: 127.0.0.1:8088
+Returning a line: User-Agent: ApacheBench/2.3
+Thread 27735 : Ignoring this line from session 6: User-Agent: ApacheBench/2.3
+Returning a line: Accept: */*
+Thread 27735 : Ignoring this line from session 6: Accept: */*
+Returning a line: 
+Thread 27735 : Ignoring this line from session 6: 
+Thread 27735 closing session fd 6 
+Thread 27735 event loop() 
+Thread 27735 in epoll_wait()
+Thread 27735 return from epoll_wait()
+Thread 27735: Session fd received event from session 7
+Thread 27735: read 90 sess->fd = 7
+Returning a line: GET /1MB.html HTTP/1.0
+Thread 27735  < 'GET' '/1MB.html' 'HTTP/1.0' from session 7 
+Thread 27735: Printed out HTTP 200 OK
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 4096 to session # 7
+Thread 27735: written 3320 to session # 7
+Thread 27735: Printed out RESPONSE to session # 7 
+close() requested file: Permission denied
+Returning a line: Host: 127.0.0.1:8088
+requested size: 19, new size: 24
+requested size: 80, new size: 80
+requested size: 120, new size: 120
+requested size: 16, new size: 16
+requested size: 96, new size: 96
+requested size: 16, new size: 16
+requested size: 168, new size: 168
+requested size: 16, new size: 16
+requested size: 336, new size: 336
+requested size: 16, new size: 16
+requested size: 96, new size: 96
+requested size: 16, new size: 16
+requested size: 168, new size: 168
+requested size: 16, new size: 16
+requested size: 336, new size: 336
+requested size: 16, new size: 16
+requested size: 96, new size: 96
+requested size: 16, new size: 16
+requested size: 168, new size: 168
+requested size: 16, new size: 16
+requested size: 336, new size: 336
+requested size: 16, new size: 16
+requested size: 168, new size: 168
+requested size: 16, new size: 16
+requested size: 336, new size: 336
+requested size: 16, new size: 16
+requested size: 96, new size: 96
+requested size: 16, new size: 16
+requested size: 168, new size: 168
+requested size: 16, new size: 16
+requested size: 336, new size: 336
+requested size: 168, new size: 168
+requested size: 16, new size: 16
+requested size: 16, new size: 16
+requested size: 336, new size: 336
+requested size: 16, new size: 16
+requested size: 96, new size: 96
+requested size: 16, new size: 16
+requested size: 168, new size: 168
+requested size: 16, new size: 16
+requested size: 336, new size: 336
+requested size: 16, new size: 16
+requested size: 103, new size: 104
+requested size: 16, new size: 16
+requested size: 102, new size: 104
+requested size: 16, new size: 16
+requested size: 102, new size: 104
+requested size: 16, new size: 16
+requested size: 102, new size: 104
+requested size: 16, new size: 16
+requested size: 114, new size: 120
+requested size: 16, new size: 16
+requested size: 96, new size: 96
+requested size: 16, new size: 16
+requested size: 115, new size: 120
+requested size: 16, new size: 16
+requested size: 103, new size: 104
+requested size: 16, new size: 16
+requested size: 102, new size: 104
+requested size: 16, new size: 16
+requested size: 102, new size: 104
+requested size: 16, new size: 16
+requested size: 102, new size: 104
+requested size: 16, new size: 16
+requested size: 114, new size: 120
+requested size: 16, new size: 16
+requested size: 96, new size: 96
+requested size: 16, new size: 16
+requested size: 115, new size: 120
+requested size: 16, new size: 16
+requested size: 101, new size: 104
+requested size: 16, new size: 16
+requested size: 100, new size: 104
+requested size: 16, new size: 16
+requested size: 100, new size: 104
+requested size: 16, new size: 16
+requested size: 100, new size: 104
+requested size: 16, new size: 16
+requested size: 108, new size: 112
+requested size: 16, new size: 16
+requested size: 107, new size: 112
+requested size: 16, new size: 16
+requested size: 107, new size: 112
+requested size: 16, new size: 16
+requested size: 107, new size: 112
+requested size: 16, new size: 16
+requested size: 92, new size: 96
+requested size: 16, new size: 16
+requested size: 91, new size: 96
+requested size: 16, new size: 16
+requested size: 91, new size: 96
+requested size: 16, new size: 16
+requested size: 91, new size: 96
+requested size: 16, new size: 16
+requested size: 81, new size: 88
+requested size: 16, new size: 16
+requested size: 80, new size: 80
+requested size: 16, new size: 16
+requested size: 80, new size: 80
+requested size: 16, new size: 16
+requested size: 80, new size: 80
+requested size: 16, new size: 16
+requested size: 103, new size: 104
+requested size: 16, new size: 16
+requested size: 102, new size: 104
+requested size: 16, new size: 16
+requested size: 102, new size: 104
+requested size: 16, new size: 16
+requested size: 102, new size: 104
+requested size: 16, new size: 16
+requested size: 114, new size: 120
+requested size: 16, new size: 16
+requested size: 96, new size: 96
+requested size: 16, new size: 16
+requested size: 115, new size: 120
+requested size: 16, new size: 16
+requested size: 101, new size: 104
+requested size: 16, new size: 16
+requested size: 100, new size: 104
+requested size: 16, new size: 16
+requested size: 100, new size: 104
+requested size:Thread 27735 : Ignoring this line from session 7: Host: 127.0.0.1:8088
+Returning a line: User-Agent: ApacheBench/2.3
+Thread 27735 : Ignoring this line from session 7: User-Agent: ApacheBench/2.3
+Returning a line: Accept: */*
+Thread 27735 : Ignoring this line from session 7: Accept: */*
+Returning a line: 
+Thread 27735 : Ignoring this line from session 7: 
+Thread 27735 closing session fd 7 
+Thread 27735: Session fd received event from session 8
+Thread 27735: read 90 sess->fd = 8
+Returning a line: GET /1MB.html HTTP/1.0
+Thread 27735  < 'GET' '/1MB.html' 'HTTP/1.0' from session 8 
+Thread 27735: Printed out HTTP 200 OK
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 4096 to session # 8
+Thread 27735: written 3320 to session # 8
+Thread 27735: Printed out RESPONSE to session # 8 
+close() requested file: Permission denied
+Returning a line: Host: 127.0.0.1:8088
+Thread 27735 : Ignoring this line from session 8: Host: 127.0.0.1:8088
+Returning a line: User-Agent: ApacheBench/2.3
+Thread 27735 : Ignoring this line from session 8: User-Agent: ApacheBench/2.3
+Returning a line: Accept: */*
+Thread 27735 : Ignoring this line from session 8: Accept: */*
+Returning a line: 
+Thread 27735 : Ignoring this line from session 8: 
+Thread 27735 closing session fd 8 
+Thread 27735: accept() returns sess->fd = 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5
+Thread 27734: written 4096 to session # 5

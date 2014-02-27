@@ -34,6 +34,7 @@ struct mimetype *mimetype_file_new(palloc_env env, const char *fullpath)
 
 int http_get(struct mimetype *mt, struct http_session *s)
 {
+	fprintf(stderr, "http_get\n");
     struct mimetype_file *mtf;
     int fd; /* for reading file from disk */
     int pipefd[2];  /* for cgi */
@@ -48,10 +49,46 @@ int http_get(struct mimetype *mt, struct http_session *s)
 	/* Simple CGI implementation */
     pipe(pipefd);
     if (access(mtf->fullpath, F_OK|X_OK)){
+
+    	/* static files */
+    	/* First check if we can send a 304 */
+    	char *etag = s->get_req->if_none_match;
+		struct stat filestat;
+		char time[sizeof(long)*3];
+
+		if (stat(mtf->fullpath, &filestat) < 0) {
+			perror("Could not stat requested file");
+		}
+
+		struct tm lt;
+		localtime_r(&filestat.st_mtime, &lt);
+		fprintf(stderr, "st_mtime from stat: %lx", (long)filestat.st_mtime);
+		snprintf(time, sizeof time, "%lx", (long)filestat.st_mtime);
+		fprintf(stderr, "snprintf:%s", time);
+
+    	if (etag != NULL) { // We had sent an ETag to this client before
+
+    		if (strcasecmp(time, etag) == 0) { // etags do not match
+    			s->puts(s, "HTTP/1.1 304 Not Modified\r\n");
+    			s->puts(s, "\r\n");
+    			return 0; // we are done here
+    		}
+    	} 
+
+		/* We did not receive a If-None-Match from the client, so we send the full response. */
     	fd = open(mtf->fullpath, O_RDONLY);
-	if (fd < 0) {
-		perror("open() failed");
-	}
+
+		/* session->fd must be ready for writing */
+    	s->puts(s, "HTTP/1.1 200 OK\r\n");
+    	s->puts(s, "Content-Type: text/html\r\n");
+    	s->puts(s, "ETag:"); // send an etag so the client can now send conditional GET's
+	   	s->puts(s, time);
+    	s->puts(s, "\r\n");
+    	s->puts(s, "\r\n");
+
+		if (fd < 0) {
+			perror("open() failed");
+		}
     } else {
 		childpid = fork();
 		if (!childpid) {
@@ -64,10 +101,6 @@ int http_get(struct mimetype *mt, struct http_session *s)
 		}
 	}
 
-	/* session->fd must be ready for writing */
-    s->puts(s, "HTTP/1.1 200 OK\r\n");
-    s->puts(s, "Content-Type: text/html\r\n");
-    s->puts(s, "\r\n");
     //long tid = syscall(SYS_gettid);
     //fprintf(stderr,"Thread %ld: Printed out HTTP 200 OK\n", tid);
 
@@ -82,6 +115,7 @@ int http_get(struct mimetype *mt, struct http_session *s)
     {
 		ssize_t written;
 		written = 0;
+		fprintf(stderr, "reading file now\n");
 		while (written < readed) /* while # of written bytes < read bytes */
 		{
 	    	ssize_t w;
@@ -91,16 +125,16 @@ int http_get(struct mimetype *mt, struct http_session *s)
 	    	if (w > 0)
 				written += w;
 			if (errno == EAGAIN) { // If I can't write at this time
-				s->mt = mt; // save for next event loop run
+				s->mt_retry = mt; // save for next event loop run
 				s->event.events = EPOLLOUT | EPOLLET; // listen only for epollout events, in edge triggered mode
 				if(epoll_ctl(s->server->efd, EPOLL_CTL_MOD, s->fd, &s->event) < 0) {
     				//fprintf(stderr, "Thread %ld: epoll_ctl failed to modify session fd %d to listen for only EPOLLOUT", tid, s->fd);
     			}
 			}
 		}
-    	//fprintf(stderr,"Thread %ld: written %d to session # %d\n", tid, (int)written, s->fd);
+    	fprintf(stderr,"written %d to session # %d\n", (int)written, s->fd);
     }
-    //fprintf(stderr,"Thread %ld: Printed out RESPONSE to session # %d \n", tid, s->fd);
+    fprintf(stderr,"Printed out RESPONSE to session # %d \n", s->fd);
 
 	s->event.events = EPOLLIN | EPOLLET; // if we happen to have switched to EPOLLOUT in the meantime and we succeed this time, switch back to EPOLLIN
 	if(epoll_ctl(s->server->efd, EPOLL_CTL_MOD, s->fd, &s->event) < 0) {

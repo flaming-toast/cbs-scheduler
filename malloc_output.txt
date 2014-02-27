@@ -1,0 +1,86 @@
+*================================================*
+Test for 100B output
+Min/Max requested size: [0, 336]
+Average requested size: 62.48077646932301
+Highest frequency value requested: 16
+Median value requested: 16.0
+All frequencies requested: {0=>1, 16=>37198, 80=>4963, 81=>996, 91=>4961, 92=>991, 96=>1987, 100=>4960, 101=>988, 103=>4960, 104=>996, 107=>4957, 108=>989, 112=>1153, 115=>990, 116=>994, 120=>1, 216=>1151, 336=>1152}
+-----------------------------------------------
+Min/Max padded size: [0, 336]
+Average padded size: 63.809229983330646
+Highest frequency value padded: 16
+Median value padded: 16.0
+All frequencies padded: {0=>10, 1=>33, 16=>37171, 24=>1, 80=>4962, 88=>995, 96=>7937, 104=>11896, 112=>7098, 120=>1984, 216=>1150, 336=>1151}
+Total requests: 74388
+
+16, 80, 88, 96, 104, 112, 120, 216, 336
+
+*================================================*
+Test for 1KB output
+Min/Max requested size: [0, 336]
+Average requested size: 62.876501771490986
+Highest frequency value requested: 16
+Median value requested: 16.0
+All frequencies requested: {0=>6, 16=>37535, 19=>1, 80=>4975, 81=>990, 91=>4956, 92=>994, 96=>1988, 100=>4958, 101=>992, 102=>4966, 103=>992, 107=>4960, 108=>990, 112=>1262, 114=>991, 115=>993, 120=>1, 216=>1265, 336=>1263}
+-----------------------------------------------
+Min/Max padded size: [0, 336]
+Average padded size: 64.29727749806868
+Highest frequency value padded: 16
+Median value padded: 16.0
+All frequencies padded: {0=>10, 1=>22, 2=>1, 3=>1, 12=>1, 16=>37522, 24=>1, 80=>4974, 88=>989, 96=>7939, 104=>11901, 112=>7208, 120=>1984, 216=>1264, 336=>1261}
+Total requests: 75078
+
+16, 80, 88, 96, 104, 112, 120, 216, 336
+
+*================================================*
+Test for 100KB output
+Min/Max requested size: [0, 336]
+Average requested size: 62.03060794937603
+Highest frequency value requested: 16
+Median value requested: 19.0
+All frequencies requested: {0=>4, 16=>36816, 19=>1, 80=>4958, 81=>992, 91=>4964, 92=>991, 96=>1986, 100=>4966, 101=>993, 104=>4960, 105=>994, 107=>4954, 108=>991, 112=>1031, 116=>990, 117=>992, 120=>1, 216=>1029, 336=>1028}
+-----------------------------------------------
+Min/Max padded size: [0, 336]
+Average padded size: 63.37970695672248
+Highest frequency value padded: 16
+Median value padded: 16.0
+All frequencies padded: {0=>11, 1=>22, 3=>1, 16=>36797, 24=>1, 80=>4957, 88=>992, 96=>7938, 104=>10915, 112=>7970, 120=>1982, 216=>1029, 336=>1026}
+Total requests: 73641
+
+16, 80, 88, 96, 104, 112, 120, 216, 336
+
+*================================================*
+Test for 500KB output
+Min/Max requested size: [0, 336]
+Average requested size: 61.885395951946386
+Highest frequency value requested: 16
+Median value requested: 80.0
+All frequencies requested: {0=>6, 16=>36690, 19=>1, 80=>4963, 81=>995, 91=>4963, 92=>993, 96=>1985, 100=>4954, 101=>993, 104=>4963, 105=>992, 107=>4959, 108=>992, 112=>994, 116=>993, 117=>993, 120=>1, 216=>994, 336=>994}
+-----------------------------------------------
+Min/Max padded size: [0, 336]
+Average padded size: 63.232640496880876
+Highest frequency value padded: 16
+Median value padded: 16.0
+All frequencies padded: {0=>13, 1=>30, 16=>36673, 24=>1, 80=>4959, 88=>995, 96=>7939, 104=>10905, 112=>7930, 120=>1985, 216=>994, 336=>994}
+Total requests: 73418
+
+16, 80, 88, 96, 104, 112, 120, 216, 336
+
+*================================================*
+Test for 1MB output
+Min/Max requested size: [0, 336]
+Average requested size: 61.66924543721057
+Highest frequency value requested: 16
+Median value requested: 80.0
+All frequencies requested: {0=>5, 16=>36701, 19=>1, 80=>4963, 81=>991, 91=>4959, 92=>993, 96=>1986, 100=>4957, 101=>993, 102=>4958, 103=>992, 107=>4957, 108=>994, 112=>994, 114=>992, 115=>991, 120=>1, 216=>996, 336=>996}
+-----------------------------------------------
+Min/Max padded size: [0, 336]
+Average padded size: 63.109629528738765
+Highest frequency value padded: 16
+Median value padded: 16.0
+All frequencies padded: {0=>16, 1=>24, 2=>2, 3=>2, 11=>1, 16=>36685, 24=>1, 80=>4961, 88=>991, 96=>7932, 104=>11893, 112=>6940, 120=>1984, 216=>994, 336=>994}
+Total requests: 73420
+
+16, 80, 88, 96, 104, 112, 120, 216, 336
+
+*================================================*

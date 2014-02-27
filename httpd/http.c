@@ -71,14 +71,14 @@ struct http_server *http_server_new(palloc_env env, short port)
 
 	/* ptr to hs http_server struct */
 	hs->event.data.ptr = http_event_new(env, 0, hs);
-	/* flags to indicate what events we'll listen for 
+	/* flags to indicate what events we'll listen for
 	 * Only interested in EPOLLIN events on the socket fd since we're just listening */
 	/* Need edge triggered so that one thread will be woken up to handle the incoming connection, not multiple threads */
     hs->event.events = EPOLLIN | EPOLLET;
     /* allocate buffer in which events will be returned */
 	hs->events_buf = calloc(MAX_EVENTS, sizeof(hs->event));
 	/* Add socket fd to epoll set, which will notify us of incoming new connections. */
-    if (epoll_ctl(hs->efd, EPOLL_CTL_ADD, hs->fd, &hs->event) < 0) { 
+    if (epoll_ctl(hs->efd, EPOLL_CTL_ADD, hs->fd, &hs->event) < 0) {
     	perror("http_server_new(): epoll_ctl failed to add the socket fd to epoll set");
     	abort();
     }
@@ -150,7 +150,11 @@ struct http_session *wait_for_client(struct http_server *serv)
     sess->write = &http_write;
     sess->server = serv;
 
-	/* char array of size 256, sess context */	
+    sess->get_req = palloc(serv, struct http_get_request); // not sure if i initialized this correctly?
+    if (sess->get_req == NULL)
+	return NULL;
+
+	/* char array of size 256, sess context */
     sess->buf = palloc_array(sess, char, DEFAULT_BUFFER_SIZE);
     /* zero it */
     memset(sess->buf, '\0', DEFAULT_BUFFER_SIZE);
@@ -199,7 +203,7 @@ struct http_session *wait_for_client(struct http_server *serv)
 			if (ret < 0) {
 				perror("process_session_data");
 			}
-    	
+
     	}
 
     palloc_destructor(sess, &close_session);
@@ -235,7 +239,7 @@ const char *http_gets(struct http_session *s)
 	    new = palloc_array(s, char, strlen(s->buf) + 1);
 	    strcpy(new, s->buf);
 
-		/* I think you copy the line but remove the newline chars, 
+		/* I think you copy the line but remove the newline chars,
 		 * then return the char array representing the line*/
 	    memmove(s->buf, s->buf + strlen(new) + 2,
 		s->buf_size - strlen(new) - 2);
@@ -254,7 +258,7 @@ const char *http_gets(struct http_session *s)
     	fprintf(stderr, "Thread %ld: read %d sess->fd = %d\n", tid, (int)readed, s->fd);
 	    s->buf_used += readed;
 	}
-	if (readed <= 0) 
+	if (readed <= 0)
 		break;
 
 	if (errno == EAGAIN) {
@@ -292,7 +296,7 @@ ssize_t http_puts(struct http_session *s, const char *m)
     return written;
 }
 
-/* write to session->fd 
+/* write to session->fd
  * write(fd, buffer, count)
  */
 ssize_t http_write(struct http_session *s, const char *m, size_t l)
