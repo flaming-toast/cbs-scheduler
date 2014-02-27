@@ -2,6 +2,9 @@
 
 def main
         puts "*================================================*"
+        puts "Test for 100B output"
+        process('/home/user/cs194-24/malloc_output_100B.txt')
+        puts "*================================================*"
         puts "Test for 1KB output"
         process('/home/user/cs194-24/malloc_output_1KB.txt')
         puts "*================================================*"
@@ -10,6 +13,9 @@ def main
         puts "*================================================*"
         puts "Test for 500KB output"
         process('/home/user/cs194-24/malloc_output_500KB.txt')
+        puts "*================================================*"
+        puts "Test for 1MB output"
+        process('/home/user/cs194-24/malloc_output_1MB.txt')
         puts "*================================================*"
 end
 
@@ -34,11 +40,14 @@ def process(file)
         puts "Average requested size: #{all_requested.inject { |sum, el| sum + el }.to_f / all_requested.size}"
         puts "Highest frequency value requested: #{mode(all_requested)}"
         puts "Median value requested: #{median(all_requested)}"
+        puts "All frequencies requested: #{frequencies(all_requested)}"
         puts "-----------------------------------------------"
         puts "Min/Max padded size: #{all_padded.minmax}"
         puts "Average padded size: #{all_padded.inject { |sum, el| sum + el }.to_f / all_padded.size}"
         puts "Highest frequency value padded: #{mode(all_padded)}"
         puts "Median value padded: #{median(all_padded)}"
+        puts "All frequencies padded: #{frequencies(all_padded)}"
+        puts "Total requests: #{all_requested.size}"
 
         f.close
 end
@@ -59,6 +68,18 @@ def mode(array)
                 end
         end
         return mode.key(mode.values.max)
+end
+
+def frequencies(array)
+        counts = {}
+        array.sort.each do |val|
+                if counts[val].nil?
+                        counts[val] = 1
+                else
+                        counts[val] += 1
+                end
+        end
+        return counts
 end
 
 main

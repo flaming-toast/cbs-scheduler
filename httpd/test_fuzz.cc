@@ -23,7 +23,7 @@ using namespace std;
 #include "mm_alloc.h"
 
 /* Number of test iterations. */
-const int ROUNDS = 1000;
+const int ROUNDS = 100;
 
 /* Maximum number of test threads. */
 const int MAX_THREADS = 16;
