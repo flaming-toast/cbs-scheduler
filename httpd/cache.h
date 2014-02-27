@@ -18,10 +18,12 @@ struct cache_entry {
 
 void cache_init(palloc_env env);
 
-int cache_add(const char *request, const char *response);
+int cache_add(const char *request, const char *response, const char* expires, const char* etag);
 
 struct cache_entry* cache_get(const char *request);
 
 int cache_remove(const char *request);
+
+static void decrement_and_free(struct cache_entry *entry);
 
 #endif
