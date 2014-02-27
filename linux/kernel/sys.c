@@ -2007,23 +2007,18 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 	      error = -EINVAL;
 	      break;
 	    }
-	    me->sp_limit_block->sp_used = kmalloc(sizeof(atomic_t), GFP_KERNEL);
-	    me->sp_limit_block->sp_limit = kmalloc(sizeof(atomic_t), GFP_KERNEL);
-	    if (!((me->sp_limit_block->sp_used) && (me->sp_limit_block->sp_limit))) {
-	      error = -EINVAL;
-	      kfree(me->sp_limit_block);
-	      break;
-	    }
-	    atomic_set(me->sp_limit_block->sp_used, 1);
-	    atomic_set(me->sp_limit_block->sp_limit, arg2);
+	    atomic_set(&(me->sp_limit_block->sp_used), 1);
+	    atomic_set(&(me->sp_limit_block->sp_limit), arg2);
 	  } else {
 	    error = -EINVAL;
 	  }
 	  break;
 	case PR_GET_THREADLIMIT:
 	  if (me->sp_limit_block) {
-	    arg2 = atomic_read(me->sp_limit_block->sp_limit);
-	    arg3 = atomic_read(me->sp_limit_block->sp_used);
+	    int lim = atomic_read(&(me->sp_limit_block->sp_limit));
+	    int cur = atomic_read(&(me->sp_limit_block->sp_used));
+	    copy_to_user(arg2, &lim, sizeof(int));
+	    copy_to_user(arg3, &cur, sizeof(int));
 	  } else {
 	    error = -EINVAL;
 	  }

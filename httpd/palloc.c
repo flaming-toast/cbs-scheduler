@@ -215,6 +215,9 @@ char *palloc_strdup(palloc_env env, const char *str)
 {
         char *out;
         struct block *lblk = ENV_BLK(env);
+        if (str == NULL) {
+                return NULL;
+        }
         out = palloc_array(env, char, strlen(str) + 2);
         if (out != NULL) {
                 pthread_mutex_lock(&(lblk->mutex));

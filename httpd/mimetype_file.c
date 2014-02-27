@@ -28,18 +28,18 @@ static int http_get(struct mimetype *mt, struct http_session *s);
 
 struct mimetype *mimetype_file_new(palloc_env env, const char *fullpath)
 {
-    struct mimetype_file *mtf;
+        struct mimetype_file *mtf;
 
-    mtf = palloc(env, struct mimetype_file);
-    if (mtf == NULL)
-	return NULL;
+        mtf = palloc(env, struct mimetype_file);
+        if (mtf == NULL)
+                return NULL;
 
-    mimetype_init(&(mtf->mimetype));
+        mimetype_init(&(mtf->mimetype));
 
-    mtf->http_get = &http_get;
-    mtf->fullpath = palloc_strdup(mtf, fullpath);
+        mtf->http_get = &http_get;
+        mtf->fullpath = palloc_strdup(mtf, fullpath);
 
-    return &(mtf->mimetype);
+        return &(mtf->mimetype);
 }
 
 int http_get(struct mimetype *mt, struct http_session *s)

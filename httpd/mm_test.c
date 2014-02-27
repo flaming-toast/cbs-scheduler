@@ -5,11 +5,11 @@
 #ifdef MM_TEST
 int main(int argc, char **argv)
 {
-    void *data;
+        void *data;
 
-    data = mm_malloc(4);
-    free(data);
+        data = mm_malloc(4);
+        free(data);
 
-    return 0;
+        return 0;
 }
 #endif
