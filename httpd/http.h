@@ -33,6 +33,11 @@ struct http_session
 	/* For building the current GET request associated with this session */
 	struct http_get_request *get_req;
 
+	/* For building the current CGI response (to act as a temporary buffer holding 
+	 * http response fields before aborting a CGI script if the request can be 
+	 * fulfilled via the client's browser cache. */
+	struct http_get_response *get_response;
+
     int fd;
 
 	/* Ensure that only one thread gets to process this session @ a time */
@@ -77,5 +82,18 @@ struct http_get_request
 	/* Add any other HTTP request fields of interest here */
 
 };
+
+/* Mainly to help build conditional CGI responses */
+struct http_get_response
+{
+	struct http_session *session; 
+	struct mimetype *mt; 
+	/* Expires field */
+	char *expires;
+	/* The etag we send to the client */
+	char *etag;
+	/* Add any other HTTP response fields of interest here */
+};
+
 
 #endif

@@ -150,7 +150,9 @@ struct http_session *wait_for_client(struct http_server *serv)
     sess->write = &http_write;
     sess->server = serv;
 
-    sess->get_req = palloc(serv, struct http_get_request); // not sure if i initialized this correctly?
+    sess->get_req = palloc(sess, struct http_get_request); 
+    sess->get_response = palloc(sess, struct http_get_response); 
+
     if (sess->get_req == NULL)
 	return NULL;
 
