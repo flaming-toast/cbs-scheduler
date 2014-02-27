@@ -79,7 +79,10 @@ struct http_get_request
 	char *cache_control;
 	/* The etag we send to the client */
 	char *if_none_match;
+	/* the request string (e.g. GET /index.html HTTP/1.1 etc */
+	const char *request_string; 
 	/* Add any other HTTP request fields of interest here */
+
 
 };
 
@@ -93,6 +96,7 @@ struct http_get_response
 	/* The etag we send to the client */
 	char *etag;
 	/* Add any other HTTP response fields of interest here */
+	const char *response_string;
 };
 
 

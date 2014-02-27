@@ -222,6 +222,7 @@ int process_session_line(struct http_session *session, const char *line) {
 //	    	mterr = mt->http_get(mt, session);
 	    	session->get_req->mt = mt;
 			fprintf(stderr, "FOUND A GET, SETTING SESSION->GET_REQ->MT\n");
+			session->get_req->request_string = line; // shouldn't need to memcpy as process_session_line is called for each line..
 	    }
 		else
 		{
@@ -270,6 +271,7 @@ int process_session_data(struct http_session* session) {
 	} // after this while loop ends, should have read everything we could have
 	if (session->get_req->mt != NULL) {
 		mt = session->get_req->mt;
+		// session->get_response->response_string set in http_get()
     	mterr = mt->http_get(mt, session);
     	if (mterr < 0) {
     		perror("mt->http_get failed");
