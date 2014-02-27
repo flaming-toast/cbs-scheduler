@@ -150,6 +150,10 @@ struct http_session *wait_for_client(struct http_server *serv)
     sess->write = &http_write;
     sess->server = serv;
 
+    sess->get_req = palloc(serv, struct http_get_request); // not sure if i initialized this correctly?
+    if (sess->get_req == NULL)
+	return NULL;
+
 	/* char array of size 256, sess context */
     sess->buf = palloc_array(sess, char, DEFAULT_BUFFER_SIZE);
     /* zero it */

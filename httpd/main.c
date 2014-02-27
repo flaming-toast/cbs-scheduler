@@ -127,7 +127,7 @@ int event_loop(struct http_server *server) {
 				if (pthread_mutex_trylock(&session->fd_lock) == 0) {
 					if ((ev.events & EPOLLOUT) && !(ev.events & EPOLLIN)) { // If I had only registered EPOLLOUT events
 						// retry the request and see if you can write to session fd now
-						int mterr = session->mt->http_get(session->mt, session);
+						int mterr = session->mt_retry->http_get(session->mt_retry, session);
 						if (mterr != 0) {
 							perror("unrecoverable error while processing a client");
 							abort();
@@ -163,9 +163,10 @@ int event_loop(struct http_server *server) {
 
 
 int process_session_line(struct http_session *session, const char *line) {
-	char *method, *file, *version;
+	char *method, *file, *version, *http_field, *http_field_value;
 	struct mimetype *mt;
-	int mterr;
+//	int mterr;
+	int ret;
 	//long tid = syscall(SYS_gettid);
 
 	/* What if 2 session fd's signaled events? */
@@ -174,15 +175,38 @@ int process_session_line(struct http_session *session, const char *line) {
 	method = palloc_array(session, char, strlen(line));
 	file = palloc_array(session, char, strlen(line));
 	version = palloc_array(session, char, strlen(line));
+	/* for other http header fields */
+	http_field = palloc_array(session, char, strlen(line));
+	http_field_value = palloc_array(session, char, strlen(line));
+
 	if (sscanf(line, "%s %s %s", method, file, version) != 3 || strcasecmp(method, "GET") != 0)
 	{
-		/* just ignore the line */
 		//fprintf(stderr, "Thread %ld : Ignoring this line from session %d: %s\n", tid, session->fd, line);
+	
+		/* read until colon reached */
+		ret = sscanf(line, "%[^:]: %[^\n]", http_field, http_field_value);
+		if (ret == 2) {
+			fprintf(stderr, "http field: %s http_field_value: %s\n", http_field, http_field_value);
+
+			/* If Cache-Control is set */
+			if (strcasecmp(http_field, "Cache-Control") == 0) { // for no-cache cases
+				session->get_req->cache_control = http_field_value;
+				fprintf(stderr, "Setting session->get_req->cache_control %s\n", session->get_req->cache_control);
+			}
+
+			/*If we had sent an etag, the client sends that etag back through If-None-Match */
+			if (strcasecmp(http_field, "If-None-Match") == 0) { // etag
+				session->get_req->if_none_match = http_field_value;
+				fprintf(stderr, "Setting session->get_req->if_none_match %s\n", session->get_req->if_none_match);
+			}
+
+		} 
+
 		return 0;
 
 	} else {
 
-		//fprintf(stderr, "Thread %ld  < '%s' '%s' '%s' from session %d \n", tid,  method, file, version, session->fd);
+		fprintf(stderr, " < '%s' '%s' '%s' from session %d \n",  method, file, version, session->fd);
 		mt = mimetype_new(session, file);
 
 		if (strcasecmp(method, "GET") == 0)
@@ -195,23 +219,27 @@ int process_session_line(struct http_session *session, const char *line) {
 			 */
 
 			/* We found a GET. process it. */
-	    	mterr = mt->http_get(mt, session);
+//	    	mterr = mt->http_get(mt, session);
+	    	session->get_req->mt = mt;
+			fprintf(stderr, "FOUND A GET, SETTING SESSION->GET_REQ->MT\n");
 	    }
 		else
 		{
-	    	//fprintf(stderr, "Unknown method: '%s'\n", method);
+	    	fprintf(stderr, "Unknown method: '%s'\n", method);
 	    	goto cleanup;
 		}
 
+		/*
 		if (mterr != 0)
 		{
 	    	perror("unrecoverable error while processing a client");
 	    	abort();
 		} else {
+		*/
 			/* Successfully processed GET req */
 			//close(session->fd); //This is breaking things...
 			return 0;
-		}
+//		} corresponding else brace
 	}
 
 cleanup:
@@ -228,6 +256,8 @@ int process_session_data(struct http_session* session) {
 	//tid = syscall(SYS_gettid);
 	const char *line;
 	int ret;
+	int mterr;
+	struct mimetype *mt;
 	while ((line = session->gets(session)) != NULL) {
 		// readed = read(session->fd, buf + buf_used, DEFAULT_BUFFER_SIZE - buf_used);
 		/* Process each line we receive */
@@ -238,7 +268,19 @@ int process_session_data(struct http_session* session) {
 			return ret;
 		}
 	} // after this while loop ends, should have read everything we could have
-	//fprintf(stderr, "Thread %ld closing session fd %d \n", tid, session->fd);
+	if (session->get_req->mt != NULL) {
+		mt = session->get_req->mt;
+    	mterr = mt->http_get(mt, session);
+    	if (mterr < 0) {
+    		perror("mt->http_get failed");
+    	}
+    } else {
+    	perror("Null mimetype in session->get_req->mt");
+    }
+
 	close(session->fd);
+
+	fprintf(stderr, "Finished parsing client request: (%s) (%s)", session->get_req->cache_control, session->get_req->if_none_match);
+	//fprintf(stderr, "Thread %ld closing session fd %d \n", tid, session->fd);
 	return 0;
 }
