@@ -26,41 +26,41 @@ extern int process_session_data(struct http_session *session);
 
 int main(int argc, char **argv)
 {
-    palloc_env env;
-    struct http_server *server;
-    int num_threads;
-	int  i, ret;
+        palloc_env env;
+        struct http_server *server;
+        int num_threads;
+        int  i, ret;
 
-    env = palloc_init("httpd root context");
+        env = palloc_init("httpd root context");
 
-    /* create socket, bind, make non-blocking, listen */
-    /* also set up epoll events */
-    server = http_server_new(env, PORT);
-    if (server == NULL)
-    {
-		perror("main(): Unable to open HTTP server");
-		return 1;
-    }
+        /* create socket, bind, make non-blocking, listen */
+        /* also set up epoll events */
+        server = http_server_new(env, PORT);
+        if (server == NULL)
+        {
+                perror("main(): Unable to open HTTP server");
+                return 1;
+        }
 
-	/* Create N threads, where N is the number of cores */
-	//    num_threads = get_nprocs();
-	num_threads = 2;
-    pthread_t * thread = malloc(sizeof(pthread_t)*num_threads);
+        /* Create N threads, where N is the number of cores */
+        //    num_threads = get_nprocs();
+        num_threads = 2;
+        pthread_t * thread = malloc(sizeof(pthread_t)*num_threads);
 
-    for (i = 0; i < num_threads; i++) {
+        for (i = 0; i < num_threads; i++) {
 
-    	ret = pthread_create(&thread[i], NULL, (void *)&event_loop, server);
+                ret = pthread_create(&thread[i], NULL, (void *)&event_loop, server);
 
-    	if(ret != 0) {
-    		////fprintf (stderr, "Create pthread error!\n");
-    		exit (1);
-    	}
-    }
+                if(ret != 0) {
+                        fprintf (stderr, "Create pthread error!\n");
+                        exit (1);
+                }
+        }
 
-	/* Now that each thread should be running the event loop, we wait... */
-    pthread_join(thread[0], NULL);
+        /* Now that each thread should be running the event loop, we wait... */
+        pthread_join(thread[0], NULL);
 
-    return 0;
+        return 0;
 }
 
 int event_loop(struct http_server *server) {
@@ -243,11 +243,11 @@ int process_session_line(struct http_session *session, const char *line) {
 	}
 
 cleanup:
-	/* should call palloc destructor close_session
-	 * which closes the session fd and should automatically be
-	 * removed from the epoll set */
-	pfree(session);
-	return -1;
+        /* should call palloc destructor close_session
+         * which closes the session fd and should automatically be
+         * removed from the epoll set */
+        pfree(session);
+        return -1;
 }
 
 int process_session_data(struct http_session* session) {
