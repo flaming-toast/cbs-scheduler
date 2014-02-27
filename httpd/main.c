@@ -13,6 +13,7 @@
 #include "http.h"
 #include "mimetype.h"
 #include "palloc.h"
+#include "cache.h"
 
 #define PORT 8088
 #define LINE_MAX 1024
@@ -32,6 +33,7 @@ int main(int argc, char **argv)
         int  i, ret;
 
         env = palloc_init("httpd root context");
+        cache_init(env);
 
         /* create socket, bind, make non-blocking, listen */
         /* also set up epoll events */

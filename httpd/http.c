@@ -152,6 +152,8 @@ struct http_session *wait_for_client(struct http_server *serv)
 
     sess->get_req = palloc(sess, struct http_get_request); 
     sess->get_response = palloc(sess, struct http_get_response); 
+    sess->get_response->response_string = palloc_array(sess, char, DEFAULT_BUFFER_SIZE);
+    sess->get_req->request_string = palloc_array(sess, char, DEFAULT_BUFFER_SIZE);
 
     if (sess->get_req == NULL)
 	return NULL;
@@ -247,7 +249,7 @@ const char *http_gets(struct http_session *s)
                                         s->buf_size - strlen(new) - 2);
                         s->buf_used -= strlen(new) + 2;
                         s->buf[s->buf_used] = '\0';
-                        fprintf(stderr, "Returning a line: %s\n", new);
+//                        fprintf(stderr, "Returning a line: %s\n", new);
                         return new;
                 }
 
