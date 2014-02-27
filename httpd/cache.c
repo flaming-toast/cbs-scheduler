@@ -17,14 +17,14 @@ static int hash(const char *str);
 
 static struct cache_entry *swap_cache_entry(int cache_index, struct cache_entry *new_entry);
 
-static void decrement_and_free(struct cache_entry *cur_entry);
+void decrement_and_free(struct cache_entry *cur_entry);
 
 void cache_init(palloc_env env)
 {
         int i;
         for (i = 0; i < CACHE_SIZE; i++)
         {
-	  lock_array[i] = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+                lock_array[i] = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
         }
         cache_env = env;
 }
@@ -37,14 +37,14 @@ int cache_add(const char *request, const char *response, const char *expires, co
         new_entry = palloc(cache_env, struct cache_entry);
         new_entry->request = palloc_strdup(new_entry, request);
         new_entry->response = palloc_strdup(new_entry, response);
-	new_entry->expires = palloc_strdup(new_entry, expires);
-	new_entry->etag = palloc_strdup(new_entry, etag);
+        new_entry->expires = palloc_strdup(new_entry, expires);
+        new_entry->etag = palloc_strdup(new_entry, etag);
         new_entry->reference_count = 1;   // Count cache as one of them.
         //new_entry->lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 
-	pthread_mutex_lock(&lock_array[cache_index]);
+        pthread_mutex_lock(&lock_array[cache_index]);
         old_entry = swap_cache_entry(cache_index, new_entry);
-	pthread_mutex_unlock(&lock_array[cache_index]);
+        pthread_mutex_unlock(&lock_array[cache_index]);
 
         decrement_and_free(old_entry);
 
@@ -57,22 +57,30 @@ struct cache_entry* cache_get(const char *request)
         struct cache_entry *cur_entry;
 
         pthread_mutex_lock(&lock_array[cache_index]);
-	cur_entry = cache_array[cache_index];
+        cur_entry = cache_array[cache_index];
         if (cur_entry == NULL)
         {
-	        pthread_mutex_unlock(&lock_array[cache_index]);
+                pthread_mutex_unlock(&lock_array[cache_index]);
                 return NULL;
         }
-	__sync_add_and_fetch(&(cur_entry->reference_count), 1); // The cache lock will not necessarily ensure atomicity on this count since the cache is not the only thing which might change it.
-	pthread_mutex_unlock(&lock_array[cache_index]);
-	//At this point, it shouldn't be deleted b/c we've already incremented the reference_count
-
+        __sync_add_and_fetch(&(cur_entry->reference_count), 1); // The cache lock will not necessarily ensure atomicity on this count since the cache is not the only thing which might change it.
+        pthread_mutex_unlock(&lock_array[cache_index]);
+        //At this point, it shouldn't be deleted b/c we've already incremented the reference_count
+        if (request == NULL || cur_entry->request == NULL) {
+                if (request == cur_entry->request) {
+                        return cur_entry;
+                } else {
+                        if (__sync_sub_and_fetch(&(cur_entry->reference_count), 1) == 0) {
+                                pfree(cur_entry);
+                        }
+                }
+        }
         if (strcmp(cur_entry->request, request) != 0)
         {
-	  if (__sync_sub_and_fetch(&(cur_entry->reference_count), 1) == 0) {
-	    pfree(cur_entry); //Everyone else let go in the meantime
-	  }
-          return NULL;                // Entry not exist, even if share hash
+                if (__sync_sub_and_fetch(&(cur_entry->reference_count), 1) == 0) {
+                        pfree(cur_entry); //Everyone else let go in the meantime
+                }
+                return NULL;                // Entry not exist, even if share hash
         }
 
         if (&(cur_entry->reference_count) <= 0)
@@ -97,6 +105,14 @@ int cache_remove(const char *request)
         {
                 result = -1;
         }
+        else if (request == NULL || old_entry->request == NULL) {
+                if (request == old_entry->request) {
+                        old_entry = swap_cache_entry(cache_index, NULL);
+                        decrement_and_free(old_entry);
+                } else {
+                        result = -1;
+                }
+        }
         else if (strcmp(old_entry->request, request) != 0)
         {
                 result = -1;
@@ -104,7 +120,7 @@ int cache_remove(const char *request)
         else
         {
                 old_entry = swap_cache_entry(cache_index, NULL);
-		decrement_and_free(old_entry);
+                decrement_and_free(old_entry);
         }
 
         pthread_mutex_unlock(&lock_array[cache_index]);
@@ -119,9 +135,9 @@ int hash(const char *str)
 {
         int hash = 5381;
         int c;
-	if (str == NULL) {
-	  return 0;
-	}
+        if (str == NULL) {
+                return 0;
+        }
         while ((c = *str++))
         {
                 hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
@@ -139,9 +155,9 @@ static struct cache_entry *swap_cache_entry(int cache_index, struct cache_entry 
 {
         struct cache_entry *old_entry;
 
-	old_entry = __sync_val_compare_and_swap(&(cache_array[cache_index]), cache_array[cache_index], new_entry);
+        old_entry = __sync_val_compare_and_swap(&(cache_array[cache_index]), cache_array[cache_index], new_entry);
         /*old_entry = cache_array[cache_index];
-	  cache_array[cache_index] = new_entry; */
+          cache_array[cache_index] = new_entry; */
 
         return old_entry;
 }
@@ -151,7 +167,7 @@ static struct cache_entry *swap_cache_entry(int cache_index, struct cache_entry 
  * than the cache. Since the ref_count can only become zero after removal from
  * the cache, no lock is needed to bind atomic_dec_and_test() and pfree() into
  * a critical section. */
-static void decrement_and_free(struct cache_entry *cur_entry)
+void decrement_and_free(struct cache_entry *cur_entry)
 {
         if (cur_entry == NULL)
         {
@@ -159,7 +175,7 @@ static void decrement_and_free(struct cache_entry *cur_entry)
         }
         if (__sync_sub_and_fetch(&(cur_entry->reference_count), 1) == 0)
         {
-	  pfree(cur_entry);
+                pfree(cur_entry);
         }
 }
 
