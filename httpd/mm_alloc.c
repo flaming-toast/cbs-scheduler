@@ -227,8 +227,8 @@ void *req_free_mem(size_t req_size)
                 else if(cur_node->size > req_size)
                 {
                         cur_node->status = USED;
-                        cur_node->next_free = NULL;
                         prev_node->next_free = cur_node->next_free;
+                        cur_node->next_free = NULL;
 
                         return (void *)((char *)cur_node + NODE_HEADER_SIZE);
                 }
@@ -317,6 +317,27 @@ void append_node(MM_node *new_node)
 
         prev->next_free = new_node;
         new_node->next_free = cur;
+
+        /* Coalescing */
+        /* This is just additional code just in case performance is an issue,
+           as noted in test_free_2 in test_mm.c. This, along with changing the
+           INIT_MEM_SIZE, should make it perform nearly as well as libc's malloc.
+         */
+        /*
+        if ((MM_node *)((char *)new_node + NODE_HEADER_SIZE + new_node->size) == cur)
+        {
+                new_node->next_free = cur->next_free;
+                new_node->size += NODE_HEADER_SIZE + cur->size;
+        }
+        if (prev != malloc_head)
+        {
+                if ((MM_node *)((char *)prev + NODE_HEADER_SIZE + prev->size) == new_node)
+                {
+                        prev->next_free = new_node->next_free;
+                        prev->size += NODE_HEADER_SIZE + new_node->size;
+                }
+        }
+        */
 }
 
 //////////////////////// {C} CORE HELPERS ////////////////////////
