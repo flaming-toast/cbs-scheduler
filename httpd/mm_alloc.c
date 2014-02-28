@@ -309,7 +309,7 @@ void append_node(MM_node *new_node)
         // iterate to end of free list
         MM_node *prev = malloc_head;
         MM_node *cur = malloc_head->next_free;
-        while(cur != NULL && (long unsigned)cur < (long unsigned)new_node)
+        while(cur != NULL)
         {
                 prev = cur;
                 cur = cur->next_free;
