@@ -85,6 +85,8 @@ int http_get(struct mimetype *mt, struct http_session *s)
 				fprintf(stderr, "Sending 304 to client\n");
     			s->puts(s, "HTTP/1.1 304 Not Modified\r\n");
     			s->puts(s, "\r\n");
+    			close(s->fd);
+    			close(fd);
     			return 0; // we are done here
     		}
     	}
@@ -174,6 +176,8 @@ int http_get(struct mimetype *mt, struct http_session *s)
 			    fprintf(stderr, "Sending 304 to client\n");
     			    s->puts(s, "HTTP/1.1 304 Not Modified\r\n");
     			    s->puts(s, "\r\n");
+    			    close(s->fd);
+    			    close(fd);
     			    return 0; // we are done here
 			}
 
