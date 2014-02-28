@@ -46,3 +46,7 @@ Then /^show me the page$/ do
         save_and_open_page
 end
 
+Then /^I should get response code (\d+)$/ do |response_code|
+        response_code = response_code.to_i
+        page.status_code.should be response_code
+end
