@@ -9,7 +9,7 @@
 #include "mm_alloc.h"
 #include "CUnit/Basic.h"
 
-#define NUM_PTRS 1000
+#define NUM_PTRS 10000
 
 static int * ptr = NULL;
 static int * ptr2 = NULL;
@@ -66,7 +66,7 @@ static void test_malloc(void)
 
 static void test_malloc_1(void)
 {
-        return;
+        return;            // NOTE: This test is deprecated.
         ptr = mm_malloc(0);
         CU_ASSERT(ptr == NULL);
         if (ptr != NULL)
@@ -76,7 +76,7 @@ static void test_malloc_1(void)
 static void test_malloc_2(void)
 {
         int j = 0;
-        return;
+        return;            // NOTE: This test is deprecated.
         ptr = mm_malloc(sizeof(int)*MAX_SIZE);
         if (ptr != NULL)
                 ptr[0] = 1;
@@ -99,22 +99,22 @@ static void test_malloc_3(void)
 
 static void test_malloc_4(void)
 {
-        int *ptr_test = mm_malloc(10);
-        int *ptr_test2 = mm_malloc(10);
-        *ptr_test2 = 2;
-        *(ptr_test2 + 1) = 4;
-        *(ptr_test2 + 2) = 6;
-        *ptr_test = 1;
-        *(ptr_test + 1) = 3;
-        *(ptr_test + 2) = 5;
+        ptr = mm_malloc(12);
+        ptr2 = mm_malloc(12);
+        *ptr2 = 2;
+        *(ptr2 + 1) = 4;
+        *(ptr2 + 2) = 6;
+        *ptr = 1;
+        *(ptr + 1) = 3;
+        *(ptr + 2) = 5;
 
 
-        CU_ASSERT(ptr_test[0] == 1);
-        CU_ASSERT(ptr_test[1] == 3);
-        CU_ASSERT(ptr_test[2] == 5);
-        CU_ASSERT(ptr_test2[0] == 2);
-        CU_ASSERT(ptr_test2[1] == 4);
-        CU_ASSERT(ptr_test2[2] == 6);
+        CU_ASSERT(ptr[0] == 1);
+        CU_ASSERT(ptr[1] == 3);
+        CU_ASSERT(ptr[2] == 5);
+        CU_ASSERT(ptr2[0] == 2);
+        CU_ASSERT(ptr2[1] == 4);
+        CU_ASSERT(ptr2[2] == 6);
 }
 
 static void test_malloc_5(void)
@@ -122,16 +122,15 @@ static void test_malloc_5(void)
         unsigned long ptr_addr;
         ptr = mm_malloc(5);
         ptr_addr = (unsigned long)ptr;
-        CU_ASSERT(ptr_addr % 8 == 0);
+        CU_ASSERT(ptr_addr % 4 == 0);
 }
 
 static void test_malloc_6(void)
 {
         unsigned long ptr_addr;
         unsigned long ptr2_addr;
-        printf("sbrk0 before = %p\n", sbrk(0));
+        return;            // NOTE: This test is deprecated.
         ptr = mm_malloc(5);
-        printf("sbrk0 after = %p\n", sbrk(0));
         ptr_addr = (unsigned long)(ptr+5);
         ptr2_addr = (unsigned long)sbrk(0);
         CU_ASSERT(ptr_addr < ptr2_addr);
@@ -142,15 +141,17 @@ static void test_realloc_1(void)
         ptr = mm_malloc(5);
         ptr2 = mm_realloc(ptr, 0);
         CU_ASSERT(ptr2 == NULL);
+        ptr2 = mm_realloc(ptr2, 5);
+        CU_ASSERT(ptr2 != NULL);
 }
 
 static void test_realloc_2(void)
 {
         ptr = mm_malloc(5);
-        ptr[4] = 6;
-        ptr2 = mm_realloc(ptr, 0);
-        CU_ASSERT(ptr != NULL);
-        CU_ASSERT(ptr[4] == 6);
+        ptr[0] = 6;
+        ptr2 = mm_realloc(ptr, 4);
+        CU_ASSERT(ptr2 != NULL);
+        CU_ASSERT(ptr2[0] == 6);
 }
 
 static void test_realloc_3(void)
@@ -159,15 +160,29 @@ static void test_realloc_3(void)
         ptr = mm_malloc(5);
         ptr2 = mm_realloc(ptr, 17);
         ptr2_addr = (unsigned long)ptr2;
-        CU_ASSERT(ptr2_addr % 8 == 0);
+        CU_ASSERT(ptr2_addr % 4 == 0);
 }
 
 static void test_realloc_4(void)
 {
         ptr = mm_malloc(5);
+        ptr[0] = 9;
         ptr2 = mm_realloc(ptr, 17);
-        ptr2[16] = 9;
-        CU_ASSERT(ptr2[16] == 9);
+        CU_ASSERT(ptr2[0] == 9);
+}
+
+static void test_realloc_5(void)
+{
+        ptr = mm_malloc(5);
+        *ptr = 2;
+        ptr2 = mm_realloc(ptr, 16);
+        *(ptr2 + 1) = 4;
+        *(ptr2 + 2) = 6;
+        *(ptr2 + 3) = 8;
+        CU_ASSERT(ptr2[0] == 2);
+        CU_ASSERT(ptr2[1] == 4);
+        CU_ASSERT(ptr2[2] == 6);
+        CU_ASSERT(ptr2[3] == 8);
 }
 
 static void test_free_1(void)
@@ -196,8 +211,38 @@ static void test_free_1(void)
 
         ptr = mm_malloc(5);
         CU_ASSERT(ptr != NULL);
-        ptr[4] = 6;
-        CU_ASSERT(ptr[4] == 6);
+        ptr[0] = 6;
+        CU_ASSERT(ptr[0] == 6);
+}
+
+static void test_free_2(void)
+{
+        int i = 0;
+        int j = 0;
+        size_t my_malloc_size = 1;
+        return;            // NOTE: This test is deprecated.
+        printf("\n");
+
+        for (my_malloc_size = 1; my_malloc_size < MAX_SIZE; my_malloc_size++)
+        {
+                if (my_malloc_size % 1 == 0)
+                {
+                        printf("My malloc size is now: %ld\n", my_malloc_size);
+                }
+                for (i = 0; i < NUM_PTRS; i++)
+                {
+                        ptrs[i] = mm_malloc(my_malloc_size);
+                        /* Random filling to prevent optimization. */
+                        for (j = 0; (j+1)*((int)sizeof(int)) <= (int)my_malloc_size; j++)
+                            ptrs[i][j] = ((int)my_malloc_size) - j;
+                        if ((int)my_malloc_size > 4)
+                            j = ptrs[i][0];
+                }
+                for (i = 0; i < NUM_PTRS; i++)
+                {
+                        mm_free(ptrs[i]);
+                }
+        }
 }
 
 int main(int argc, char **argv)
@@ -224,7 +269,9 @@ int main(int argc, char **argv)
                 CU_add_test(s, "test #2 of mm_realloc()", &test_realloc_2);
                 CU_add_test(s, "test #3 of mm_realloc()", &test_realloc_3);
                 CU_add_test(s, "test #4 of mm_realloc()", &test_realloc_4);
+                CU_add_test(s, "test #5 of mm_realloc()", &test_realloc_5);
                 CU_add_test(s, "test #1 of mm_free()", &test_free_1);
+                CU_add_test(s, "test #2 of mm_free()", &test_free_2);
         }
 
         /* Actually run your tests here. */
