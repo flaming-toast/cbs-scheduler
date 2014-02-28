@@ -1,0 +1,4 @@
+config LP_FS
+	tristate "LPFS (The log-structured pedagogical filesystem)"
+	help
+	  lpfs was written for cs194-24@berkeley, Spring 2014
