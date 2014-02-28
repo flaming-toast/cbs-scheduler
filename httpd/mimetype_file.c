@@ -19,6 +19,7 @@
 #include <signal.h>
 
 #include "cache.h"
+#include "palloc.h"
 
 
 #define BUF_COUNT 4096
@@ -125,6 +126,8 @@ int http_get(struct mimetype *mt, struct http_session *s)
 		c = cache_get(s->get_req->request_string);
 		if ((c != NULL) && (c->expires != NULL)) {
 
+			fprintf(stderr, "Cached exp time: %s", c->expires);
+			fprintf(stderr, "Cached etag time: %s", c->etag);
 			// if cache_entry.expires exists
 			// 	check if current time is before expires
 			// 		struct timeval tv, ctv, rtv;
@@ -135,7 +138,7 @@ int http_get(struct mimetype *mt, struct http_session *s)
 			// 	if it is, send 304 and return
 			// sample time comparison code
 			struct tm cache_expire_tm;
-			struct tm *now_tm;
+			struct tm now_tm;
 			time_t cache_expire, nowtime;
 			struct timeval cache_expire_tv, now_tv;
 			int gerr;
@@ -147,12 +150,11 @@ int http_get(struct mimetype *mt, struct http_session *s)
 				perror("gettimeofday errored");
 			}
 
-			nowtime = now_tv.tv_sec;
-			now_tm = gmtime(&nowtime); //localtime or gmtime? may segfault...
+//			nowtime = now_tv.tv_sec;
+			gmtime_r(&(now_tv.tv_sec), &now_tm); //localtime or gmtime? may segfault...
 
-			strftime(nowtime_tmbuf, sizeof nowtime_tmbuf, "%a, %d %b  %Y %T", now_tm);
+			strftime(nowtime_tmbuf, sizeof nowtime_tmbuf, "%a, %d %b  %Y %T", &now_tm);
 			snprintf(nowtime_buf, sizeof buf, "%s", nowtime_tmbuf); // nowtime_buf should contain time string
-
 
 			strptime(c->expires, "%a, %d %b  %Y %T", &cache_expire_tm);
 			strptime(nowtime_tmbuf, "%a, %d %b  %Y %T", &now_tm);
@@ -160,21 +162,25 @@ int http_get(struct mimetype *mt, struct http_session *s)
 			cache_expire = mktime(&cache_expire_tm); // seconds since the epoch
 			cache_expire_tv.tv_sec = cache_expire;
 
-			nowtime = mktime(now_tm); // seconds since the epoch
+			nowtime = mktime(&now_tm); // seconds since the epoch
 			now_tv.tv_sec = nowtime;
 
-			fprintf(stderr, "Current time comes before expiration time (cache entry still good) %d ", timercmp(&now_tv, &cache_expire_tv, <));
+			fprintf(stderr, "Does current time comes before expiration time (cache entry still good) %d ", timercmp(&now_tv, &cache_expire_tv, <));
+			fprintf(stderr, "Now time: %s", nowtime_tmbuf);
+			//fprintf(stderr, "Cached exp time: %s", c->expires);
 
-			if(timercmp(&now_tv, &cache_expire_tv, <)) { // returns non-zero if true
-				fprintf(stderr, "Sending 304 to client\n");
-    			s->puts(s, "HTTP/1.1 304 Not Modified\r\n");
-    			s->puts(s, "\r\n");
-    			return 0; // we are done here
+
+			if(timercmp(&now_tv, &cache_expire_tv, <) ) { // returns non-zero if true
+			    fprintf(stderr, "Sending 304 to client\n");
+    			    s->puts(s, "HTTP/1.1 304 Not Modified\r\n");
+    			    s->puts(s, "\r\n");
+    			    return 0; // we are done here
 			}
 
 		}
 		/* if it hasn't expired but the etag from the client is different from our cache...*/
-		if (c != NULL && c->etag != NULL && (strcasecmp(c->etag, s->get_req->if_none_match) != 0)) {
+		if (c != NULL) {
+		if (c->etag != NULL && s->get_req->if_none_match != NULL && (strcasecmp(c->etag, s->get_req->if_none_match) != 0)) {
 			const char *response = c->response;
     		s->puts(s, "HTTP/1.1 200 OK\r\n");
     		s->puts(s, "Content-Type: text/html\r\n");
@@ -185,9 +191,10 @@ int http_get(struct mimetype *mt, struct http_session *s)
 			s->write(s, response, sizeof(response));
 			return 0;
 		}
-
-
 			decrement_and_free(c); // dec and free with every cache_get
+		}
+
+
 
 
 			//else 
@@ -250,15 +257,18 @@ int http_get(struct mimetype *mt, struct http_session *s)
 
 						ret = sscanf(line, "%[^:]: %[^\n\r]", http_field, http_field_value);
 						if (ret == 2) {
+						    	
+							fprintf(stderr, "http_field_value: [%s] \n", http_field_value);
+							fprintf(stderr, "http_field: [%s] \n", http_field);
 							if (strcasecmp(http_field, "Expires") == 0) { // put expiration in cache, check with subsequent requests
-								cgi_response->expires = http_field_value;
+								cgi_response->expires = palloc_strdup(cgi_response, http_field_value);
 								fprintf(stderr, "CGI response found Expires: [%s] \n", cgi_response->expires);
 
 							}
 
 							if (strcasecmp(http_field, "ETag") == 0) { // etag
 								// if cache_entry.etag exists
-
+							/*
 								struct cache_entry *c;
 								c = cache_get(s->get_req->request_string);
 
@@ -266,23 +276,26 @@ int http_get(struct mimetype *mt, struct http_session *s)
 								// if it matches we don't need to run the cgi script to its entirety
 								if (c != NULL) {
 								if (c->etag != NULL) {
-									if (strcasecmp(c->etag, http_field_value) == 0)  { // etags match
-										kill(childpid, SIGTERM);
-										// kill(childpid) -- vedant says another group is doing this, not the best way, but at least I'm checking the cache before doing this.k
-										// send 304 response and return 0;
-										fprintf(stderr, "Child killed, Sending 304 to client\n");
+								    if (strcasecmp(c->etag, http_field_value) == 0)  { // etags match
     									s->puts(s, "HTTP/1.1 304 Not Modified\r\n");
     									s->puts(s, "\r\n");
+    									close(s->fd);
+    									close(fd);
+									kill(childpid, SIGTERM);
+									// kill(childpid) -- vedant says another group is doing this, not the best way, but at least I'm checking the cache before doing this.k
+									// send 304 response and return 0;
+									fprintf(stderr, "Child killed, Sending 304 to client\n");
     									return 0; // we are done here
-									}
+								    }
 								}
 								decrement_and_free(c); // dec and free for every cache_get 
 								}
+							*/
 
-
-								cgi_response->etag = http_field_value;
+								cgi_response->etag = palloc_strdup(cgi_response, http_field_value);
 								fprintf(stderr, "CGI response found ETag: [%s] \n", cgi_response->etag);
 							}
+							
 						}
 					}
 					s->puts(s, line);
@@ -303,6 +316,9 @@ int http_get(struct mimetype *mt, struct http_session *s)
 				close(fd);
 
 				int cerr;
+				fprintf(stderr, "cgi_response->expires: %s", cgi_response->expires);
+				fprintf(stderr, "cgi_response->etag: %s", cgi_response->etag);
+
 				cerr = cache_add(s->get_req->request_string, s->get_response->response_string, cgi_response->expires, cgi_response->etag);
 				if (cerr < 0) {
 					perror("Unable to add to cache");

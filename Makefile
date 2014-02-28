@@ -11,7 +11,7 @@ LC_COLLATE=C
 LC_NUMERIC=C
 export LC_COLLATE LC_NUMERIC
 
-CFLAGS=-Wall -Werror -pthread
+CFLAGS=-Wall -pthread #-Werror
 
 # By default "make" will build the first target -- here we're just
 # calling it "all".
