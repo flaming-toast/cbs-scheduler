@@ -93,7 +93,7 @@ static void test_malloc_2(void)
 
 static void test_malloc_3(void)
 {
-        ptr = mm_malloc(5);
+        ptr = mm_malloc(sizeof(int)*5);
         CU_ASSERT(ptr != NULL);
 }
 
@@ -139,14 +139,14 @@ static void test_malloc_6(void)
 
 static void test_realloc_1(void)
 {
-        ptr = mm_malloc(5);
+        ptr = mm_malloc(sizeof(int)*5);
         ptr2 = mm_realloc(ptr, 0);
         CU_ASSERT(ptr2 == NULL);
 }
 
 static void test_realloc_2(void)
 {
-        ptr = mm_malloc(5);
+        ptr = mm_malloc(sizeof(int)*5);
         ptr[4] = 6;
         ptr2 = mm_realloc(ptr, 0);
         CU_ASSERT(ptr != NULL);
@@ -157,15 +157,15 @@ static void test_realloc_3(void)
 {
         unsigned long ptr2_addr;
         ptr = mm_malloc(5);
-        ptr2 = mm_realloc(ptr, 17);
+        ptr2 = mm_realloc(ptr, sizeof(int)*17);
         ptr2_addr = (unsigned long)ptr2;
         CU_ASSERT(ptr2_addr % 8 == 0);
 }
 
 static void test_realloc_4(void)
 {
-        ptr = mm_malloc(5);
-        ptr2 = mm_realloc(ptr, 17);
+        ptr = mm_malloc(sizeof(int)*17);
+        ptr2 = mm_realloc(ptr, sizeof(int)*17);
         ptr2[16] = 9;
         CU_ASSERT(ptr2[16] == 9);
 }
@@ -194,7 +194,7 @@ static void test_free_1(void)
                 ptrs[j] = NULL;
         }
 
-        ptr = mm_malloc(5);
+        ptr = mm_malloc(sizeof(int)*5);
         CU_ASSERT(ptr != NULL);
         ptr[4] = 6;
         CU_ASSERT(ptr[4] == 6);

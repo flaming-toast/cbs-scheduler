@@ -50,7 +50,7 @@ void mm_free(void *ptr)
 #define ERROR -1
 #define SUCCESS 1
 
-const size_t  INIT_MEM_SIZE     = 4096;
+const size_t  INIT_MEM_SIZE     = 4090;
 const int     NODE_HEADER_SIZE  = sizeof(MM_node);
 const int     SPLIT_MINIMUM     = 2 * sizeof(MM_node);
 const int     MMAP_PROT         = (PROT_READ | PROT_WRITE);
@@ -88,6 +88,7 @@ void *mm_malloc_ll(size_t size)
                         return NULL;
                 }
 
+                //print_free_blocks();
                 ptr = req_free_mem(size);
                 if(ptr == NULL)
                 {
@@ -135,8 +136,10 @@ void *mm_realloc_ll(void *ptr, size_t size)
                 }
                 else
                 {
-                        new_ptr = memcpy(new_ptr, ptr, get_header(ptr)->size);
+                        //print_free_blocks();
+                        memmove(new_ptr, ptr, get_header(ptr)->size);
                         mm_free(ptr);
+                        //print_free_blocks();
                         return new_ptr;
                 }
         }
@@ -216,6 +219,7 @@ void *req_free_mem(size_t req_size)
                 {
                         MM_node *new_node = split_node(cur_node, req_size);
                         prev_node->next_free = new_node;
+                        cur_node->next_free = NULL;
 
                         return (void *)((char *)cur_node + NODE_HEADER_SIZE);
                 }
@@ -312,6 +316,7 @@ void append_node(MM_node *new_node)
         }
 
         prev->next_free = new_node;
+        new_node->next_free = cur;
 }
 
 //////////////////////// {C} CORE HELPERS ////////////////////////
@@ -385,11 +390,11 @@ void print_free_blocks(void)
 
                 if(cur_node->status == FREE)
                 {
-                        //printf("Node at [%d]:%p - FREE with %lu bytes free.\n", num, cur_node, cur_node->size);
+                        printf("Node at [%d]:%p - FREE with %lu bytes free.\n", num, cur_node, cur_node->size);
                 }
                 else
                 {
-                        //printf("Node at [%d]:%p - USED with %lu bytes used.\n", num, cur_node, cur_node->size);
+                        printf("Node at [%d]:%p - USED with %lu bytes used.\n", num, cur_node, cur_node->size);
                 }
                 if(cur_node == malloc_tail)
                         break;
