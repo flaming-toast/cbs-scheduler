@@ -5,7 +5,6 @@
  * a summary of your allocator's design here.
  */
 
-
 #include <sys/mman.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,33 +43,7 @@ void mm_free(void *ptr)
 #endif
 }
 
-typedef unsigned char* bitmap_t;
-
-void set_bitmap(bitmap_t b, int i) {
-    b[i / 8] |= 1 << (i & 7);
-}
-
-void unset_bitmap(bitmap_t b, int i) {
-    b[i / 8] &= ~(1 << (i & 7));
-}
-
-int get_bitmap(bitmap_t b, int i) {
-    return b[i / 8] & (i & 7) ? 1 : 0;
-}
-
-bitmap_t create_bitmap(int n) {
-    return mm_malloc((n + 7) / 8);
-}
-//////////////////////// Preset Block Size Optimized Malloc /////////////////////
-//////////////////////////////////////////////////////////////////////////////////
-
-/*
- * notes
- * max size for single block is smaller since splitting requires a minimum size from header
- * we may need malloc_head to always point to something after first malloc
- * edge cases - calling malloc(0)
- */
-
+//////////////////////// Linked List Malloc Implementation /////////////////////
 //////////////////////// {A} GLOBALS ////////////////////////
 #define FREE 1
 #define USED 0
@@ -79,34 +52,30 @@ bitmap_t create_bitmap(int n) {
 
 const size_t  INIT_MEM_SIZE     = 2048;
 const int     NODE_HEADER_SIZE  = sizeof(MM_node);
-const int     BLOCK_HEADER_SIZE  = sizeof(MM_block);
 const int     SPLIT_MINIMUM     = 2 * sizeof(MM_node);
+const int     MMAP_PROT         = (PROT_READ | PROT_WRITE);
+const int     MMAP_FLAGS        = (MAP_ANONYMOUS | MAP_PRIVATE);
 
-int prot = (PROT_READ | PROT_WRITE);
-int flags = (MAP_ANONYMOUS | MAP_PRIVATE);
-MM_node       *malloc_head      = NULL;
-MM_node       *malloc_tail      = NULL;
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+MM_node         *malloc_head    = NULL;
+MM_node         *malloc_tail    = NULL;
+pthread_mutex_t lock            = PTHREAD_MUTEX_INITIALIZER;
 //////////////////////// {A} GLOBALS ////////////////////////
 
 
 //////////////////////// {B} CORE FUNCTIONS  ////////////////////////
 void *mm_malloc_ll(size_t size)
 {
-        //perror("[ALLOCATE] %lu\n", size);
         if(size == 0)
         {
-                printf("SIZE REQUEST 0\n");
+                printf("SIZE REQUEST 0, RETURNING NULL\n");
                 return NULL;
         }
         else
         {
-                //printf("requested size: %lu, new size: %lu\n", size, pad_mem_size(size));
-                int status = SUCCESS;
                 void *ptr;
+                int status = SUCCESS;
 
                 size = pad_mem_size(size);
-                //fprintf(stderr, "[Malloc] %lu\n", size);
 
                 pthread_mutex_lock(&lock);
                 if(malloc_head == NULL)
@@ -119,7 +88,6 @@ void *mm_malloc_ll(size_t size)
                         return NULL;
                 }
 
-                //print_free_blocks();
                 ptr = req_free_mem(size);
                 if(ptr == NULL)
                 {
@@ -129,11 +97,10 @@ void *mm_malloc_ll(size_t size)
                 if(status == ERROR)
                 {
                         printf("Failure to allocate.\n");
-                        return NULL;
                         pthread_mutex_unlock(&lock);
+                        return NULL;
                 }
 
-                sanity_free_head();
                 zero_mem(ptr);
                 pthread_mutex_unlock(&lock);
                 return ptr;
@@ -177,12 +144,9 @@ void *mm_realloc_ll(void *ptr, size_t size)
 
 void mm_free_ll(void *ptr)
 {
-        ////printf("head pointed to %p\n", malloc_head->next_free);
-        ////printf("call to free on %p\n", get_header(ptr));
         pthread_mutex_lock(&lock);
 
         MM_node *node = get_header(ptr);
-        //fprintf(stderr, "[Free] %lu\n", node->size);
 
         // Issue because next_free needs to be set to NULL when it is USED
         if(node->next_free != NULL)
@@ -193,7 +157,6 @@ void mm_free_ll(void *ptr)
 
         sanity_free_head();
         pthread_mutex_unlock(&lock);
-        return;
 }
 //////////////////////// {B} CORE FUNCTIONS  ////////////////////////
 
@@ -203,17 +166,14 @@ void mm_free_ll(void *ptr)
 //////////////////////// {C} CORE HELPERS ////////////////////////
 /*
  * Initializes malloc_head / tail from first call to malloc.
- * Sbrks for initial memory. Returns ERROR if sbrk fails.
+ * Mmaps for initial memory. Returns ERROR if mmap fails.
  */
 int initialize(size_t req_mem_size)
 {
         void *addr;
-        //printf("First call to mm_alloc. Node header size: %d\n", NODE_HEADER_SIZE);
-
         req_mem_size = get_mem_size(req_mem_size);
 
-        //printf("allocating %lu bytes of memory...\n", req_mem_size);
-        if ((addr = mmap(NULL, req_mem_size, prot, flags, -1, 0)) == MAP_FAILED)
+        if ((addr = mmap(NULL, req_mem_size, MMAP_PROT, MMAP_FLAGS, -1, 0)) == MAP_FAILED)
         {
                 return ERROR;
         }
@@ -226,7 +186,6 @@ int initialize(size_t req_mem_size)
                 malloc_head->size = 0;
                 malloc_tail->next_free = NULL;
                 malloc_tail->size = req_mem_size - 2 * NODE_HEADER_SIZE;
-                //printf("heap bottom: %p, %p,  %li\n", heap_bottom, malloc_head, (size_t)heap_bottom % 8);
 
                 return SUCCESS;
         }
@@ -249,16 +208,14 @@ void *req_free_mem(size_t req_size)
         {
                 if(cur_node->status == USED)
                 {
-                        //printf("DANGER THIS SHOULD NEVER BE PRINTED\n");
                         mm_malloc_had_a_problem();
                 }
-                // We have enough memory in this chunk to split it into two pieces
 
+                // We have enough memory in this chunk to split it into two pieces
                 if(cur_node->size > req_size + SPLIT_MINIMUM)
                 {
                         MM_node *new_node = split_node(cur_node, req_size);
                         prev_node->next_free = new_node;
-                        //printf("Split: old node with size %lu, split node with size %lu\n", cur_node->size, new_node->size);
 
                         return (void *)((char *)cur_node + NODE_HEADER_SIZE);
                 }
@@ -267,7 +224,6 @@ void *req_free_mem(size_t req_size)
                 {
                         cur_node->status = USED;
                         cur_node->next_free = NULL;
-
                         prev_node->next_free = cur_node->next_free;
 
                         return (void *)((char *)cur_node + NODE_HEADER_SIZE);
@@ -288,12 +244,9 @@ int add_new_mem(size_t size)
         MM_node *new_node;
 
         size = get_mem_size(size) + NODE_HEADER_SIZE;
-        ////printf("allocating %lu bytes of memory...\n", size);
-        //printf("%p, %p", sbrk(0), (char *)malloc_tail + malloc_tail->size + NODE_HEADER_SIZE);
 
-        if ((addr = mmap(NULL, size, prot, flags, -1, 0)) == MAP_FAILED)
+        if ((addr = mmap(NULL, size, MMAP_PROT, MMAP_FLAGS, -1, 0)) == MAP_FAILED)
         {
-                // unable to sbrk successfully
                 return ERROR;
         }
         else
@@ -302,8 +255,8 @@ int add_new_mem(size_t size)
                 new_node->status = FREE;
                 new_node->size = size;
                 append_node(new_node);
-
                 malloc_tail = new_node;
+
                 return SUCCESS;
         }
 }
@@ -319,7 +272,6 @@ MM_node *split_node(MM_node *node, size_t req_size)
 {
         if(req_size + NODE_HEADER_SIZE > node->size)
         {
-                //printf("DANGER THIS SHOULD NEVER BE PRINTED\n");
                 mm_malloc_had_a_problem();
         }
 
@@ -411,11 +363,6 @@ void zero_mem(void *ptr)
         MM_node *node = get_header(ptr);
         memset((char *)node + NODE_HEADER_SIZE, 0, node->size);
 
-}
-
-MM_node *get_next(MM_node *node)
-{
-        return (MM_node *)((char *)node + NODE_HEADER_SIZE + node->size);
 }
 //////////////////////// {D} UTILITIES ////////////////////////
 

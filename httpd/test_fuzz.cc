@@ -22,7 +22,7 @@ using namespace std;
 #include "mm_alloc.h"
 
 /* Number of test iterations. */
-const int ROUNDS = 100;
+const int ROUNDS = 1000;
 
 /* Maximum size of the pointer store. */
 const size_t NPTRS = 1000;
