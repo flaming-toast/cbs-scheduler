@@ -32,3 +32,11 @@ Feature: Basic browsing functions with Capybara
                 When I visit "/last_year.html"
                 Then I should see last year
                 Then I should not see the current year
+
+        Scenario: Test browser caching returns correct response on first request
+                When I visit "/test_cache.html"
+                Then I should get response code 200
+
+        Scenario: Test browser caching returns correct response on second request
+                When I visit "/test_cache.html"
+                Then I should get response code 304
