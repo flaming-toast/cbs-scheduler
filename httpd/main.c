@@ -45,8 +45,8 @@ int main(int argc, char **argv)
         }
 
         /* Create N threads, where N is the number of cores */
-        //    num_threads = get_nprocs();
-        num_threads = 2;
+        num_threads = get_nprocs();
+        //num_threads = 2;
         pthread_t * thread = malloc(sizeof(pthread_t)*num_threads);
 
         for (i = 0; i < num_threads; i++) {
@@ -60,7 +60,10 @@ int main(int argc, char **argv)
         }
 
         /* Now that each thread should be running the event loop, we wait... */
-        pthread_join(thread[0], NULL);
+        for (i = 0; i < num_threads; i++) {
+
+        	pthread_join(thread[i], NULL);
+        }
 
         return 0;
 }
@@ -150,7 +153,7 @@ int event_loop(struct http_server *server) {
 						ret = process_session_data(session);
 						if (ret < 0) {
 							perror("process_session_data failed");
-							//	abort();
+							abort();
 						}
 						//					close(session->fd);
 					} // We got notified but the session was not ready for reading???
@@ -158,6 +161,7 @@ int event_loop(struct http_server *server) {
 					/* We are done processing this session fd for now. Release it. */
 					pthread_mutex_unlock(&session->fd_lock);
 				}
+				pfree(session);
     		}
     	}
     }
