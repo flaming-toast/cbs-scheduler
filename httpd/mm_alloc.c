@@ -6,6 +6,7 @@
  */
 
 
+#include <sys/mman.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -81,6 +82,8 @@ const int     NODE_HEADER_SIZE  = sizeof(MM_node);
 const int     BLOCK_HEADER_SIZE  = sizeof(MM_block);
 const int     SPLIT_MINIMUM     = 2 * sizeof(MM_node);
 
+int prot = (PROT_READ | PROT_WRITE);
+int flags = (MAP_ANONYMOUS | MAP_PRIVATE);
 MM_node       *malloc_head      = NULL;
 MM_node       *malloc_tail      = NULL;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -204,25 +207,21 @@ void mm_free_ll(void *ptr)
  */
 int initialize(size_t req_mem_size)
 {
-        void *heap_bottom;
+        void *addr;
         //printf("First call to mm_alloc. Node header size: %d\n", NODE_HEADER_SIZE);
 
         req_mem_size = get_mem_size(req_mem_size);
 
         //printf("allocating %lu bytes of memory...\n", req_mem_size);
-        if((heap_bottom = sbrk(req_mem_size)) == NULL)
+        if ((addr = mmap(NULL, req_mem_size, prot, flags, -1, 0)) == MAP_FAILED)
         {
                 return ERROR;
         }
         else
         {
-
-                heap_bottom = align_addr(heap_bottom);
-                // TODO on address align heap_bottom - req_mem_size may spill over top of heap
-                // free head points to a dummy first node of size 0
-                malloc_head = construct_node((char *)heap_bottom - req_mem_size);
+                malloc_head = construct_node(addr);
                 // the actual first node, so malloc_head will always point to a 'free node'
-                malloc_tail = construct_node((char *)heap_bottom - req_mem_size + NODE_HEADER_SIZE);
+                malloc_tail = construct_node(addr + NODE_HEADER_SIZE);
                 malloc_head->next_free = malloc_tail;
                 malloc_head->size = 0;
                 malloc_tail->next_free = NULL;
@@ -251,10 +250,6 @@ void *req_free_mem(size_t req_size)
                 if(cur_node->status == USED)
                 {
                         //printf("DANGER THIS SHOULD NEVER BE PRINTED\n");
-                        mm_malloc_had_a_problem();
-                }
-                else if((long unsigned)cur_node < (long unsigned)prev_node)
-                {
                         mm_malloc_had_a_problem();
                 }
                 // We have enough memory in this chunk to split it into two pieces
@@ -289,28 +284,21 @@ void *req_free_mem(size_t req_size)
 
 int add_new_mem(size_t size)
 {
-        void *heap_bottom;
+        void *addr;
         MM_node *new_node;
 
-        size = get_mem_size(size);
+        size = get_mem_size(size) + NODE_HEADER_SIZE;
         ////printf("allocating %lu bytes of memory...\n", size);
         //printf("%p, %p", sbrk(0), (char *)malloc_tail + malloc_tail->size + NODE_HEADER_SIZE);
 
-        heap_bottom = sbrk(size + NODE_HEADER_SIZE);
-        if(heap_bottom == NULL)
+        if ((addr = mmap(NULL, size, prot, flags, -1, 0)) == MAP_FAILED)
         {
                 // unable to sbrk successfully
                 return ERROR;
         }
         else
         {
-                //printf("heap_bottom %p", sbrk(0));
-                if((long unsigned)((char *)malloc_tail + NODE_HEADER_SIZE + malloc_tail->size + NODE_HEADER_SIZE + size) > (long unsigned)sbrk(0))
-                        mm_malloc_had_a_problem();
-
-
-                // TODO on address align heap_bottom - req_mem_size may spill over top of heap
-                new_node = construct_node((char *)malloc_tail + NODE_HEADER_SIZE + malloc_tail->size);
+                new_node = construct_node(addr);
                 new_node->status = FREE;
                 new_node->size = size;
                 append_node(new_node);
@@ -400,22 +388,6 @@ MM_node *construct_node(void *addr)
 size_t get_mem_size(size_t req_mem_size)
 {
         return INIT_MEM_SIZE * (req_mem_size / INIT_MEM_SIZE + 1);
-}
-
-/*
- * Returns the closest address that is a multiple of 8 to the provided address.
- */
-void *align_addr(void *addr)
-{
-        if((unsigned long)addr % 8 != 0)
-        {
-                // TODO
-                //printf("Memory was not aligned.\n");
-                mm_malloc_had_a_problem();
-                return addr;
-        } else {
-                return addr;
-        }
 }
 
 MM_node *get_header(void *ptr)

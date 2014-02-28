@@ -4,14 +4,13 @@
  * Here's a basic fuzz tester for mm_alloc. It isn't necessarily compatible
  * with libc malloc.
  */
+// old
 
 #ifdef MM_TEST
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-
-#include <pthread.h>
 
 #include <vector>
 #include <stdexcept>
@@ -25,12 +24,6 @@ using namespace std;
 /* Number of test iterations. */
 const int ROUNDS = 100;
 
-/* Maximum number of test threads. */
-const int MAX_THREADS = 16;
-
-static pthread_t pthread_vector[MAX_THREADS];
-static int pthread_vector_size = 0;
-
 /* Maximum size of the pointer store. */
 const size_t NPTRS = 1000;
 
@@ -38,11 +31,7 @@ const size_t NPTRS = 1000;
 const size_t MAX_SIZE = 1 << 10;
 
 /* (Pointer, Allocation Size) store. */
-//static vector< pair<char*, size_t> > ptrs;
-static pair<char*, size_t> ptrs[MAX_THREADS][NPTRS];
-static size_t ptrs_sizes[MAX_THREADS];
-
-static int thread_nums[MAX_THREADS];
+static vector< pair<char*, size_t> > ptrs;
 
 static char magic(size_t n)
 {
@@ -50,14 +39,15 @@ static char magic(size_t n)
 }
 
 /* Add a new pointer. */
-static void genptr(int thread_num)
+static void genptr()
 {
-    size_t n = 1 + (((size_t) rand()) % MAX_SIZE);
+    size_t n = ((size_t) rand()) % MAX_SIZE;
+    if(n == 0)
+    {
+            return;
+    }
     char* p = (char*) mm_malloc(n);
-    size_t s = ptrs_sizes[thread_num];
 
-    if ((uint64_t)p % 4 != 0) {
-        printf("%lu %d\n ss\n ",(unsigned long)p, thread_num); exit(1);}
     CU_ASSERT(p != NULL);
     CU_ASSERT(((uint64_t) (p-4)) % 4 == 0);
 
@@ -69,96 +59,59 @@ static void genptr(int thread_num)
         p[i] = magic(i);
     }
 
-    ptrs[thread_num][s] = pair<char*, size_t>(p, n);
-    ptrs_sizes[thread_num]++;
+    ptrs.push_back(pair<char*, size_t>(p, n));
 }
 
 /* Remove and free a random pointer. */
-void rmptr(int thread_num)
+void rmptr()
 {
-    size_t s = ptrs_sizes[thread_num];
+    size_t s = ptrs.size();
     size_t idx = ((size_t) rand()) % s;
 
-    char* p = ptrs[thread_num][idx].first;
-    size_t size = ptrs[thread_num][idx].second;
+    char* p = ptrs[idx].first;
+    size_t size = ptrs[idx].second;
 
     for (size_t i=0; i < size; ++i) {
         CU_ASSERT(p[i] == magic(i));
     }
     mm_free(p);
 
-    ptrs[thread_num][idx].first = ptrs[thread_num][s - 1].first;
-    ptrs[thread_num][idx].second = ptrs[thread_num][s - 1].second;
-    //ptrs[thread_num][s - 1] = NULL;
-    ptrs_sizes[thread_num]--;
+    ptrs[idx] = ptrs[s - 1];
+    ptrs.pop_back();
 }
 
 /* Have exactly N pointers in the store. */
-void fixup_pointers(size_t N, int thread_num)
+void fixup_pointers(size_t N)
 {
-    while (ptrs_sizes[thread_num] < N) {
-        genptr(thread_num);
+    while (ptrs.size() < N) {
+        genptr();
     }
 
-    while (ptrs_sizes[thread_num] > N) {
-        rmptr(thread_num);
+    while (ptrs.size() > N) {
+        rmptr();
     }
 }
 
 int init_fuzz(void)
 {
-    int j;
     srand(0);
-    for (j = 0; j < MAX_THREADS; j++)
-        thread_nums[j] = -1;
+    ptrs.reserve(NPTRS);
     return 0;
 }
 
 int clean_fuzz(void)
 {
-    int j;
-    for (j = 0; j < MAX_THREADS; j++)
-      if (thread_nums[j] != -1)
-        pthread_cancel(pthread_vector[j]);
+    ptrs.clear();
     return 0;
-}
-
-void *per_thread_pointers(void *thread_num_ptr)
-{
-    size_t N = 1 + (((size_t) rand()) % NPTRS);
-    int thread_num = *((int *)thread_num_ptr);
-    fixup_pointers(N, thread_num);
-    return NULL;
 }
 
 void test(void)
 {
-    int j;
-    for (int i = 0; i < ROUNDS; ++i)
-    {
-        //size_t N = 1 + (((size_t) rand()) % NPTRS);
-        //fixup_pointers(N);
-        int total_threads = 1 + (((int) rand()) % MAX_THREADS);
-        for (j = 0; j < total_threads; j++)
-        {
-            thread_nums[j] = j;
-            pthread_t new_thread;
-            pthread_create(&new_thread, NULL, per_thread_pointers, &thread_nums[j]);
-            pthread_vector[pthread_vector_size] = new_thread;
-            pthread_vector_size++;
-        }
-        for (j = 0; j < pthread_vector_size; j++)
-        {
-            if (pthread_join(pthread_vector[j], NULL))
-                CU_ASSERT(false);  /* Something went wrong joining */
-            thread_nums[j] = -1;
-        }
-        pthread_vector_size = 0;
+    for (int i=0; i < ROUNDS; ++i) {
+        size_t N = ((size_t) rand()) % NPTRS;
+        fixup_pointers(N);
     }
-    for (j = 0; j < MAX_THREADS; j++)
-    {
-        fixup_pointers(0, j);
-    }
+    fixup_pointers(0);
     CU_ASSERT(true);
 }
 
@@ -187,3 +140,4 @@ int main()
 }
 
 #endif /* MM_TEST */
+

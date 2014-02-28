@@ -47,7 +47,6 @@ void coalesce_right(MM_node *node, int times_coalesced);
 // {D} UTILITIES //
 MM_node *construct_node(void *addr);
 size_t get_mem_size(size_t req_mem_size);
-void *align_addr(void *addr);
 MM_node *get_header(void *ptr);
 size_t pad_mem_size(size_t size);
 MM_node *get_next(MM_node *node);
