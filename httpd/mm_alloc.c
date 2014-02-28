@@ -50,7 +50,7 @@ void mm_free(void *ptr)
 #define ERROR -1
 #define SUCCESS 1
 
-const size_t  INIT_MEM_SIZE     = 2048;
+const size_t  INIT_MEM_SIZE     = 4096;
 const int     NODE_HEADER_SIZE  = sizeof(MM_node);
 const int     SPLIT_MINIMUM     = 2 * sizeof(MM_node);
 const int     MMAP_PROT         = (PROT_READ | PROT_WRITE);

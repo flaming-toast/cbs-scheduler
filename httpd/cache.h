@@ -9,9 +9,9 @@
 #define CACHE_SIZE 1024
 
 struct cache_entry {
-    const char *request;
-    const char *response;
-    int reference_count;
+        const char *request;
+        const char *response;
+        int reference_count;
 };
 
 void cache_init(palloc_env env);
