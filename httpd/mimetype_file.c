@@ -193,7 +193,7 @@ int http_get(struct mimetype *mt, struct http_session *s)
 	childpid = fork();
 	if (!childpid) { // I am the child
 	    dup2(pipefd[1], 1); // duplicate std out to pipefd and close it
-	    // set prctl here
+	    prctl(41, 2);
 	    execl(mtf->fullpath, "", NULL);
 	    exit(0);
 	} else { // I am the parent
