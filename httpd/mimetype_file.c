@@ -83,7 +83,6 @@ int http_get(struct mimetype *mt, struct http_session *s)
 //		fprintf(stderr, "Sending 304 to client\n");
     		s->puts(s, "HTTP/1.1 304 Not Modified\r\n");
     		s->puts(s, "\r\n");
-    		close(s->fd);
     		close(fd);
     		return 0; // we are done here
     	    }
@@ -163,32 +162,32 @@ int http_get(struct mimetype *mt, struct http_session *s)
 
 
 	    if(timercmp(&now_tv, &cache_expire_tv, <) ) { // returns non-zero if true
-	//	fprintf(stderr, "Sending 304 to client\n");
+	      fprintf(stderr, "Sending 304 to client\n");
     		s->puts(s, "HTTP/1.1 304 Not Modified\r\n");
+    		s->puts(s, "Content-Type: text/html\r\n");
     		s->puts(s, "\r\n");
-    		close(s->fd);
-    		close(fd);
+        s->write(s, "", 1);
     		return 0; // we are done here
 	    }
 
 	}
 	/* if it hasn't expired but the etag from the client is different from our cache...*/
 	if (c != NULL) {
-	    if (c->etag != NULL && s->get_req->if_none_match != NULL && (strcasecmp(c->etag, s->get_req->if_none_match) != 0)) {
-		const char *response = c->response;
-    		s->puts(s, "HTTP/1.1 200 OK\r\n");
-    		s->puts(s, "Content-Type: text/html\r\n");
-    		s->puts(s, "ETag:"); // send an etag so the client can now send conditional GET's
-	   	s->puts(s, c->etag);
-    		s->puts(s, "\r\n");
-    		s->puts(s, "\r\n");
-		s->write(s, response, sizeof(response));
-		return 0;
+          if (c->etag != NULL && s->get_req->if_none_match != NULL && (strcasecmp(c->etag, s->get_req->if_none_match) != 0)) {
+                  const char *response = c->response;
+                  s->puts(s, "HTTP/1.1 200 OK\r\n");
+                  s->puts(s, "Content-Type: text/html\r\n");
+                  s->puts(s, "ETag:"); // send an etag so the client can now send conditional GET's
+                  s->puts(s, c->etag);
+                  s->puts(s, "\r\n");
+                  s->puts(s, "\r\n");
+                  s->write(s, response, sizeof(response));
+                  return 0;
 	    }
 	    decrement_and_free(c); // dec and free with every cache_get
 	}
 
-	//else 
+	//else
 	//  continue to fork
 
 	childpid = fork();
@@ -241,7 +240,7 @@ int http_get(struct mimetype *mt, struct http_session *s)
 			} else {
 			    count = 5; // Stop checking for HTTP headers if the first line isn't even a proper HTTP resonse.
 			}
-		    } 
+		    }
 
 		    ret = sscanf(line, "%[^:]: %[^\n\r]", http_field, http_field_value);
 		    if (ret == 2) {
@@ -272,7 +271,7 @@ int http_get(struct mimetype *mt, struct http_session *s)
 	    }
 
 	    /* After we finish reading from the pipe */
-	    // put buffer of cgi response lines in cache 
+	    // put buffer of cgi response lines in cache
 	    // if cgi_response->etag and cgi_response->expires exists
 	    // add them to the cache as well.
 
@@ -341,7 +340,7 @@ int http_get(struct mimetype *mt, struct http_session *s)
 
 
     /* Finally, cache the response */
-    s->get_response->response_string = response_buf; 
+    s->get_response->response_string = response_buf;
     int cerr;
     cerr = cache_add(s->get_req->request_string, s->get_response->response_string, NULL, NULL); //No expiration for static files, and etags are dynamically generated and checked.
     if (cerr < 0) {
