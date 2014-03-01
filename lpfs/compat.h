@@ -39,7 +39,11 @@ typedef uint8_t u8;
 typedef uint8_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
+typedef uint32_t fmode_t;
+
+#ifdef _NEED_UMODE_T
 typedef uint32_t umode_t;
+#endif
 
 #ifdef NDEBUG
 #error Setting NDEBUG breaks BUG_ON, please disable it.
@@ -105,6 +109,8 @@ typedef uint32_t umode_t;
 #define FS_BINARY_MOUNTDATA     2
 #define FS_USERNS_MOUNT		8
 
+#ifndef FMODE_READ
+
 /* file is open for reading */
 #define FMODE_READ              ((u32)0x1)
 /* file is open for writing */
@@ -129,11 +135,17 @@ typedef uint32_t umode_t;
 /* 64bit hashes as llseek() offset (for directories) */
 #define FMODE_64BITHASH         ((u32)0x400)
 
+#endif /* FMODE_READ */
+
+#ifndef S_IRWXUGO
+
 #define S_IRWXUGO       (S_IRWXU|S_IRWXG|S_IRWXO)
 #define S_IALLUGO       (S_ISUID|S_ISGID|S_ISVTX|S_IRWXUGO)
 #define S_IRUGO         (S_IRUSR|S_IRGRP|S_IROTH)
 #define S_IWUGO         (S_IWUSR|S_IWGRP|S_IWOTH)
 #define S_IXUGO         (S_IXUSR|S_IXGRP|S_IXOTH)
+
+#endif /* S_IRWXUGO */
 
 #define MAX_LFS_FILESIZE ((u64) 0x7fffffffffffffffLL)
 #define PAGE_CACHE_SHIFT 12
