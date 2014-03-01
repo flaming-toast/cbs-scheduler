@@ -309,7 +309,7 @@ void append_node(MM_node *new_node)
         // iterate to end of free list
         MM_node *prev = malloc_head;
         MM_node *cur = malloc_head->next_free;
-        while(cur != NULL)
+        while(cur != NULL && (long unsigned)cur < (long unsigned)new_node)
         {
                 prev = cur;
                 cur = cur->next_free;
@@ -323,7 +323,6 @@ void append_node(MM_node *new_node)
            as noted in test_free_2 in test_mm.c. This, along with changing the
            INIT_MEM_SIZE, should make it perform nearly as well as libc's malloc.
          */
-        /*
         if ((MM_node *)((char *)new_node + NODE_HEADER_SIZE + new_node->size) == cur)
         {
                 new_node->next_free = cur->next_free;
@@ -337,7 +336,6 @@ void append_node(MM_node *new_node)
                         prev->size += NODE_HEADER_SIZE + new_node->size;
                 }
         }
-        */
 }
 
 //////////////////////// {C} CORE HELPERS ////////////////////////
