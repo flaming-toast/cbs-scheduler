@@ -9,3 +9,8 @@
 /qemu/pixman/test/alphamap
 /qemu/pixman/test/a1-trap-test
 tags
+# Various formats that don't belong in version control
+*.o
+*.img
+*.cmd
+*.gz

@@ -1,0 +1,20 @@
+#!/bin/sh
+
+mount -t proc proc /proc
+mount -t devpts devpts /dev/pts
+mount -t sysfs sysfs /sys
+echo 1 > /proc/sys/kernel/sysrq
+echo /sbin/mdev > /proc/sys/kernel/hotplug
+
+echo ":: Hotplugging devices..."
+mdev -s
+
+# Inform the tester that we've booted
+sleep 1s
+echo
+echo "[cs194-24] init running"
+echo
+ash
+
+# Force a power down
+poweroff -f
