@@ -11,7 +11,7 @@ LC_COLLATE=C
 LC_NUMERIC=C
 export LC_COLLATE LC_NUMERIC
 
-CFLAGS=-Wall -Werror -pthread
+CFLAGS=-Wall -pthread #-Werror
 
 # By default "make" will build the first target -- here we're just
 # calling it "all".
@@ -37,9 +37,12 @@ linux:
 all: linux
 
 .PHONY: qemu
-qemu:
+qemu: qemu/qemu-options.def
 	$(MAKE) -C qemu
 all: qemu
+
+qemu/qemu-options.def: qemu/configure
+	cd qemu && ./configure --target-list=x86_64-softmmu
 
 # We can't track dependencies through those recursive builds, but we
 # can kind of do it -- this always rebuilds the subprojects, but only

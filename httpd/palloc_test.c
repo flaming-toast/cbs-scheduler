@@ -5,13 +5,13 @@
 #ifdef PALLOC_TEST
 int main(int argc, char **argv)
 {
-    void *parent;
-    int *data;
+        void *parent;
+        int *data;
 
-    parent = palloc_init("test");
-    data = palloc(parent, int);
-    pfree(data);
+        parent = palloc_init("test");
+        data = palloc(parent, int);
+        pfree(data);
 
-    return 0;
+        return 0;
 }
 #endif

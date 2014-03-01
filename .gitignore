@@ -8,3 +8,4 @@
 # QEMU appears to be missing some submodule ignores
 /qemu/pixman/test/alphamap
 /qemu/pixman/test/a1-trap-test
+tags
