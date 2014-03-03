@@ -19,16 +19,16 @@ LPFS_OBJS = $(patsubst lpfs/%.c, .lpfs/%.o, $(wildcard lpfs/*.c))
 UMODE_FLAG = $(shell grep -q umode_t /usr/include/asm-generic/types.h \
 	     || echo "-D_NEED_UMODE_T")
 LPFS_CFLAGS = -Wall -Wextra -std=gnu99 -g -D_USERSPACE -I. $(UMODE_FLAG)
-LPFS_LDFLAGS = -lpthread
+LPFS_LDFLAGS = -lpthread -lrt
 
 .lpfs/%.o: lpfs/%.c $(LPFS_HDRS)
 	gcc $(LPFS_CFLAGS) -c -o $@ $<
 
 .lpfs/mkfs-lp: userspace/mkfs-lp.c .lpfs/compat.o 
-	gcc $(LPFS_CFLAGS) $(LPFS_LDFLAGS) -o $@ $^ 
+	gcc $(LPFS_CFLAGS) -o $@ $^ $(LPFS_LDFLAGS) 
 
 .lpfs/fsdb: userspace/fsdb.c $(LPFS_OBJS)
-	gcc $(LPFS_CFLAGS) $(LPFS_LDFLAGS) -o $@ $^
+	gcc $(LPFS_CFLAGS) -o $@ $^ $(LPFS_LDFLAGS) 
 
 .lpfs/disk.img: .lpfs/mkfs-lp 
 	dd if=/dev/zero of=.lpfs/disk.img bs=1M count=128
