@@ -16,7 +16,9 @@
 
 LPFS_HDRS = $(wildcard lpfs/*.h) $(wildcard userspace/*.h)
 LPFS_OBJS = $(patsubst lpfs/%.c, .lpfs/%.o, $(wildcard lpfs/*.c))
-LPFS_CFLAGS = -Wall -Wextra -std=gnu99 -g -D_USERSPACE -I.
+UMODE_FLAG = $(shell grep -q umode_t /usr/include/asm-generic/types.h \
+	     || echo "-D_NEED_UMODE_T")
+LPFS_CFLAGS = -Wall -Wextra -std=gnu99 -g -D_USERSPACE -I. $(UMODE_FLAG)
 LPFS_LDFLAGS = -lpthread
 
 .lpfs/%.o: lpfs/%.c $(LPFS_HDRS)
