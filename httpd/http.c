@@ -137,78 +137,82 @@ int listen_on_port(short port)
 
 struct http_session *wait_for_client(struct http_server *serv)
 {
-        struct http_session *sess;
-        struct sockaddr_in addr;
-        socklen_t addr_len;
+    struct http_session *sess;
+    struct sockaddr_in addr;
+    socklen_t addr_len;
 
-        sess = palloc(serv, struct http_session);
-        if (sess == NULL)
-                return NULL;
+    sess = palloc(serv, struct http_session);
+    if (sess == NULL)
+	return NULL;
 
-        sess->gets = &http_gets;
-        sess->puts = &http_puts;
-        sess->write = &http_write;
-        sess->server = serv;
+    sess->gets = &http_gets;
+    sess->puts = &http_puts;
+    sess->write = &http_write;
+    sess->server = serv;
 
-        sess->get_req = palloc(serv, struct http_get_request); // not sure if i initialized this correctly?
-        if (sess->get_req == NULL)
-                return NULL;
+    sess->get_req = palloc(sess, struct http_get_request); 
+    sess->get_response = palloc(sess, struct http_get_response); 
+    sess->get_response->response_string = palloc_array(sess, char, DEFAULT_BUFFER_SIZE);
+    sess->get_req->request_string = palloc_array(sess, char, DEFAULT_BUFFER_SIZE);
 
-        /* char array of size 256, sess context */
-        sess->buf = palloc_array(sess, char, DEFAULT_BUFFER_SIZE);
-        /* zero it */
-        memset(sess->buf, '\0', DEFAULT_BUFFER_SIZE);
-        sess->buf_size = DEFAULT_BUFFER_SIZE;
-        sess->buf_used = 0;
+    if (sess->get_req == NULL)
+	return NULL;
 
-        addr_len = sizeof(addr);
+	/* char array of size 256, sess context */
+    sess->buf = palloc_array(sess, char, DEFAULT_BUFFER_SIZE);
+    /* zero it */
+    memset(sess->buf, '\0', DEFAULT_BUFFER_SIZE);
+    sess->buf_size = DEFAULT_BUFFER_SIZE;
+    sess->buf_used = 0;
 
-        /* Wait for a client to connect. */
-        /* Make sess->fd non-blocking, add to epoll set */
-        sess->fd = accept(serv->fd, (struct sockaddr *)&addr, &addr_len);
-        long tid = syscall(SYS_gettid);
-        fprintf(stderr, "Thread %ld: accept() returns sess->fd = %d\n", tid, sess->fd);
+    addr_len = sizeof(addr);
 
-        if (sess->fd < 0)
-        {
-                perror("wait_for_client(): Unable to accept on client socket");
-                pfree(sess);
-                return NULL;
-        }
+    /* Wait for a client to connect. */
+    /* Make sess->fd non-blocking, add to epoll set */
+    sess->fd = accept(serv->fd, (struct sockaddr *)&addr, &addr_len);
+    long tid = syscall(SYS_gettid);
+    fprintf(stderr, "Thread %ld: accept() returns sess->fd = %d\n", tid, sess->fd);
 
-        int flags = fcntl(sess->fd, F_GETFL, 0);
-        if (fcntl(sess->fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-                perror("wait_for_client(): Unable to mark accept'd socket non-blocking");
-                pfree(sess);
-                return NULL;
-        }
+    if (sess->fd < 0)
+    {
+		perror("wait_for_client(): Unable to accept on client socket");
+		pfree(sess);
+		return NULL;
+    }
 
-        /* Set up epoll_event struct associated with this http_session */
-        /* Pointer to this http_session */
-        //	sess->event.data.ptr = http_event_new(serv, 1, sess);
-        sess->event.data.ptr = http_event_new(sess, 1, sess);
-        /* Flags to indicate what events we'll listen for on the accepted connection socket */
-        /* EPOLLONESHOT -- only one thread will get a notif and no other threads will for the time being... */
-        /* must reaarm in event loop */
-        sess->event.events = EPOLLIN | EPOLLET; // add EPOLLOUT when you write and get EAGAIN
-        /* Add to http_server's epoll instance, listen for events on sess->fd */
-        if (epoll_ctl(serv->efd, EPOLL_CTL_ADD, sess->fd, &sess->event) < 0) {
-                perror("epoll_ctl");
-                abort();
-        }
-        int count;
-        ioctl(sess->fd, FIONREAD, &count);
-        if (count > 0) {
-                int ret = process_session_data(sess);
-                if (ret < 0) {
-                        perror("process_session_data");
-                }
+    int flags = fcntl(sess->fd, F_GETFL, 0);
+    if (fcntl(sess->fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+		perror("wait_for_client(): Unable to mark accept'd socket non-blocking");
+		pfree(sess);
+		return NULL;
+	}
 
-        }
+	/* Set up epoll_event struct associated with this http_session */
+	/* Pointer to this http_session */
+//	sess->event.data.ptr = http_event_new(serv, 1, sess);
+	sess->event.data.ptr = http_event_new(sess, 1, sess);
+	/* Flags to indicate what events we'll listen for on the accepted connection socket */
+	/* EPOLLONESHOT -- only one thread will get a notif and no other threads will for the time being... */
+	/* must reaarm in event loop */
+    sess->event.events = EPOLLIN | EPOLLET; // add EPOLLOUT when you write and get EAGAIN
+    /* Add to http_server's epoll instance, listen for events on sess->fd */
+    if (epoll_ctl(serv->efd, EPOLL_CTL_ADD, sess->fd, &sess->event) < 0) {
+    	perror("epoll_ctl");
+    	abort();
+    }
+	int count;
+	ioctl(sess->fd, FIONREAD, &count);
+		if (count > 0) {
+		int ret = process_session_data(sess);
+			if (ret < 0) {
+				perror("process_session_data");
+			}
+    	
+    	}
 
-        palloc_destructor(sess, &close_session);
+    palloc_destructor(sess, &close_session);
 
-        return sess;
+    return sess;
 }
 
 int close_session(struct http_session *s)
@@ -245,7 +249,7 @@ const char *http_gets(struct http_session *s)
                                         s->buf_size - strlen(new) - 2);
                         s->buf_used -= strlen(new) + 2;
                         s->buf[s->buf_used] = '\0';
-                        fprintf(stderr, "Returning a line: %s\n", new);
+//                        fprintf(stderr, "Returning a line: %s\n", new);
                         return new;
                 }
 
