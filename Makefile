@@ -41,6 +41,8 @@ qemu: qemu/qemu-options.def
 	$(MAKE) -C qemu
 all: qemu
 
+# Apparently we can't cache configure because it does some dependency
+# checking.
 qemu/qemu-options.def: qemu/configure
 	cd qemu && ./configure --target-list=x86_64-softmmu
 
