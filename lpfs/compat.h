@@ -277,6 +277,24 @@ struct dentry {
 	struct qstr d_name;
 	struct inode *d_inode;
 	struct dentry *d_parent;
+
+	/* apparently uthash requires string keys to be in the struct itself? */
+	char *name; 
+	UT_hash_handle hh; // we want to hash dentries
+	struct dentry *d_child_ht;
+//	d_child_ht = NULL; // hash child names -> their dentries. *Must* be NULL initialized.
+
+};
+/* vfs.txt: A file object represents a file opened by a process. */
+struct file {
+	struct inode *i;
+	struct file_operations *f_op;
+	spinlock_t f_lock;
+	
+	/* Added in addition to vedant's suggested file struct */
+	struct dentry *d;
+	/* For open fd management...*/
+	UT_hash_handle hh;
 };
 
 enum {
