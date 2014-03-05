@@ -95,6 +95,7 @@ struct inode *ramfs_get_inode(struct super_block *sb,
 			inode->i_fop = &ramfs_file_operations;
 			break;
 		case S_IFDIR:
+			fprintf(stderr," inode is a directory inode");
 			inode->i_op = &ramfs_dir_inode_operations;
 			inode->i_fop = &simple_dir_operations;
 

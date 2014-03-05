@@ -502,11 +502,17 @@ struct dentry *d_make_root(struct inode *inode)
 		iput(inode);
 	} else {
 		d->d_inode = inode;
+		d->d_inode->i_mode |= S_IFDIR;
 	}
 	d->d_child_ht = NULL;
 	// no need to put root dentry in cache, as we already have a direct reference 
 	// to it in fsdb.d_root. 
 	// As new dentries are created under root, they should be added to the root's d_child_ht
+
+	// for statfs
+	// set d_sb so can be able to call d->d_sb->statfs (superblock operation)
+	d->d_sb = fsdb.sb;
+
 	return d;
 }
 
