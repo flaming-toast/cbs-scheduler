@@ -234,7 +234,7 @@ void lpfs_darray_destroy(struct lpfs_darray *d);
 
 /* Enable/disable a darray test which replaces the mount logic.
 #define __LPFS_DARRAY_TEST
- */
+*/
 
 #ifdef __LPFS_DARRAY_TEST
 int __lpfs_darray_test(struct super_block *sb, void *data, int silent);

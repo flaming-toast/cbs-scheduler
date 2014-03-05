@@ -3,6 +3,8 @@
 #ifndef MIMETYPE_FILE_H
 #define MIMETYPE_FILE_H
 
+#define _GNU_SOURCE
+
 #include "mimetype.h"
 
 struct mimetype_file

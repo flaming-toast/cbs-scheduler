@@ -16,6 +16,7 @@
 #include <sys/syscall.h>
 #include <stropts.h>
 #include <sys/ioctl.h>
+#include <sys/prctl.h>
 #include <signal.h>
 
 #include "cache.h"
@@ -23,8 +24,6 @@
 
 
 #define BUF_COUNT 4096
-#define _GNU_SOURCE
-#define __USE_XOPEN
 
 static int http_get(struct mimetype *mt, struct http_session *s);
 
@@ -83,7 +82,6 @@ int http_get(struct mimetype *mt, struct http_session *s)
 //		fprintf(stderr, "Sending 304 to client\n");
     		s->puts(s, "HTTP/1.1 304 Not Modified\r\n");
     		s->puts(s, "\r\n");
-    		close(fd);
     		return 0; // we are done here
     	    }
     	}
