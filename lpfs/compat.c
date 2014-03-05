@@ -487,11 +487,29 @@ struct dentry *d_alloc(struct dentry *parent, const struct qstr *name)
         return d;
 }
 
+/* Pilfered from the kernel with userspacey modifications */
 void d_instantiate(struct dentry *d, struct inode *inode)
 {
-        BUG_ON(!d);
-        BUG_ON(!inode);
-        (void) d;
+    BUG_ON(!d);
+    BUG_ON(!inode);
+    (void) d;
+    if (inode)
+        spin_lock(&inode->i_lock);
+
+    __d_instantiate(d, inode);
+
+    if (inode)
+        spin_unlock(&inode->i_lock);
+}
+
+void __d_instantiate(struct dentry *d, struct inode *inode){
+
+     spin_lock(&d->d_lock);
+     /* Add given dentry to inode's i_dentry list */
+     if (inode)
+                 hlist_add_head(&d->d_alias, &inode->i_dentry);
+     d->d_inode = inode;
+     spin_unlock(&d->d_lock);
 }
 
 struct dentry *d_make_root(struct inode *inode)
@@ -519,11 +537,27 @@ struct dentry *d_make_root(struct inode *inode)
 void dget(struct dentry *d)
 {
         (void) d;
+        if (d) {
+            	spin_lock(&d->d_lock);
+        	d->refcount++;
+            	spin_unlock(&d->d_lock);
+        }
+
 }
 
 void d_genocide(struct dentry *d)
 {
         (void) d;
+//        walk d->d_child_ht
+	  struct dentry *item_ptr;
+	  struct dentry *d_tmp;
+	  HASH_ITER(hh, d->d_child_ht, item_ptr, d_tmp) {
+	      spin_lock(&item_ptr->d_lock);
+	      item_ptr->refcount--;
+	      spin_unlock(&item_ptr->d_lock);
+	      d_genocide(item_ptr);
+
+	  }
 }
 
 void mount_disk(struct disk *d, char *path)

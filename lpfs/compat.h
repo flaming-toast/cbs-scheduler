@@ -255,6 +255,8 @@ struct inode {
 
 	/* This lock is used to sleep on the I_NEW bit in i_state. */
 	struct mutex __lock;
+	
+	struct hlist_head i_dentry;
 
 	UT_hash_handle hh;
 };
@@ -287,6 +289,12 @@ struct dentry {
 	UT_hash_handle hh; // we want to hash dentries
 	struct dentry *d_child_ht;
 //	d_child_ht = NULL; // hash child names -> their dentries. *Must* be NULL initialized.
+
+	/* list of alias inodes, for d_instantiate */
+	struct list_head d_alias;
+
+	/* dget increases this */
+	int refcount;
 
 
 };

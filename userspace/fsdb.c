@@ -161,6 +161,12 @@ void do_ls(char *cmd)
         int cmd_argc = 2;
         path = parse_cmd(cmd,cmd_argc);
 
+        if (path == NULL) {
+            puts("do_ls: Could not parse cmd");
+            return;
+        }
+
+
         struct dentry *d;
         d = dentry_lookup(path);
         if (d == NULL) {
@@ -371,7 +377,7 @@ void do_stat(char *cmd)
 	struct file *f;
 	HASH_FIND_INT(fd_ht, &fd_key, f);
 	if (f == NULL) {
-		puts("do_close: Invalid file descriptor");
+		puts("do_stat: Invalid file descriptor");
 	} else {
 	    // something like....
 	    // f->i->i_op->getattr(vfsmount, inode, kstat k);
@@ -415,7 +421,7 @@ void do_close(char *cmd)
 void do_exit(char *cmd)
 {
 	(void) cmd;
-	exit(0);
+	exit_lpfs(); // I think?
 }
 
 static struct {
