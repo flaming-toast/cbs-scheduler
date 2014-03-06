@@ -104,42 +104,42 @@ char *parse_cmd(char *cmd, int exp_argc) {
                 return NULL;
         }
 
-//        return SUCCESS;
-	return cmd_argv[1];
+	//        return SUCCESS;
+	return strdup(cmd_argv[1]);
 }
 
 /* return dentry of last component of the given path */
 /* so....basically the parent dentry */
 struct dentry *dentry_lookup(char *path) {
-/*
-    if (strcmp((path+(strlen(path)-1)), "/") == 0) {
-    	puts("It ends with a /");
-    	*(path+strlen(path)-1) = '\0';
-    }
-    puts(path);
-    */
+	/*
+    	   if (strcmp((path+(strlen(path)-1)), "/") == 0) {
+    	   puts("It ends with a /");
+    	 *(path+strlen(path)-1) = '\0';
+    	 }
+    	 puts(path);
+    	 */
 
 
-    char *token; 
-    struct dentry *d_tmp; // temp placeholder for parent dentry hash lookups
-    struct dentry *d = fsdb.d_root; // begin with the root dentry
+    	char *token; 
+    	struct dentry *d_tmp; // temp placeholder for parent dentry hash lookups
+    	struct dentry *d = fsdb.d_root; // begin with the root dentry
 
-    token = strtok(path, "/");
+    	char *tokenize_string = strdup(path);
+    	char delim[2] = "/";
+    	token = strtok(tokenize_string, "/");
 
-    while (token != NULL) {
-	/* Look up child dentry by name (token), and fill in d_tmp */    	
-    	HASH_FIND_STR(d->d_child_ht, token, d_tmp); 
-    	if (d_tmp == NULL) {
-    		return NULL; // invalid path!
+    	while (token != NULL) {
+		/* Look up child dentry by name (token), and fill in d_tmp */    	
+    		HASH_FIND_STR(d->d_child_ht, token, d_tmp); 
+    		if (d_tmp == NULL) {
+    	        	puts("returning null");
+    			return NULL; // invalid path!
+    		}
+    		d = d_tmp; // new parent dentry
+
+		token = strtok(NULL, delim);
     	}
-    	token = strtok(path, "/"); // next path component
-    	d = d_tmp; // new parent dentry
-
-	puts("token:");
-	puts(token);
-	token = strtok(NULL, "/");
-    }
-    return d;
+    	return d;
 }
 
 
@@ -156,14 +156,14 @@ void do_ls(char *cmd)
 	// get path dentry
 	// if dentry->mode is file just print the file name
 	// if mode is directory hash_itr over d_child_ht and print their names
-	
+
         char *path;
         int cmd_argc = 2;
         path = parse_cmd(cmd,cmd_argc);
 
         if (path == NULL) {
-            puts("do_ls: Could not parse cmd");
-            return;
+            	puts("do_ls: Could not parse cmd");
+            	return;
         }
 
 
@@ -184,18 +184,18 @@ void do_ls(char *cmd)
         struct dentry *d_tmp;
 
         switch(d->d_inode->i_mode & S_IFMT) {
-            case S_IFREG:
-            	puts(path);
-            	break;
-            case S_IFDIR:
-            	puts("do_ls: path is a directory, listing children");
-            	HASH_ITER(hh, d->d_child_ht, item_ptr, d_tmp){
-            	    puts(item_ptr->name);
-            	}
-            	    break;
-            default:
-            	puts("do_ls: Cannot determine type of path");
-            	break;
+            	case S_IFREG:
+            		puts(path);
+            		break;
+            	case S_IFDIR:
+            		puts("do_ls: path is a directory, listing children");
+            		HASH_ITER(hh, d->d_child_ht, item_ptr, d_tmp){
+            	    		puts(item_ptr->name);
+            		}
+            	    	break;
+            	default:
+            		puts("do_ls: Cannot determine type of path");
+            		break;
         }
 }
 
@@ -216,9 +216,9 @@ void do_open(char *cmd)
         }
         // construct a struct file
         struct file open_file = {
-            .i = file_dentry->d_inode,
-            .d = file_dentry,
-            .fd = next_fd++
+            	.i = file_dentry->d_inode,
+            	.d = file_dentry,
+            	.fd = next_fd++
         };
 
 	//hash_add_int(head, keyfield name, value ptr)
@@ -238,11 +238,12 @@ void do_mkdir(char *cmd)
         path = parse_cmd(cmd,cmd_argc);
 
         // before we do anything else 
+
         struct dentry *check_exist;
 	check_exist = dentry_lookup(path); 
         if (check_exist != NULL) {
-       	 puts("do_mkdir: path already exists, cannot mkdir");
-       	 return;
+       	 	puts("do_mkdir: path already exists, cannot mkdir");
+       	 	return;
         }
 
      	char *new_dir_name = strdup(basename(path));
@@ -252,38 +253,41 @@ void do_mkdir(char *cmd)
      	puts("dirname of path:");
      	puts(rest_of_path);
 
-	
+
         struct dentry *parent_dentry;
         parent_dentry = dentry_lookup(rest_of_path);
         if (parent_dentry == NULL) {
-            puts("Error: Invalid path.");
-            return;
+            	puts("Error: Invalid path.");
+            	return;
         }
-        
+
 
 	/* Now that we have the parent dentry, construct one for the new subdirectory
 	 * we are making. 
 	 */
-        struct dentry *new_dir_dentry;
+	struct qstr p = QSTR_INIT(new_dir_name, sizeof(new_dir_name));
+        struct dentry *new_dir_dentry = d_alloc(NULL, (const struct qstr *) &p);
+        new_dir_dentry->d_parent = parent_dentry;
+	//new_dir_dentry->name = new_dir_name; // careful here...we use this as the key to parent_dentry->d_child_ht.
+	strcpy(new_dir_dentry->name,new_dir_name);
+
+	new_dir_dentry->d_child_ht = NULL; // must be NULL initialized
 	// This should call ramfs_mkdir.
 	// see man 2 stat for modes and macros for checking modes
-	// TODO segfaults here if i_op->mkdir hasn't been implemented yet
         parent_dentry->d_inode->i_op->mkdir(parent_dentry->d_inode, new_dir_dentry, S_IFDIR);  // screw permissions and just pass in type of file for mode param
         // If successful new_dir_dentry should have been instantiated with a new inode...
-        new_dir_dentry->d_parent = parent_dentry; // does d_instantiate do this?
-        struct qstr d_name_qstr = { 
-        	.len = sizeof(new_dir_name),
-        	.name = new_dir_name
-        };
-	new_dir_dentry->d_name = d_name_qstr;
-	new_dir_dentry->name = new_dir_name; // careful here...we use this as the key to parent_dentry->d_child_ht.
 
-//	HASH_ADD_KEYPTR(hh, hashtable location, string pointer as key(the child name), sizeof(new_dir_name), the value the key hashes to(struct dentry));
-	HASH_ADD_KEYPTR(hh, parent_dentry->d_child_ht, new_dir_name, sizeof(new_dir_name), new_dir_dentry);
+	//	HASH_ADD_KEYPTR(hh, hashtable location, string pointer as key(the child name), sizeof(new_dir_name), the value the key hashes to(struct dentry));
+	//	HASH_ADD_KEYPTR(hh, parent_dentry->d_child_ht, new_dir_dentry->name, sizeof(new_dir_dentry->name), new_dir_dentry);
+	HASH_ADD_STR(parent_dentry->d_child_ht, name, new_dir_dentry);
 
-	struct dentry *temp;
-	HASH_FIND_STR(parent_dentry->d_child_ht, "var", temp);
-	if (temp != NULL) puts("SUCCESSFULLY PUT NEW DENTRY");
+	struct dentry *temp = NULL;
+	HASH_FIND_STR(parent_dentry->d_child_ht, new_dir_dentry->name, temp);
+	if (temp != NULL) {
+	    	puts("SUCCESSFULLY PUT NEW DENTRY");
+	} else {
+	    	puts("Could not find new directory we just made...");
+	}
 }
 
 void do_read(char *cmd)
@@ -293,7 +297,7 @@ void do_read(char *cmd)
 	puts("Not implemented.");
 	//do_sync_read(struct file *filp, , char __user *buf, ssize_t len,  loff_t *pos);
 	// so some sort of fd->file mapping	
-	
+
 	//for nonexistent files, create them? 
 	//ramfs_mknod(inode of parent dir, dentry to fill, mode, 0);
 
@@ -323,16 +327,16 @@ void do_unlink(char *cmd)
 
         parent_dentry = dentry_lookup(rest_of_path);
         if (parent_dentry == NULL) {
-            puts("Error: Invalid path");
-            return;
+            	puts("Error: Invalid path");
+            	return;
         }
     	HASH_FIND_STR(parent_dentry->d_child_ht, file_to_remove, d_tmp); 
     	if (d_tmp == NULL) { // couldn't find that file in the parent dir 
-    	    puts("Could not delete requested file, it does not exist");
+    	    	puts("Could not delete requested file, it does not exist");
     	} else {
-    	   // parent directory inode is only needed to set inode's ctime and mtime
-    	   // d_tmp is the dentry associated with the file we want to unlink
-    	   parent_dentry->d_inode->i_op->unlink(parent_dentry->d_inode, d_tmp);
+    	   	// parent directory inode is only needed to set inode's ctime and mtime
+    	   	// d_tmp is the dentry associated with the file we want to unlink
+    	   	parent_dentry->d_inode->i_op->unlink(parent_dentry->d_inode, d_tmp);
     	}
 }
 
@@ -379,10 +383,10 @@ void do_stat(char *cmd)
 	if (f == NULL) {
 		puts("do_stat: Invalid file descriptor");
 	} else {
-	    // something like....
-	    // f->i->i_op->getattr(vfsmount, inode, kstat k);
-	    // then print kstat struct?
-	    // our simple_getattr could just give us inode->i_mode.
+	    	// something like....
+	    	// f->i->i_op->getattr(vfsmount, inode, kstat k);
+	    	// then print kstat struct?
+	    	// our simple_getattr could just give us inode->i_mode.
 	}
 }
 
@@ -411,9 +415,9 @@ void do_close(char *cmd)
 	if (f == NULL) {
 		puts("do_close: Invalid file descriptor");
 	} else {
-	    //will this work? do I need to pass in the original pointer I had in HASH_ADD_INT???
-	    HASH_DEL(fd_ht, f);
-	    puts("Deleted fd from fd_ht");
+	    	//will this work? do I need to pass in the original pointer I had in HASH_ADD_INT???
+	    	HASH_DEL(fd_ht, f);
+	    	puts("Deleted fd from fd_ht");
 	}
 
 }

@@ -285,8 +285,7 @@ struct dentry {
 	struct super_block *d_sb;
 
 	/* apparently uthash requires string keys to be in the struct itself? */
-	char *name;  // this will be the key to search this dentry's parent's d_child_ht
-	UT_hash_handle hh; // we want to hash dentries
+	char name[80]; // this will be the key to search this dentry's parent's d_child_ht
 	struct dentry *d_child_ht;
 //	d_child_ht = NULL; // hash child names -> their dentries. *Must* be NULL initialized.
 
@@ -295,6 +294,8 @@ struct dentry {
 
 	/* dget increases this */
 	int refcount;
+
+	UT_hash_handle hh; // make this struct hashable
 
 
 };
