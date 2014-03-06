@@ -51,7 +51,6 @@ static struct inode *inode_hashes;
 
 int inode_init_always(struct super_block *sb, struct inode *inode)
 {
-        struct address_space *const mapping = &inode->i_data;
         inode->i_state = I_NEW;
         inode->i_blkbits = sb->s_blocksize_bits;
         inode->i_sb = sb;
@@ -896,23 +895,4 @@ int simple_getattr(struct vfsmount *mnt, struct dentry *entry, struct kstat *kst
 {
         return 0;
 }
-
-void inode_init_once(struct inode *inode)
-{
-	memset(inode, 0, sizeof(*inode));
-	INIT_HLIST_NODE(&inode->i_hash);
-	INIT_LIST_HEAD(&inode->i_devices);
-	INIT_LIST_HEAD(&inode->i_wb_list);
-	INIT_LIST_HEAD(&inode->i_lru);
-	address_space_init_once(&inode->i_data);
-	i_size_ordered_init(inode);
-#ifdef CONFIG_FSNOTIFY
-	INIT_HLIST_HEAD(&inode->i_fsnotify_marks);
-#endif
-}
-
-
-
-
-
 
