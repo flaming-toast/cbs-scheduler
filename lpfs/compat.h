@@ -277,8 +277,62 @@ struct dentry {
 	struct qstr d_name;
 	struct inode *d_inode;
 	struct dentry *d_parent;
+
+	/* pointer to superblock for call to fsdb.sb->s_op->statfs(dentry, kstatfs buf)
+	 * which uses dentry->d_sb */
+	struct super_block *d_sb;
+
+	/* apparently uthash requires string keys to be in the struct itself? */
+	char *name;  // this will be the key to search this dentry's parent's d_child_ht
+	UT_hash_handle hh; // we want to hash dentries
+	struct dentry *d_child_ht;
+//	d_child_ht = NULL; // hash child names -> their dentries. *Must* be NULL initialized.
+
+
+};
+/* vfs.txt: A file object represents a file opened by a process. */
+struct file {
+	struct inode *i;
+	struct file_operations *f_op;
+	spinlock_t f_lock;
+	
+	/* Added in addition to vedant's suggested file struct */
+	struct dentry *d;
+
+	/* For open fd management...*/
+	int fd;
+	UT_hash_handle hh;
+};
+/* Stolen from stat.h and statfs.h for do_stat and do_statfs */
+// for do_stat let's list ino,nlink, mode, ctime, mtime
+struct kstat {
+    u64             ino;
+    dev_t           dev;
+    umode_t         mode;
+    unsigned int    nlink;
+    dev_t           rdev;
+    loff_t          size;
+    struct timespec  atime;
+    struct timespec mtime;
+    struct timespec ctime;
+    unsigned long   blksize;
+    unsigned long long      blocks;
 };
 
+struct kstatfs {
+        long f_type;
+        long f_bsize;
+        u64 f_blocks;
+        u64 f_bfree;
+        u64 f_bavail;
+        u64 f_files;
+        u64 f_ffree;
+        __kernel_fsid_t f_fsid;
+        long f_namelen;
+        long f_frsize;
+        long f_flags;
+        long f_spare[4];
+};
 enum {
 	BDI_CAP_NO_ACCT_AND_WRITEBACK,
 	BDI_CAP_MAP_DIRECT,
