@@ -51,7 +51,6 @@ static struct inode *inode_hashes;
 
 int inode_init_always(struct super_block *sb, struct inode *inode)
 {
-        struct address_space *const mapping = &inode->i_data;
         inode->i_state = I_NEW;
         inode->i_blkbits = sb->s_blocksize_bits;
         inode->i_sb = sb;
@@ -498,24 +497,14 @@ void d_instantiate(struct dentry *d, struct inode *inode)
 
 struct dentry *d_make_root(struct inode *inode)
 {
-	struct qstr path = QSTR_INIT("/", 1);
-	struct dentry *d = d_alloc(NULL, (const struct qstr *) &path);
-	if (!d) {
-		iput(inode);
-	} else {
-		d->d_inode = inode;
-		d->d_inode->i_mode |= S_IFDIR;
-	}
-	d->d_child_ht = NULL;
-	// no need to put root dentry in cache, as we already have a direct reference 
-	// to it in fsdb.d_root. 
-	// As new dentries are created under root, they should be added to the root's d_child_ht
-
-	// for statfs
-	// set d_sb so can be able to call d->d_sb->statfs (superblock operation)
-	d->d_sb = fsdb.sb;
-
-	return d;
+        struct qstr path = QSTR_INIT("/", 1);
+        struct dentry *d = d_alloc(NULL, (const struct qstr *) &path);
+        if (!d) {
+                iput(inode);
+        } else {
+                d->d_inode = inode;
+        }
+        return d;
 }
 
 void dget(struct dentry *d)
@@ -906,23 +895,4 @@ int simple_getattr(struct vfsmount *mnt, struct dentry *entry, struct kstat *kst
 {
         return 0;
 }
-
-void inode_init_once(struct inode *inode)
-{
-	memset(inode, 0, sizeof(*inode));
-	INIT_HLIST_NODE(&inode->i_hash);
-	INIT_LIST_HEAD(&inode->i_devices);
-	INIT_LIST_HEAD(&inode->i_wb_list);
-	INIT_LIST_HEAD(&inode->i_lru);
-	address_space_init_once(&inode->i_data);
-	i_size_ordered_init(inode);
-#ifdef CONFIG_FSNOTIFY
-	INIT_HLIST_HEAD(&inode->i_fsnotify_marks);
-#endif
-}
-
-
-
-
-
 
