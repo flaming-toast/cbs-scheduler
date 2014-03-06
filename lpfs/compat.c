@@ -521,6 +521,7 @@ struct dentry *d_make_root(struct inode *inode)
                 iput(inode);
         } else {
                 d->d_inode = inode;
+                d->d_sb = inode->i_sb;
         }
         return d;
 }
@@ -760,10 +761,11 @@ void generic_delete_inode(struct inode *node)
 
 int simple_statfs(struct dentry *dentry, struct kstatfs *buf)
 {
-	//buf->f_type = dentry->d_sb->s_magic;
-	//buf->f_bsize = PAGE_CACHE_SIZE;
-	//buf->f_namelen = NAME_MAX;
-	return 0;
+
+        buf->f_type = dentry->d_sb->s_magic;
+        buf->f_bsize = PAGE_CACHE_SIZE;
+        buf->f_namelen = NAME_MAX;
+        return 0;
 }
 
 // done
@@ -776,16 +778,16 @@ struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, unsigned 
 {
         /*
          * TODO
-        static const struct dentry_operations simple_dentry_operations = {
-                .d_delete = simple_delete_dentry,
-        };
+         static const struct dentry_operations simple_dentry_operations = {
+         .d_delete = simple_delete_dentry,
+         };
 
-        if (dentry->d_name.len > NAME_MAX)
-                return ERR_PTR(-ENAMETOOLONG);
-        if (!dentry->d_sb->s_d_op)
-                d_set_d_op(dentry, &simple_dentry_operations);
-        d_add(dentry, NULL);
-        */
+         if (dentry->d_name.len > NAME_MAX)
+         return ERR_PTR(-ENAMETOOLONG);
+         if (!dentry->d_sb->s_d_op)
+         d_set_d_op(dentry, &simple_dentry_operations);
+         d_add(dentry, NULL);
+         */
         return NULL;
 }
 

@@ -120,15 +120,15 @@ struct dentry *dentry_lookup(char *path) {
     */
 
 
-    char *token; 
+    char *token;
     struct dentry *d_tmp; // temp placeholder for parent dentry hash lookups
     struct dentry *d = fsdb.d_root; // begin with the root dentry
 
     token = strtok(path, "/");
 
     while (token != NULL) {
-	/* Look up child dentry by name (token), and fill in d_tmp */    	
-    	HASH_FIND_STR(d->d_child_ht, token, d_tmp); 
+	/* Look up child dentry by name (token), and fill in d_tmp */
+    	HASH_FIND_STR(d->d_child_ht, token, d_tmp);
     	if (d_tmp == NULL) {
     		return NULL; // invalid path!
     	}
@@ -156,7 +156,7 @@ void do_ls(char *cmd)
 	// get path dentry
 	// if dentry->mode is file just print the file name
 	// if mode is directory hash_itr over d_child_ht and print their names
-	
+
         char *path;
         int cmd_argc = 2;
         path = parse_cmd(cmd,cmd_argc);
@@ -174,7 +174,7 @@ void do_ls(char *cmd)
         	return;
         }
 
-        /* gcc complains if I put these declarations in case S_IFDIR, 
+        /* gcc complains if I put these declarations in case S_IFDIR,
          * so I guess I'll put them out here...
          */
         // for HASH_ITER
@@ -237,9 +237,9 @@ void do_mkdir(char *cmd)
         int cmd_argc = 2;
         path = parse_cmd(cmd,cmd_argc);
 
-        // before we do anything else 
+        // before we do anything else
         struct dentry *check_exist;
-	check_exist = dentry_lookup(path); 
+	check_exist = dentry_lookup(path);
         if (check_exist != NULL) {
        	 puts("do_mkdir: path already exists, cannot mkdir");
        	 return;
@@ -252,17 +252,17 @@ void do_mkdir(char *cmd)
      	puts("dirname of path:");
      	puts(rest_of_path);
 
-	
+
         struct dentry *parent_dentry;
         parent_dentry = dentry_lookup(rest_of_path);
         if (parent_dentry == NULL) {
             puts("Error: Invalid path.");
             return;
         }
-        
+
 
 	/* Now that we have the parent dentry, construct one for the new subdirectory
-	 * we are making. 
+	 * we are making.
 	 */
         struct dentry *new_dir_dentry;
 	// This should call ramfs_mkdir.
@@ -271,7 +271,7 @@ void do_mkdir(char *cmd)
         parent_dentry->d_inode->i_op->mkdir(parent_dentry->d_inode, new_dir_dentry, S_IFDIR);  // screw permissions and just pass in type of file for mode param
         // If successful new_dir_dentry should have been instantiated with a new inode...
         new_dir_dentry->d_parent = parent_dentry; // does d_instantiate do this?
-        struct qstr d_name_qstr = { 
+        struct qstr d_name_qstr = {
         	.len = sizeof(new_dir_name),
         	.name = new_dir_name
         };
@@ -292,9 +292,9 @@ void do_read(char *cmd)
 	(void) cmd;
 	puts("Not implemented.");
 	//do_sync_read(struct file *filp, , char __user *buf, ssize_t len,  loff_t *pos);
-	// so some sort of fd->file mapping	
-	
-	//for nonexistent files, create them? 
+	// so some sort of fd->file mapping
+
+	//for nonexistent files, create them?
 	//ramfs_mknod(inode of parent dir, dentry to fill, mode, 0);
 
 }
@@ -326,8 +326,8 @@ void do_unlink(char *cmd)
             puts("Error: Invalid path");
             return;
         }
-    	HASH_FIND_STR(parent_dentry->d_child_ht, file_to_remove, d_tmp); 
-    	if (d_tmp == NULL) { // couldn't find that file in the parent dir 
+    	HASH_FIND_STR(parent_dentry->d_child_ht, file_to_remove, d_tmp);
+    	if (d_tmp == NULL) { // couldn't find that file in the parent dir
     	    puts("Could not delete requested file, it does not exist");
     	} else {
     	   // parent directory inode is only needed to set inode's ctime and mtime
@@ -392,7 +392,9 @@ void do_statfs(char *cmd)
 	(void) cmd;
 
 	struct kstatfs *buf;
+  buf = (struct kstatfs *)malloc(sizeof(struct kstatfs));
 	fsdb.sb->s_op->statfs(fsdb.d_root, buf);
+  printf("f_type: %lu\nf_bsize: %lu\nf_namelen: %lu\n", buf->f_type, buf->f_bsize, buf->f_namelen);
 }
 
 void do_close(char *cmd)
@@ -437,8 +439,8 @@ static struct {
 	{ "truncate", do_truncate },
 	{ "flush", do_flush },
 	{ "rename", do_rename },
-	{ "stat", do_stat },
 	{ "statfs", do_statfs },
+	{ "stat", do_stat },
 	{ "close", do_close },
 	{ "exit", do_exit },
 };
