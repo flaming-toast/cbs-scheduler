@@ -73,8 +73,7 @@ struct inode_operations ramfs_file_inode_operations = {
         .getattr	= simple_getattr,
 };
 
-struct inode *ramfs_get_inode(struct super_block *sb,
-                struct inode *dir, umode_t mode, dev_t dev)
+struct inode *ramfs_get_inode(struct super_block *sb,  struct inode *dir, umode_t mode, dev_t dev)
 {
         struct inode * inode = new_inode(sb);
 

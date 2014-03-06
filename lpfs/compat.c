@@ -51,6 +51,7 @@ static struct inode *inode_hashes;
 
 int inode_init_always(struct super_block *sb, struct inode *inode)
 {
+        struct address_space *const mapping = &inode->i_data;
         inode->i_state = I_NEW;
         inode->i_blkbits = sb->s_blocksize_bits;
         inode->i_sb = sb;
@@ -60,6 +61,7 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
 
 struct inode *alloc_inode(struct super_block *sb)
 {
+
         struct inode *inode;
 
         if (sb->s_op->alloc_inode)
@@ -683,6 +685,38 @@ struct inode_operations page_symlink_inode_operations;
 
 int page_symlink(struct inode *inode, const char *symname, int len)
 {
+        /*
+           struct address_space *mapping = inode->i_mapping;
+           struct page *page;
+           void *fsdata;
+           int err;
+           char *kaddr;
+           unsigned int flags = AOP_FLAG_UNINTERRUPTIBLE;
+           if (nofs)
+           flags |= AOP_FLAG_NOFS;
+
+retry:
+err = pagecache_write_begin(NULL, mapping, 0, len-1,
+flags, &page, &fsdata);
+if (err)
+goto fail;
+
+kaddr = kmap_atomic(page);
+memcpy(kaddr, symname, len-1);
+kunmap_atomic(kaddr);
+
+err = pagecache_write_end(NULL, mapping, 0, len-1, len-1,
+page, fsdata);
+if (err < 0)
+goto fail;
+if (err < len-1)
+goto retry;
+
+mark_inode_dirty(inode);
+return 0;
+fail:
+return err;
+*/
         return 0;
 }
 
@@ -691,39 +725,120 @@ void generic_delete_inode(struct inode *node)
         return;
 }
 
-int simple_statfs(struct dentry *entry, struct kstatfs *kstatfs_o)
+int simple_statfs(struct dentry *dentry, struct kstatfs *buf)
 {
-        return 0;
+	//buf->f_type = dentry->d_sb->s_magic;
+	//buf->f_bsize = PAGE_CACHE_SIZE;
+	//buf->f_namelen = NAME_MAX;
+	return 0;
 }
 
+// done
 int generic_show_options(struct seq_file *file, struct dentry *entry)
 {
         return 0;
 }
 
-struct dentry *simple_lookup(struct inode *node, struct dentry *entry, unsigned int i)
+struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 {
-        return entry;
+        /*
+         * TODO
+        static const struct dentry_operations simple_dentry_operations = {
+                .d_delete = simple_delete_dentry,
+        };
+
+        if (dentry->d_name.len > NAME_MAX)
+                return ERR_PTR(-ENAMETOOLONG);
+        if (!dentry->d_sb->s_d_op)
+                d_set_d_op(dentry, &simple_dentry_operations);
+        d_add(dentry, NULL);
+        */
+        return NULL;
 }
 
-int simple_link(struct dentry *entry1, struct inode *node, struct dentry *entry2)
+int simple_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
 {
+        struct inode *inode = old_dentry->d_inode;
+
+        inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
+        inc_nlink(inode);
+        ihold(inode);
+        dget(dentry);
+        d_instantiate(dentry, inode);
         return 0;
 }
 
-int simple_unlink(struct inode *node,struct dentry *entry)
+int simple_unlink(struct inode *dir, struct dentry *dentry)
 {
+        struct inode *inode = dentry->d_inode;
+
+        inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
+        //TODO
+        //drop_nlink(inode);
+        //dput(dentry);
         return 0;
 }
 
-int simple_rmdir(struct inode *node,struct dentry *entry)
+int simple_empty(struct dentry *dentry)
 {
+        // USED BY RMDIR TODO
+        /*
+           struct dentry *child;
+           int ret = 0;
+
+           spin_lock(&dentry->d_lock);
+           list_for_each_entry(child, &dentry->d_subdirs, d_u.d_child) {
+           spin_lock_nested(&child->d_lock, DENTRY_D_LOCK_NESTED);
+           if (simple_positive(child)) {
+           spin_unlock(&child->d_lock);
+           goto out;
+           }
+           spin_unlock(&child->d_lock);
+           }
+           ret = 1;
+out:
+spin_unlock(&dentry->d_lock);
+return ret;
+*/
         return 0;
 }
 
-
-int simple_rename(struct inode *node1, struct dentry *entry1, struct inode *node2, struct dentry *entry2)
+int simple_rmdir(struct inode *dir, struct dentry *dentry)
 {
+        if (!simple_empty(dentry))
+                return -ENOTEMPTY;
+
+        // TODO
+        //drop_nlink(dentry->d_inode);
+        //simple_unlink(dir, dentry);
+        //drop_nlink(dir);
+        return 0;
+}
+
+int simple_rename(struct inode *old_dir, struct dentry *old_dentry,
+                struct inode *new_dir, struct dentry *new_dentry)
+{
+        struct inode *inode = old_dentry->d_inode;
+        int they_are_dirs = S_ISDIR(old_dentry->d_inode->i_mode);
+
+        if (!simple_empty(new_dentry))
+                return -ENOTEMPTY;
+
+        if (new_dentry->d_inode) {
+                simple_unlink(new_dir, new_dentry);
+                if (they_are_dirs) {
+                        //TODO
+                        //drop_nlink(new_dentry->d_inode);
+                        //drop_nlink(old_dir);
+                }
+        } else if (they_are_dirs) {
+                //drop_nlink(old_dir);
+                inc_nlink(new_dir);
+        }
+
+        old_dir->i_ctime = old_dir->i_mtime = new_dir->i_ctime =
+                new_dir->i_mtime = inode->i_ctime = CURRENT_TIME;
+
         return 0;
 }
 
@@ -782,6 +897,19 @@ int simple_getattr(struct vfsmount *mnt, struct dentry *entry, struct kstat *kst
         return 0;
 }
 
+void inode_init_once(struct inode *inode)
+{
+	memset(inode, 0, sizeof(*inode));
+	INIT_HLIST_NODE(&inode->i_hash);
+	INIT_LIST_HEAD(&inode->i_devices);
+	INIT_LIST_HEAD(&inode->i_wb_list);
+	INIT_LIST_HEAD(&inode->i_lru);
+	address_space_init_once(&inode->i_data);
+	i_size_ordered_init(inode);
+#ifdef CONFIG_FSNOTIFY
+	INIT_HLIST_HEAD(&inode->i_fsnotify_marks);
+#endif
+}
 
 
 
