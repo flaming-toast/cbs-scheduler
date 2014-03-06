@@ -32,7 +32,7 @@ struct file *fd_ht;
  */
 
 char *parse_cmd(char *cmd, int exp_argc) {
-	char *cmd_argv[MAX_CMD_ARGC];
+        char *cmd_argv[MAX_CMD_ARGC];
         int i;
         int cmd_argc = 0;
 
@@ -108,8 +108,6 @@ char *parse_cmd(char *cmd, int exp_argc) {
 	return strdup(cmd_argv[1]);
 }
 
-/* return dentry of last component of the given path */
-/* so....basically the parent dentry */
 struct dentry *dentry_lookup(char *path) {
 	/*
     	   if (strcmp((path+(strlen(path)-1)), "/") == 0) {
@@ -145,8 +143,8 @@ struct dentry *dentry_lookup(char *path) {
 
 static void usage()
 {
-	puts("Usage: fsdb /dev/<disk> [ snapshot=<snap_id> | -ramfs ]");
-	exit(1);
+        puts("Usage: fsdb /dev/<disk> [ snapshot=<snap_id> | -ramfs ]");
+        exit(1);
 }
 
 void do_ls(char *cmd)
@@ -170,11 +168,11 @@ void do_ls(char *cmd)
         struct dentry *d;
         d = dentry_lookup(path);
         if (d == NULL) {
-        	puts("Invalid path");
-        	return;
+                puts("Invalid path");
+                return;
         }
 
-        /* gcc complains if I put these declarations in case S_IFDIR, 
+        /* gcc complains if I put these declarations in case S_IFDIR,
          * so I guess I'll put them out here...
          */
         // for HASH_ITER
@@ -201,8 +199,8 @@ void do_ls(char *cmd)
 
 void do_open(char *cmd)
 {
-	// |fsdb> open <path>
-	(void) cmd;
+        // |fsdb> open <path>
+        (void) cmd;
 
         char *path;
         int cmd_argc = 2;
@@ -212,27 +210,27 @@ void do_open(char *cmd)
         struct dentry *file_dentry;
         file_dentry = dentry_lookup(path);
         if (file_dentry == NULL) {
-        	puts("Error: Invalid path or file");
+                puts("Error: Invalid path or file");
         }
         // construct a struct file
-        struct file open_file = {
-            	.i = file_dentry->d_inode,
-            	.d = file_dentry,
-            	.fd = next_fd++
-        };
+        struct file *open_file = (struct file *)malloc(sizeof(struct file));
+        open_file->i = file_dentry->d_inode;
+        open_file->d = file_dentry;
+        open_file->fd = next_fd;
+        //hash_add_int(head, keyfield name, value ptr)
+        //why does the key HAVE to be in the struct being added to the hashtable?
+        HASH_ADD_INT(fd_ht, fd, open_file); // last arg (value) has to be a ptr
+        printf("Opened %s with file descriptor %d.\n", path, next_fd);
 
-	//hash_add_int(head, keyfield name, value ptr)
-	//why does the key HAVE to be in the struct being added to the hashtable?
-        HASH_ADD_INT(fd_ht, fd, &open_file); // last arg (value) has to be a ptr
-
+        next_fd++;
 }
 
 void do_mkdir(char *cmd)
 {
-	// |fsdb> mkdir <path>
-	(void) cmd;
+        // |fsdb> mkdir <path>
+        (void) cmd;
 
-	/* Path parsing */
+        /* Path parsing */
         char *path;
         int cmd_argc = 2;
         path = parse_cmd(cmd,cmd_argc);
@@ -240,18 +238,19 @@ void do_mkdir(char *cmd)
         // before we do anything else 
 
         struct dentry *check_exist;
-	check_exist = dentry_lookup(path); 
+        check_exist = dentry_lookup(path);
         if (check_exist != NULL) {
        	 	puts("do_mkdir: path already exists, cannot mkdir");
        	 	return;
         }
 
-     	char *new_dir_name = strdup(basename(path));
-     	char *rest_of_path = strdup(dirname(path));
-     	puts("basename of path:");
-     	puts(new_dir_name);
-     	puts("dirname of path:");
-     	puts(rest_of_path);
+        char *new_dir_name = strdup(basename(path));
+        char *rest_of_path = strdup(dirname(path));
+        puts("basename of path:");
+        puts(new_dir_name);
+        puts("dirname of path:");
+        puts(rest_of_path);
+
 
 
         struct dentry *parent_dentry;
@@ -292,35 +291,35 @@ void do_mkdir(char *cmd)
 
 void do_read(char *cmd)
 {
-	// |fsdb> read <fd> <size> <off> [<hostpath>]
-	(void) cmd;
-	puts("Not implemented.");
-	//do_sync_read(struct file *filp, , char __user *buf, ssize_t len,  loff_t *pos);
-	// so some sort of fd->file mapping	
+        // |fsdb> read <fd> <size> <off> [<hostpath>]
+        (void) cmd;
+        puts("Not implemented.");
+        //do_sync_read(struct file *filp, , char __user *buf, ssize_t len,  loff_t *pos);
+        // so some sort of fd->file mapping
 
-	//for nonexistent files, create them? 
-	//ramfs_mknod(inode of parent dir, dentry to fill, mode, 0);
+        //for nonexistent files, create them?
+        //ramfs_mknod(inode of parent dir, dentry to fill, mode, 0);
 
 }
 
 void do_write(char *cmd)
 {
-	// |fsdb> write <fd> <size> <off> [<hostpath>] [rand | zero]
-	(void) cmd;
-	puts("Not implemented.");
+        // |fsdb> write <fd> <size> <off> [<hostpath>] [rand | zero]
+        (void) cmd;
+        puts("Not implemented.");
 }
 
 void do_unlink(char *cmd)
 {
-	// |fsdb> unlink <fd>
-	(void) cmd;
+        // |fsdb> unlink <fd>
+        (void) cmd;
 
         char *path;
         int cmd_argc = 2;
         path = parse_cmd(cmd,cmd_argc);
 
-     	char *file_to_remove = strdup(basename(path));
-     	char *rest_of_path = strdup(dirname(path));
+        char *file_to_remove = strdup(basename(path));
+        char *rest_of_path = strdup(dirname(path));
 
         struct dentry *parent_dentry;
         struct dentry *d_tmp;
@@ -342,67 +341,93 @@ void do_unlink(char *cmd)
 
 void do_truncate(char *cmd)
 {
-	// |fsdb> truncate <fd> <len>
-	(void) cmd;
-	puts("Not implemented.");
+        // |fsdb> truncate <fd> <len>
+        (void) cmd;
+        puts("Not implemented.");
 }
 
 void do_flush(char *cmd)
 {
-	// |fsdb> flush <fd>
-	(void) cmd;
-	puts("Not implemented.");
-	// should call noop_fsync
+        // |fsdb> flush <fd>
+        (void) cmd;
+        puts("Not implemented.");
+        // should call noop_fsync
 }
 
 void do_rename(char *cmd)
 {
-	// |fsdb> rename <fd> <path>
-	(void) cmd;
-	puts("Not implemented.");
-	/* hash_find fd_ht with given fd -> returns file struct
-	 * get file->d->d_parent (dentry of parent)
-	 * wait...rename file at fd to path???
-	 */
+        // |fsdb> rename <fd> <path>
+        (void) cmd;
+        puts("Not implemented.");
+        /* hash_find fd_ht with given fd -> returns file struct
+         * get file->d->d_parent (dentry of parent)
+         * wait...rename file at fd to path???
+         */
 
 }
 
 void do_stat(char *cmd)
 {
-	// |fsdb> stat <fd>
-	(void) cmd;
+        // |fsdb> stat <fd>
+        (void) cmd;
 
         char *char_fd;
         int fd_key;
         int cmd_argc = 2;
         char_fd = parse_cmd(cmd,cmd_argc);
-        fd_key = atoi(char_fd);
+        if(char_fd == NULL)
+        {
+                puts("stat: missing operand");
+        }
+        else
+        {
+                fd_key = atoi(char_fd);
 
-	struct file *f;
-	HASH_FIND_INT(fd_ht, &fd_key, f);
-	if (f == NULL) {
-		puts("do_stat: Invalid file descriptor");
-	} else {
-	    	// something like....
-	    	// f->i->i_op->getattr(vfsmount, inode, kstat k);
-	    	// then print kstat struct?
-	    	// our simple_getattr could just give us inode->i_mode.
-	}
+                struct file *f;
+                HASH_FIND_INT(fd_ht, &fd_key, f);
+                if (f == NULL) {
+                        puts("do_stat: Invalid file descriptor");
+                } else {
+                        printf("File: '%s'\n", f->d->d_name.name);
+                        printf("Size: %d\nBlocks: %d\nIO Block: Unimplemented\n", f->i->i_size, f->i->i_blocks);
+                        char *file_type;
+                        switch (f->i->i_mode & S_IFMT) {
+                        default:
+                                file_type = "unknown file type";
+                                break;
+                        case S_IFREG:
+                                file_type = "regular file";
+                                break;
+                        case S_IFDIR:
+                                file_type = "directory";
+                                break;
+                        case S_IFLNK:
+                                file_type = "symbolic link";
+                                break;
+                        }
+                        printf("File type: '%s'\n", file_type);
+                        // TODO more print stuff?
+                }
+        }
 }
 
 void do_statfs(char *cmd)
 {
-	// |fsdb> statfs
-	(void) cmd;
+        // |fsdb> statfs
+        (void) cmd;
 
-	struct kstatfs *buf;
-	fsdb.sb->s_op->statfs(fsdb.d_root, buf);
+        struct kstatfs *buf;
+        buf = (struct kstatfs *)malloc(sizeof(struct kstatfs));
+        fsdb.sb->s_op->statfs(fsdb.d_root, buf);
+        printf("f_type: %lu\nf_bsize: %lu\nf_namelen: %lu\n", buf->f_type, buf->f_bsize, buf->f_namelen);
+        puts("");
+        free(buf);
 }
 
 void do_close(char *cmd)
 {
-	// |fsdb> close <fd>
-	(void) cmd;
+        // |fsdb> close <fd>
+        (void) cmd;
 
         char *char_fd;
         int fd_key;
@@ -410,133 +435,133 @@ void do_close(char *cmd)
         char_fd = parse_cmd(cmd,cmd_argc);
         fd_key = atoi(char_fd);
 
-	struct file *f;
-	HASH_FIND_INT(fd_ht, &fd_key, f);
-	if (f == NULL) {
-		puts("do_close: Invalid file descriptor");
-	} else {
-	    	//will this work? do I need to pass in the original pointer I had in HASH_ADD_INT???
-	    	HASH_DEL(fd_ht, f);
-	    	puts("Deleted fd from fd_ht");
-	}
+        struct file *f;
+        HASH_FIND_INT(fd_ht, &fd_key, f);
+        if (f == NULL) {
+                puts("do_close: Invalid file descriptor");
+        } else {
+                //will this work? do I need to pass in the original pointer I had in HASH_ADD_INT???
+                HASH_DEL(fd_ht, f);
+                puts("Deleted fd from fd_ht");
+        }
 
 }
 
 void do_exit(char *cmd)
 {
-	(void) cmd;
-	exit_lpfs(); // I think?
+        (void) cmd;
+        exit_lpfs(); // I think?
 }
 
 static struct {
-	const char *name;
-	void (*handler)(char *cmd);
+        const char *name;
+        void (*handler)(char *cmd);
 } commands[] = {
-	{ "ls", do_ls },
-	{ "open", do_open },
-	{ "mkdir", do_mkdir },
-	{ "read", do_read },
-	{ "write", do_write },
-	{ "unlink", do_unlink },
-	{ "truncate", do_truncate },
-	{ "flush", do_flush },
-	{ "rename", do_rename },
-	{ "stat", do_stat },
-	{ "statfs", do_statfs },
-	{ "close", do_close },
-	{ "exit", do_exit },
+        { "ls", do_ls },
+        { "open", do_open },
+        { "mkdir", do_mkdir },
+        { "read", do_read },
+        { "write", do_write },
+        { "unlink", do_unlink },
+        { "truncate", do_truncate },
+        { "flush", do_flush },
+        { "rename", do_rename },
+        { "statfs", do_statfs },
+        { "stat", do_stat },
+        { "close", do_close },
+        { "exit", do_exit },
 };
 
 static int repl()
 {
-	size_t cmd_len;
-	char *cmd = NULL;
-	int err = 0;
-	int matched = 0;
+        size_t cmd_len;
+        char *cmd = NULL;
+        int err = 0;
+        int matched = 0;
 
-	printf("|fsdb> ");
+        printf("|fsdb> ");
 
-	err = (int) getline(&cmd, &cmd_len, stdin);
-	if (err == -1) {
-		return err;
-	}
+        err = (int) getline(&cmd, &cmd_len, stdin);
+        if (err == -1) {
+                return err;
+        }
 
-	u32 i;
-	err = 0;
-	for (i = 0; i < sizeof(commands)/sizeof(commands[0]); ++i) {
-		const char *needle = commands[i].name;
-		if (strstr(cmd, needle) != NULL) {
-			matched = 1;
-			commands[i].handler(cmd);
+        u32 i;
+        err = 0;
+        for (i = 0; i < sizeof(commands)/sizeof(commands[0]); ++i) {
+                const char *needle = commands[i].name;
+                if (strstr(cmd, needle) != NULL) {
+                        matched = 1;
+                        commands[i].handler(cmd);
 
-			if (strcmp(needle, "exit") == 0) {
-				err = 1;
-				goto exit;
-			}
+                        if (strcmp(needle, "exit") == 0) {
+                                err = 1;
+                                goto exit;
+                        }
 
-			break;
-		}
-	}
+                        break;
+                }
+        }
 
-	if (!matched) {
-		puts("No matching commands.");
-	}
-
+        if (!matched) {
+                puts("No matching commands.");
+        }
+        puts("");
 exit:
-	free(cmd);
-	return err;
+        free(cmd);
+        return err;
 }
 
 void init_lpfs(void)
 {
-	int err;
+        int err;
 
-	// should call module_init and mount_nodev for ramfs....
-	err = __init_func__();
-	if (err) {
-		fprintf(stderr, "Failed to initialize lpfs\n");
-		exit(1);
-	}
+        // should call module_init and mount_nodev for ramfs....
+        err = __init_func__();
+        if (err) {
+                fprintf(stderr, "Failed to initialize lpfs\n");
+                exit(1);
+        }
 }
 
 void exit_lpfs(void)
 {
-	__exit_func__();
+        __exit_func__();
 }
 
 int main(int argc, char **argv)
 {
-	if (argc != 3) {
-		usage();
-	}
+        if (argc != 3) {
+                usage();
+        }
 
-	memset(&fsdb, 0, sizeof(struct fsdb));
+        memset(&fsdb, 0, sizeof(struct fsdb));
 
-	fsdb.disk_path = argv[1];
-	fsdb.mnt_opts = argv[2];
+        fsdb.disk_path = argv[1];
+        fsdb.mnt_opts = argv[2];
 
-	if (strstr(fsdb.mnt_opts, "snapshot")) {
-		if (sscanf(fsdb.mnt_opts, "snapshot=%d", &fsdb.snap_id) != 1) {
-			usage();
-		}
-		mount_disk(&fsdb.disk, fsdb.disk_path);
-	} else if (strstr("-ramfs", fsdb.mnt_opts)) {
-		/* No setup needed here. */
-	} else {
-		usage();
-	}
+        if (strstr(fsdb.mnt_opts, "snapshot")) {
+                if (sscanf(fsdb.mnt_opts, "snapshot=%d", &fsdb.snap_id) != 1) {
+                        usage();
+                }
+                mount_disk(&fsdb.disk, fsdb.disk_path);
+        } else if (strstr("-ramfs", fsdb.mnt_opts)) {
+                /* No setup needed here. */
+        } else {
+                usage();
+        }
 
-	init_lpfs();
+        init_lpfs();
 
-	for (;;) {
-		if (repl()) break;
-	}
+        for (;;) {
+                if (repl()) break;
+        }
 
-	exit_lpfs();
+        exit_lpfs();
 
-	if (fsdb.disk.buffer) {
-		unmount_disk(&fsdb.disk);
-	}
+        if (fsdb.disk.buffer) {
+                unmount_disk(&fsdb.disk);
+        }
 
-	return 0;
+        return 0;
 }

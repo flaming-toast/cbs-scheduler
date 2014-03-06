@@ -175,6 +175,11 @@ struct vm_area_struct;
 struct backing_dev_info;
 struct address_space;
 
+struct kstatfs {
+	long f_type;
+	long f_bsize;
+	long f_namelen;
+};
 struct mutex {
 	pthread_mutex_t m;
 };
@@ -255,7 +260,7 @@ struct inode {
 
 	/* This lock is used to sleep on the I_NEW bit in i_state. */
 	struct mutex __lock;
-	
+
 	struct hlist_head i_dentry;
 
 	UT_hash_handle hh;
@@ -304,7 +309,7 @@ struct file {
 	struct inode *i;
 	struct file_operations *f_op;
 	spinlock_t f_lock;
-	
+
 	/* Added in addition to vedant's suggested file struct */
 	struct dentry *d;
 
@@ -328,20 +333,6 @@ struct kstat {
     unsigned long long      blocks;
 };
 
-struct kstatfs {
-        long f_type;
-        long f_bsize;
-        u64 f_blocks;
-        u64 f_bfree;
-        u64 f_bavail;
-        u64 f_files;
-        u64 f_ffree;
-        __kernel_fsid_t f_fsid;
-        long f_namelen;
-        long f_frsize;
-        long f_flags;
-        long f_spare[4];
-};
 enum {
 	BDI_CAP_NO_ACCT_AND_WRITEBACK,
 	BDI_CAP_MAP_DIRECT,
