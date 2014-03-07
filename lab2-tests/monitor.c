@@ -74,12 +74,16 @@ int main()
 		}
 
 		puts(buf);
-
-                send_fsdb_command("ls\n", buf, c_fildes[WRITE], p_fildes[READ]);
+                printf("made it to commands");
+                fflush(stdout);
+                send_fsdb_command("ls /\n", buf, c_fildes[WRITE], p_fildes[READ]);
+                puts(buf);
                 check_result("", buf, 0);
-                send_fsdb_command("mkdir test\n", buf, c_fildes[WRITE], p_fildes[READ]);
+                send_fsdb_command("mkdir /test\n", buf, c_fildes[WRITE], p_fildes[READ]);
+                puts(buf);
                 check_result("", buf, 1);
-                send_fsdb_command("ls\n", buf, c_fildes[WRITE], p_fildes[READ]);
+                send_fsdb_command("ls /\n", buf, c_fildes[WRITE], p_fildes[READ]);
+                puts(buf);
                 check_result("test", buf, 2);
 
 		wait(NULL);
@@ -125,7 +129,7 @@ int main()
 		printf(line);
 #endif
 
-		execl(fsdb, "-ramfs", NULL);
+		execl(fsdb, "fsdb", "/dev/null", "-ramfs", NULL);
 	}
 
 	return 0;
