@@ -11,7 +11,7 @@ LC_COLLATE=C
 LC_NUMERIC=C
 export LC_COLLATE LC_NUMERIC
 
-CFLAGS=-Wall -pthread #-Werror
+CFLAGS=-Wall -pthread -Werror
 
 # By default "make" will build the first target -- here we're just
 # calling it "all".
@@ -41,6 +41,8 @@ qemu: qemu/qemu-options.def
 	$(MAKE) -C qemu
 all: qemu
 
+# Apparently we can't cache configure because it does some dependency
+# checking.
 qemu/qemu-options.def: qemu/configure
 	cd qemu && ./configure --target-list=x86_64-softmmu
 

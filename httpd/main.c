@@ -205,7 +205,7 @@ int process_session_line(struct http_session *session, const char *line) {
 //	    	mterr = mt->http_get(mt, session);
 	    	session->get_req->mt = mt;
 			fprintf(stderr, "FOUND A GET, SETTING SESSION->GET_REQ->MT\n");
-			session->get_req->request_string = line; // shouldn't need to memcpy as process_session_line is called for each line..
+			session->get_req->request_string = palloc_strdup(session, line); // shouldn't need to memcpy as process_session_line is called for each line..
 	    }
 		else
 		{
