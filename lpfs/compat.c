@@ -56,7 +56,7 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
         inode->i_sb = sb;
         spin_lock_init(&inode->i_lock);
         atomic_set(&inode->i_count, 1);
-        inode->i_mapping = (struct address_space *)malloc(sizeof(struct address_space));
+        inode->i_mapping = (struct address_space *)kzalloc(sizeof(struct address_space), GFP_KERNEL);
         return 0;
 }
 
