@@ -55,6 +55,8 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
         inode->i_blkbits = sb->s_blocksize_bits;
         inode->i_sb = sb;
         spin_lock_init(&inode->i_lock);
+        atomic_set(&inode->i_count, 1);
+        inode->i_mapping = (struct address_space *)malloc(sizeof(struct address_space));
         return 0;
 }
 
@@ -939,8 +941,9 @@ ssize_t generic_file_splice_read(struct file *file, struct pipe_inode_info *info
  */
 int simple_setattr(struct dentry *dentry, struct iattr *iattr)
 {
+        return 0;
 /*
-	struct inode *inode = dentry->d_inode;
+	struct inode *inode = dentry->d_inodes,
 	int error;
 
 	error = inode_change_ok(inode, iattr);

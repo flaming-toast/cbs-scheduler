@@ -215,16 +215,16 @@ void do_open(char *cmd)
                 puts("Error: Invalid path or file");
         }
         // construct a struct file
-        struct file open_file = {
-                .i = file_dentry->d_inode,
-                .d = file_dentry,
-                .fd = next_fd++
-        };
-
+        struct file *open_file = (struct file *)malloc(sizeof(struct file));
+        open_file->i = file_dentry->d_inode;
+        open_file->d = file_dentry;
+        open_file->fd = next_fd;
         //hash_add_int(head, keyfield name, value ptr)
         //why does the key HAVE to be in the struct being added to the hashtable?
-        HASH_ADD_INT(fd_ht, fd, &open_file); // last arg (value) has to be a ptr
+        HASH_ADD_INT(fd_ht, fd, open_file); // last arg (value) has to be a ptr
+        printf("Opened %s with file descriptor %d.\n", path, next_fd);
 
+        next_fd++;
 }
 
 void do_mkdir(char *cmd)
@@ -385,12 +385,25 @@ void do_stat(char *cmd)
                 if (f == NULL) {
                         puts("do_stat: Invalid file descriptor");
                 } else {
-                        struct kstat *k = (struct kstat *)malloc(sizeof(struct kstat));
-                        //f->i->i_op->getattr(NULL, inode, kstat);
-                        // something like....
-                        // f->i->i_op->getattr(vfsmount, inode, kstat k);
-                        // then print kstat struct?
-                        // our simple_getattr could just give us inode->i_mode.
+                        printf("File: '%s'\n", f->d->d_name.name);
+                        printf("Size: %d\nBlocks: %d\nIO Block: Unimplemented\n", f->i->i_size, f->i->i_blocks);
+                        char *file_type;
+                        switch (f->i->i_mode & S_IFMT) {
+                        default:
+                                file_type = "unknown file type";
+                                break;
+                        case S_IFREG:
+                                file_type = "regular file";
+                                break;
+                        case S_IFDIR:
+                                file_type = "directory";
+                                break;
+                        case S_IFLNK:
+                                file_type = "symbolic link";
+                                break;
+                        }
+                        printf("File type: '%s'\n", file_type);
+                        // TODO more print stuff?
                 }
         }
 }
@@ -404,6 +417,7 @@ void do_statfs(char *cmd)
         buf = (struct kstatfs *)malloc(sizeof(struct kstatfs));
         fsdb.sb->s_op->statfs(fsdb.d_root, buf);
         printf("f_type: %lu\nf_bsize: %lu\nf_namelen: %lu\n", buf->f_type, buf->f_bsize, buf->f_namelen);
+        puts("");
         free(buf);
 }
 
@@ -489,7 +503,7 @@ static int repl()
         if (!matched) {
                 puts("No matching commands.");
         }
-
+        puts("");
 exit:
         free(cmd);
         return err;
