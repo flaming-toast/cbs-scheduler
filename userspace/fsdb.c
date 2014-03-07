@@ -165,15 +165,17 @@ struct dentry *dentry_lookup(char *path) {
 
 int create_dentry(char *path, umode_t mode, struct file *file)
 {
+        char *path_copy;
         struct dentry *check_exist;
+        path_copy = strdup(path);
         check_exist = dentry_lookup(path);
         if (check_exist != NULL) {
                 puts("path already exists, cannot create inode");
                 return -1;
         }
 
-        char *new_dir_name = strdup(basename(path));
-        char *rest_of_path = strdup(dirname(path));
+        char *new_dir_name = strdup(basename(path_copy));
+        char *rest_of_path = strdup(dirname(path_copy));
         puts("basename of path:");
         puts(new_dir_name);
         puts("dirname of path:");
@@ -213,6 +215,7 @@ int create_dentry(char *path, umode_t mode, struct file *file)
                 parent_dentry->d_inode->i_op->create(parent_dentry->d_inode, new_dir_dentry, S_IFREG, true);  // screw permissions and just pass in type of file for mode param
                 file->i = parent_dentry->d_inode;
                 file->d = parent_dentry;
+                HASH_ADD_STR(parent_dentry->d_child_ht, name, new_dir_dentry);
                 return 0;
         }
         else
@@ -294,6 +297,7 @@ void do_open(char *cmd)
         if (file_dentry == NULL) {
                 struct file *open_file = (struct file *)kzalloc(sizeof(struct file), 0);
                 success = create_dentry(path, S_IFREG, open_file);
+
                 if(success == 0)
                 {
                         open_file->fd = next_fd;

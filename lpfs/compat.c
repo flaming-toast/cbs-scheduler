@@ -779,18 +779,17 @@ int generic_show_options(struct seq_file *file, struct dentry *entry)
 
 struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 {
-        /*
-         * TODO
-         static const struct dentry_operations simple_dentry_operations = {
-         .d_delete = simple_delete_dentry,
-         };
+/*
+        struct dentry_operations simple_dentry_operations = {
+                .d_delete = simple_delete_dentry,
+        };
 
-         if (dentry->d_name.len > NAME_MAX)
-         return ERR_PTR(-ENAMETOOLONG);
-         if (!dentry->d_sb->s_d_op)
-         d_set_d_op(dentry, &simple_dentry_operations);
-         d_add(dentry, NULL);
-         */
+        if (dentry->d_name.len > NAME_MAX)
+                return ERR_PTR(-ENAMETOOLONG);
+        if (!dentry->d_sb->s_d_op)
+                d_set_d_op(dentry, &simple_dentry_operations);
+        d_add(dentry, NULL);
+        */
         return NULL;
 }
 
@@ -942,45 +941,45 @@ ssize_t generic_file_splice_read(struct file *file, struct pipe_inode_info *info
 int simple_setattr(struct dentry *dentry, struct iattr *iattr)
 {
         return 0;
-/*
-	struct inode *inode = dentry->d_inodes,
-	int error;
+        /*
+           struct inode *inode = dentry->d_inodes,
+           int error;
 
-	error = inode_change_ok(inode, iattr);
-	if (error)
-		return error;
+           error = inode_change_ok(inode, iattr);
+           if (error)
+           return error;
 
-	if (iattr->ia_valid & ATTR_SIZE)
-		truncate_setsize(inode, iattr->ia_size);
-	setattr_copy(inode, iattr);
-	mark_inode_dirty(inode);
-	return 0;
-  */
+           if (iattr->ia_valid & ATTR_SIZE)
+           truncate_setsize(inode, iattr->ia_size);
+           setattr_copy(inode, iattr);
+           mark_inode_dirty(inode);
+           return 0;
+           */
 }
 
 void generic_fillattr(struct inode *inode, struct kstat *stat)
 {
-	//stat->dev = inode->i_sb->s_dev;
-	stat->ino = inode->i_ino;
-	stat->mode = inode->i_mode;
-	stat->nlink = inode->i_nlink;
-	//stat->uid = inode->i_uid;
-	//stat->gid = inode->i_gid;
-	//stat->rdev = inode->i_rdev;
-	//stat->size = i_size_read(inode);
-	stat->atime = inode->i_atime;
-	stat->mtime = inode->i_mtime;
-	stat->ctime = inode->i_ctime;
-	stat->blksize = (1 << inode->i_blkbits);
-	stat->blocks = inode->i_blocks;
+        //stat->dev = inode->i_sb->s_dev;
+        stat->ino = inode->i_ino;
+        stat->mode = inode->i_mode;
+        stat->nlink = inode->i_nlink;
+        //stat->uid = inode->i_uid;
+        //stat->gid = inode->i_gid;
+        //stat->rdev = inode->i_rdev;
+        //stat->size = i_size_read(inode);
+        stat->atime = inode->i_atime;
+        stat->mtime = inode->i_mtime;
+        stat->ctime = inode->i_ctime;
+        stat->blksize = (1 << inode->i_blkbits);
+        stat->blocks = inode->i_blocks;
 }
 
 int simple_getattr(struct vfsmount *mnt, struct dentry *dentry,
-		   struct kstat *stat)
+                struct kstat *stat)
 {
-	struct inode *inode = dentry->d_inode;
-	generic_fillattr(inode, stat);
-	//stat->blocks = inode->i_mapping->nrpages << (PAGE_CACHE_SHIFT - 9);
-	return 0;
+        struct inode *inode = dentry->d_inode;
+        generic_fillattr(inode, stat);
+        //stat->blocks = inode->i_mapping->nrpages << (PAGE_CACHE_SHIFT - 9);
+        return 0;
 }
 
