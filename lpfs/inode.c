@@ -145,6 +145,7 @@ struct inode_operations lpfs_inode_ops {
 	.getattr 	= simple_getattr
 };
 
+/* file.c */
 struct file_operations lpfs_file_ops {
 	.llseek		= generic_file_llseek,
 	.read		= do_sync_read,
@@ -158,6 +159,7 @@ struct file_operations lpfs_file_ops {
 
 };
 
+/* dir.c */
 struct file_operations lpfs_dir_ops {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
