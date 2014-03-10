@@ -178,7 +178,13 @@ struct address_space;
 struct kstatfs {
 	long f_type;
 	long f_bsize;
+  u64 f_blocks;
+  u64 f_bfree;
+  u64_f_bavail;
+  u64 f_files;
+  u64 f_ffree;
 	long f_namelen;
+  //fsid ??
 };
 struct mutex {
 	pthread_mutex_t m;
