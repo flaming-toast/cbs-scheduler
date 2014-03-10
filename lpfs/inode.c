@@ -120,24 +120,29 @@ void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
 
 /* operation tables copied *straight* from ext2, modify to fit lpfs */
 struct super_operations lpfs_super_ops {
+
+	/* Copied from ext2, then s/ext2/lpfs/
+	 * probably won't have to implement these but I'll
+	 * keep them here for now */
+	/*
+	.alloc_inode	= lpfs_alloc_inode,
+	.destroy_inode	= lpfs_destroy_inode,
+	.write_inode	= lpfs_write_inode,
+	.evict_inode	= lpfs_evict_inode,
+	.put_super	= lpfs_put_super,
+	.sync_fs	= lpfs_sync_fs,
+	*/
+
+	/* pilfered from ramfs */
+	.show_options	= generic_show_options,
+        .drop_inode	= generic_delete_inode,
+	.statfs 	= simple_statfs,
 	
-	.alloc_inode	= ext2_alloc_inode,
-	.destroy_inode	= ext2_destroy_inode,
-	.write_inode	= ext2_write_inode,
-	.evict_inode	= ext2_evict_inode,
-	.put_super	= ext2_put_super,
-	.sync_fs	= ext2_sync_fs,
-	.freeze_fs	= ext2_freeze,
-	.unfreeze_fs	= ext2_unfreeze,
-	.statfs		= ext2_statfs,
-	.remount_fs	= ext2_remount,
-	.show_options	= ext2_show_options,
 };
 
 struct inode_operations lpfs_inode_ops {
-	.setattr	= ext2_setattr,
-	.get_acl	= ext2_get_acl,
-	.fiemap		= ext2_fiemap,
+	.setattr 	= simple_setattr,
+	.getattr 	= simple_getattr
 };
 
 struct file_operations lpfs_file_ops {
@@ -148,19 +153,15 @@ struct file_operations lpfs_file_ops {
 	.aio_write	= generic_file_aio_write,
 	.mmap		= generic_file_mmap,
 	.open		= dquot_file_open,
-	.release	= ext2_release_file,
-	.fsync		= ext2_fsync,
-	.splice_read	= generic_file_splice_read,
-	.splice_write	= generic_file_splice_write,
+	/* Palmer suggests the generic fsync */
+	.fsync		= simple_fsync,
 
 };
 
 struct file_operations lpfs_dir_ops {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
-	.iterate	= ext2_readdir,
-	.unlocked_ioctl = ext2_ioctl,
-	.fsync		= ext2_fsync,
-	.iterate 	= lpfs_readdir
+	.fsync		= simple_fsync,
+	.iterate 	= lpfs_readdir // need to implement
 
 };
