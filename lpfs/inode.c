@@ -118,7 +118,49 @@ void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
 	insert_inode_hash(inode);
 }
 
-struct super_operations lpfs_super_ops;
-struct inode_operations lpfs_inode_ops;
-struct file_operations lpfs_file_ops;
-struct file_operations lpfs_dir_ops;
+/* operation tables copied *straight* from ext2, modify to fit lpfs */
+struct super_operations lpfs_super_ops {
+	
+	.alloc_inode	= ext2_alloc_inode,
+	.destroy_inode	= ext2_destroy_inode,
+	.write_inode	= ext2_write_inode,
+	.evict_inode	= ext2_evict_inode,
+	.put_super	= ext2_put_super,
+	.sync_fs	= ext2_sync_fs,
+	.freeze_fs	= ext2_freeze,
+	.unfreeze_fs	= ext2_unfreeze,
+	.statfs		= ext2_statfs,
+	.remount_fs	= ext2_remount,
+	.show_options	= ext2_show_options,
+};
+
+struct inode_operations lpfs_inode_ops {
+	.setattr	= ext2_setattr,
+	.get_acl	= ext2_get_acl,
+	.fiemap		= ext2_fiemap,
+};
+
+struct file_operations lpfs_file_ops {
+	.llseek		= generic_file_llseek,
+	.read		= do_sync_read,
+	.write		= do_sync_write,
+	.aio_read	= generic_file_aio_read,
+	.aio_write	= generic_file_aio_write,
+	.mmap		= generic_file_mmap,
+	.open		= dquot_file_open,
+	.release	= ext2_release_file,
+	.fsync		= ext2_fsync,
+	.splice_read	= generic_file_splice_read,
+	.splice_write	= generic_file_splice_write,
+
+};
+
+struct file_operations lpfs_dir_ops {
+	.llseek		= generic_file_llseek,
+	.read		= generic_read_dir,
+	.iterate	= ext2_readdir,
+	.unlocked_ioctl = ext2_ioctl,
+	.fsync		= ext2_fsync,
+	.iterate 	= lpfs_readdir
+
+};
