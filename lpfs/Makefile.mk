@@ -67,11 +67,17 @@ fsdb: .lpfs/fsdb .lpfs/disk.img
 	.lpfs/fsdb /dev/loop0 snapshot=0
 
 .PHONY: install_lpfs
-install_lpfs: $(LPFS_OBJS)
+install_lpfs: # $(LPFS_OBJS)
 	mkdir -p linux/fs/lpfs
 	cp -ru lpfs/* linux/fs/lpfs/
 	cp -u userspace/kernel.config linux/.config
 	cp -u userspace/fs.Kconfig linux/fs/Kconfig
 	cp -u userspace/fs.Makefile linux/fs/Makefile
+
+all: lab2-tests/initrd.gz
+
+lab2-tests/initrd.gz: lab2-tests/interactive_config busybox/busybox \
+	linux/usr/gen_init_cpio lab2-tests/interactive_config linux
+	linux/usr/gen_init_cpio "$<" | gzip > "$@"
 
 linux: install_lpfs
