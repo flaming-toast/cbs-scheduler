@@ -261,7 +261,8 @@ struct inode {
 	/* This lock is used to sleep on the I_NEW bit in i_state. */
 	struct mutex __lock;
 
-	struct hlist_head i_dentry;
+        /* Node in dentry's alias list...I think? Check with Js */
+	struct hlist_node i_dentry;
 
 	UT_hash_handle hh;
 };
@@ -295,7 +296,8 @@ struct dentry {
 //	d_child_ht = NULL; // hash child names -> their dentries. *Must* be NULL initialized.
 
 	/* list of alias inodes, for d_instantiate */
-	struct list_head d_alias;
+        // Is this hlist_head or list_head?
+	struct hlist_head d_alias;
 
 	/* dget increases this */
 	int refcount;

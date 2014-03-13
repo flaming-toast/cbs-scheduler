@@ -12,218 +12,283 @@
 
 #include <ctype.h>
 #include <string.h>
-#define MAX_CMD_ARGC 7
+#include <limits.h>
 #define ERROR -1
 #define SUCCESS 0
 
+/* Delimiter for command parsing */
+static const char *WHITESPACE_DELIM = " \f\n\r\t\v";
+/* Delimiter for directory parsing */
+static const char *SLASH_DELIM = "/";
 /* Assign fd's sequentially */
 static int next_fd = 1;
 /* Keep track of open files */
 struct file *fd_ht;
 
 /*
- * Parses the command and extracts the input arguments.
+ * Test command parsing. Parsing on spaces, form-feed ('\f'), newline ('\n'),
+ * carriage return ('\r'), horizontal tab ('\t'), and vertical tab ('\v').
  *
  * Parameters:
  *     cmd      - Input command string.
- *     exp_argc - Expected argument count.
- * Returns: SUCCESS if parsed correctly, ERROR if something went wrong
- *          (i.e. wrong number of arguments for command).
+ *     expmin_argc - Expected minimum argument count.
+ *     expmax_argc - Expected maximum argument count.
+ * Returns: SUCCESS if able to be parsed correctly, ERROR if something went
+ *          wrong (i.e. wrong number of arguments for command).
  */
-
-char *parse_cmd(char *cmd, int exp_argc, int pos) {
-        char *cmd_argv[MAX_CMD_ARGC];
-        int i;
+int check_cmd(char *orig_cmd, int expmin_argc, int expmax_argc) {
+        char *cmd;
+        char *token;
+        char *cmd_name;
         int cmd_argc = 0;
 
         /* Sanity checks */
-        if (cmd == NULL) {
+        if (orig_cmd == NULL) {
                 printf("Input is NULL\n");
-                return NULL;
+                return ERROR;
         }
-        if (exp_argc <= 0) {
-                printf("Expected arg count %d is non-positive\n", exp_argc);
-                return NULL;
+        if (expmin_argc <= 0) {
+                printf("expmin_argc %d is non-positive\n", expmin_argc);
+                return ERROR;
         }
-        if (exp_argc > MAX_CMD_ARGC) {
-                printf("Expected arg count %d is too large\n", exp_argc);
-                return NULL;
+        if (expmax_argc > 7) {
+                printf("expmax_argc %d is too large\n", expmax_argc);
+                return ERROR;
         }
-
-        /* Clear command argument vector */
-        for (i = 0; i < MAX_CMD_ARGC; i++) {
-                cmd_argv[i] = NULL;
-        }
-
-        /* Clear spaces before and after command */
-        while (strlen(cmd) > 0 && isspace(cmd[0])) {
-                cmd++;
-        }
-        while (strlen(cmd) > 0 && isspace(cmd[strlen(cmd) - 1])) {
-                cmd[strlen(cmd) - 1] = '\0';
-        }
-        if (strlen(cmd) == 0) {
-                printf("Input is empty\n");
-                return NULL;
+        if (expmin_argc > expmax_argc) {
+                printf("Invalid range: (%d, %d)\n", expmin_argc, expmax_argc);
+                return ERROR;
         }
 
-        while (cmd != NULL && cmd_argc < MAX_CMD_ARGC) {
-                /* Get current command arg */
-                cmd_argv[cmd_argc++] = cmd;
-
-                /* Find placement for next command arg */
-                cmd = strstr(cmd+1, " ");
-                if (cmd != NULL) {  /* ...if there exists another arg */
-                        while (strlen(cmd) > 0 && isspace(cmd[0])) {
-                                *(cmd++) = '\0';
-                        }
-                        if (strlen(cmd) == 0) {
-                                /* This should not happen as there should be
-                                   another non-space argument after this */
-                                printf("Logic error: missing next argument\n");
-                                exit(1);
-                        }
-                }
-        }
-        if (cmd_argc <= 0) {
-                /* There should be at least one argument if no blank input */
-                printf("Logic error: illogical arg count %d\n", cmd_argc);
-                exit(1);
-        }
-        if (cmd != NULL) {
-                /* Too many args to fit into argv, so didn't parse all. */
-                printf("Too many arguments for cmd: '%s'\n", cmd_argv[0]);
-                return NULL;
-        }
-        if (cmd_argc > exp_argc) {
-                printf("Too many arguments for cmd: '%s'\n", cmd_argv[0]);
-                return NULL;
-        }
-        if (cmd_argc < exp_argc) {
-                printf("Too few arguments for cmd: '%s'\n", cmd_argv[0]);
-                return NULL;
+        /* Copy cmd string to prevent modifying original string. */
+        cmd = strdup(orig_cmd);
+        if (cmd == NULL) {
+                printf("Fatal error: Insufficient memory\n");
+                return ERROR;
         }
 
-	//        return SUCCESS;
-	return strdup(cmd_argv[pos]);
+        /* Start parsing/tokenizing */
+        token = strtok(cmd, WHITESPACE_DELIM);
+        cmd_name = token;
+        while (token != NULL && cmd_argc <= expmax_argc) {
+                cmd_argc++;
+                token = strtok(NULL, WHITESPACE_DELIM);
+        }
+
+        /* Check argument counts */
+        if (cmd_argc > expmax_argc) {
+                printf("Too many arguments for cmd: '%s'\n", cmd_name);
+                free(cmd);
+                return ERROR;
+        }
+        if (cmd_argc < expmin_argc) {
+                printf("Too few arguments for cmd: '%s'\n", cmd_name);
+                free(cmd);
+                return ERROR;
+        }
+
+        free(cmd);
+        return SUCCESS;
 }
 
+/*
+ * Test string to int conversion.
+ *
+ * Parameters:
+ *     intstr      - Input string representation of integer.
+ * Returns: SUCCESS if able to be convert correctly, ERROR if something went
+ *          wrong (i.e. overflow or not a number).
+ */
+int check_atoi(char *orig_intstr) {
+        char *intstr;
+        char *endptr;
+        long int result;
 
-struct file *file_from_cmd(char *cmd)
-{
-        (void) cmd;
-
-        char *char_fd;
-        int fd_key;
-        int cmd_argc = 2;
-        char_fd = parse_cmd(cmd,cmd_argc,1);
-        if(char_fd == NULL)
-        {
-                puts("stat: missing operand");
+        /* Sanity checks */
+        if (orig_intstr == NULL) {
+                printf("intstr is NULL\n");
+                return ERROR;
         }
-        else
-        {
-                fd_key = atoi(char_fd);
-
-                struct file *f;
-                HASH_FIND_INT(fd_ht, &fd_key, f);
-                return f;
+        if (strlen(orig_intstr) == 0) {
+                printf("intstr is empty\n");
+                return ERROR;
         }
+
+        /* Copy cmd string to prevent modifying original string. */
+        intstr = strdup(orig_intstr);
+        if (intstr == NULL) {
+                printf("Fatal error: Insufficient memory\n");
+                return ERROR;
+        }
+
+        /* Start converting and checking */
+        result = strtol(intstr, &endptr, 10);
+        if (*endptr != '\0') {
+                printf("intstr '%s' is not a valid number\n", intstr);
+                free(intstr);
+                return ERROR;
+        }
+        if (result >= INT_MAX) {
+                printf("intstr value '%s' too large\n", intstr);
+                free(intstr);
+                return ERROR;
+        }
+        if (result <= INT_MIN) {
+                printf("intstr value '%s' too small\n", intstr);
+                free(intstr);
+                return ERROR;
+        }
+
+        free(intstr);
+        return SUCCESS;
 }
 
 /* return dentry of last component of the given path */
 /* so....basically the parent dentry */
-struct dentry *dentry_lookup(char *path) {
-	/*
-    	   if (strcmp((path+(strlen(path)-1)), "/") == 0) {
-    	   puts("It ends with a /");
-    	 *(path+strlen(path)-1) = '\0';
-    	 }
-    	 puts(path);
-    	 */
+struct dentry *dentry_lookup(char *orig_path) {
+        char *path;
+        char *token; 
+        struct dentry *d_tmp;      // temp ptr for parent dentry hash lookups
+        struct dentry *d = fsdb.d_root;      // begin with the root dentry
 
-
-    	char *token; 
-    	struct dentry *d_tmp; // temp placeholder for parent dentry hash lookups
-    	struct dentry *d = fsdb.d_root; // begin with the root dentry
-
-    	char *tokenize_string = strdup(path);
-    	char delim[2] = "/";
-    	token = strtok(tokenize_string, "/");
-
-    	while (token != NULL) {
-		/* Look up child dentry by name (token), and fill in d_tmp */    	
-    		HASH_FIND_STR(d->d_child_ht, token, d_tmp); 
-    		if (d_tmp == NULL) {
-    			return NULL; // invalid path!
-    		}
-    		d = d_tmp; // new parent dentry
-
-		token = strtok(NULL, delim);
-    	}
-    	return d;
-}
-
-int create_dentry(char *path, umode_t mode, struct file *file)
-{
-        char *path_copy;
-        struct dentry *check_exist;
-        path_copy = strdup(path);
-        check_exist = dentry_lookup(path);
-        if (check_exist != NULL) {
-                puts("path already exists, cannot create inode");
-                return -1;
+        /* Sanity checks */
+        if (orig_path == NULL) {
+                printf("path is NULL\n");
+                return NULL;
         }
 
-        char *new_dir_name = strdup(basename(path_copy));
-        char *rest_of_path = strdup(dirname(path_copy));
-        puts("basename of path:");
-        puts(new_dir_name);
-        puts("dirname of path:");
-        puts(rest_of_path);
+        /* Special case - PWD = ROOT */
+        if (strcmp(orig_path, ".") == 0) {
+                return d;
+        }
 
+        /* Copy path to prevent modifying original string. */
+        path = strdup(orig_path);
+        if (path == NULL) {
+                printf("Fatal error: Insufficient memory\n");
+                return NULL;
+        }
+
+        token = strtok(path, SLASH_DELIM);
+        while (token != NULL && d != NULL) { // finish parsing or invalid path
+                /* Look up child dentry by name (token), and fill in d_tmp */
+                HASH_FIND_STR(d->d_child_ht, token, d_tmp); 
+                d = d_tmp;                   // new parent dentry
+                token = strtok(NULL, SLASH_DELIM);
+        }
+
+        free(path);
+        return d;                            // NULL if invalid path!
+}
+
+int create_dentry(char *orig_path, umode_t mode, struct file *file) {
+        char *path_basecopy;
+        char *path_dircopy;
+        char *new_dir_name;
+        char *rest_of_path;
         struct dentry *parent_dentry;
+        struct dentry *new_dentry;
+        struct inode_operations *parent_i_op;
+        struct inode *parent_d_inode;
+        struct qstr p;
+
+        /* Sanity checks */
+        if (orig_path == NULL) {
+                printf("path is NULL\n");
+                return ERROR;
+        }
+        if (dentry_lookup(orig_path) != NULL) {
+                puts("path already exists, cannot create inode");
+                return ERROR;
+        }
+
+        /* Copy path to prevent modifying original string. */
+        path_basecopy = strdup(orig_path);
+        if (path_basecopy == NULL) {
+                printf("Fatal error: Insufficient memory\n");
+                return ERROR;
+        }
+        path_dircopy = strdup(orig_path);
+        if (path_dircopy == NULL) {
+                printf("Fatal error: Insufficient memory\n");
+                free(path_basecopy);
+                return ERROR;
+        }
+
+        new_dir_name = strdup(basename(path_basecopy));
+        // This is not to be freed if successful (keep in new dentry
+        if (new_dir_name == NULL) {
+                printf("Fatal error: Insufficient memory\n");
+                free(path_basecopy);
+                free(path_dircopy);
+                return ERROR;
+        }
+        rest_of_path = dirname(path_dircopy);
+        printf("basename of path: %s\n", new_dir_name);
+        printf("dirname of path: %s\n", rest_of_path);
+
         parent_dentry = dentry_lookup(rest_of_path);
         if (parent_dentry == NULL) {
                 puts("Error: Invalid path.");
-                return;
+                free(path_basecopy);
+                free(path_dircopy);
+                free(new_dir_name);
+                return ERROR;
+        }
+        if ((parent_dentry->d_inode->i_mode & S_IFMT) != S_IFDIR) {
+                puts("Error: Invalid path.");
+                free(path_basecopy);
+                free(path_dircopy);
+                free(new_dir_name);
+                return ERROR;
+        }
+        parent_d_inode = parent_dentry->d_inode;
+        parent_i_op = parent_dentry->d_inode->i_op;
+        p = (struct qstr)QSTR_INIT(new_dir_name, sizeof(new_dir_name));
+
+        /* Do this check early, so as to not rely on d_genocide or whatever */
+        if (mode != S_IFDIR && mode != S_IFREG) {
+                puts("Mode not recognized.");
+                free(path_basecopy);
+                free(path_dircopy);
+                free(new_dir_name);
+                return ERROR;
         }
 
-        /* Now that we have the parent dentry, construct one for the new subdirectory
-         * we are making.
-         */
-        struct qstr p = QSTR_INIT(new_dir_name, sizeof(new_dir_name));
-        struct dentry *new_dir_dentry = d_alloc(NULL, (const struct qstr *) &p);
-        new_dir_dentry->d_parent = parent_dentry;
-        //new_dir_dentry->name = new_dir_name; // careful here...we use this as the key to parent_dentry->d_child_ht.
-        strcpy(new_dir_dentry->name,new_dir_name);
+        /* Now with the parent dentry, construct one for new subdirectory. */
+        new_dentry = d_alloc(parent_dentry, (const struct qstr *) &p);
+        if (new_dentry == NULL) {
+                printf("Fatal error: Insufficient memory\n");
+                free(path_basecopy);
+                free(path_dircopy);
+                free(new_dir_name);
+                return ERROR;
+        }
+        new_dentry->d_child_ht = NULL;      // must be NULL initialized
+        //new_dentry->name = new_dentry->d_name.name;  // p.name;
+        strcpy(new_dentry->name, new_dentry->d_name.name);
+        // Do a strcpy because .name is an array, not a pointer.
+        // careful here...we use this as the key to parent_dentry->d_child_ht.
+        // Also need to free later on when deleting dentry? d_genocide?
 
-        new_dir_dentry->d_child_ht = NULL; // must be NULL initialized
-        if(mode == S_IFDIR)
-        {
+        if (mode == S_IFDIR) {
                 // This should call ramfs_mkdir.
                 // see man 2 stat for modes and macros for checking modes
-                parent_dentry->d_inode->i_op->mkdir(parent_dentry->d_inode, new_dir_dentry, S_IFDIR);  // screw permissions and just pass in type of file for mode param
-                // If successful new_dir_dentry should have been instantiated with a new inode...
+                parent_i_op->mkdir(parent_d_inode, new_dentry, S_IFDIR);
+                // screw permissions and just pass type of file for mode param
+                // If success new_dentry should be instantiated with new inode
+        } else if (mode == S_IFREG) {
+                parent_i_op->create(parent_d_inode, new_dentry, S_IFREG, true);
+                // screw permissions and just pass type of file for mode param
+                file->i = new_dentry->d_inode;
+                file->d = new_dentry;
+        }
 
-                //	HASH_ADD_KEYPTR(hh, hashtable location, string pointer as key(the child name), sizeof(new_dir_name), the value the key hashes to(struct dentry));
-                //	HASH_ADD_KEYPTR(hh, parent_dentry->d_child_ht, new_dir_dentry->name, sizeof(new_dir_dentry->name), new_dir_dentry);
-                HASH_ADD_STR(parent_dentry->d_child_ht, name, new_dir_dentry);
-                return 0;
-        }
-        else if(mode == S_IFREG)
-        {
-                parent_dentry->d_inode->i_op->create(parent_dentry->d_inode, new_dir_dentry, S_IFREG, true);  // screw permissions and just pass in type of file for mode param
-                file->i = parent_dentry->d_inode;
-                file->d = parent_dentry;
-                HASH_ADD_STR(parent_dentry->d_child_ht, name, new_dir_dentry);
-                return 0;
-        }
-        else
-        {
-                puts("Mode not recognized.");
-                return -1;
-        }
+        HASH_ADD_STR(parent_dentry->d_child_ht, name, new_dentry);
+        free(path_basecopy);
+        free(path_dircopy);
+        // Do NOT free new_dir_name. Keep in new_dentry->d_name.
+        return SUCCESS;
 }
 
 static void usage()
@@ -232,39 +297,38 @@ static void usage()
         exit(1);
 }
 
+// QUESTION: Where to create inode? Called by inode_ops
+// QUESTION2: Basename and dirname.
+// QUESTION3: Unlink fd or path?
+
 void do_ls(char *cmd)
 {
         // |fsdb> ls <path>
-        (void) cmd;
+        char *cmd_name;
+        char *path;
+        struct dentry *d;
+        struct dentry *item_ptr; // for HASH_ITER: actual child dentry returned
+        struct dentry *d_tmp;    // for HASH_ITER: just used as a cursor
+        char cmd_alt[] = "ls /";
+        int has_children = 0;
+        if (strcmp(cmd, "ls\n") == 0) {
+                cmd = cmd_alt;
+        }
+        if (check_cmd(cmd, 2, 2) == ERROR) {
+                return;
+        }
+        cmd_name = strtok(cmd, WHITESPACE_DELIM);
+        path = strtok(NULL, WHITESPACE_DELIM);
+        (void)cmd_name;
+
         // get path dentry
         // if dentry->mode is file just print the file name
         // if mode is directory hash_itr over d_child_ht and print their names
-
-        char *path;
-        int cmd_argc = 2;
-        path = parse_cmd(cmd,cmd_argc,1);
-
-        if (path == NULL) {
-                puts("do_ls: Could not parse cmd");
-                return;
-        }
-
-
-        struct dentry *d;
         d = dentry_lookup(path);
         if (d == NULL) {
                 puts("Invalid path");
                 return;
         }
-
-        /* gcc complains if I put these declarations in case S_IFDIR,
-         * so I guess I'll put them out here...
-         */
-        // for HASH_ITER
-        //item_ptr is the actual child dentry returned
-        //d_tmp is just used as a cursor.
-        struct dentry *item_ptr;
-        struct dentry *d_tmp;
 
         switch(d->d_inode->i_mode & S_IFMT) {
         case S_IFREG:
@@ -272,8 +336,12 @@ void do_ls(char *cmd)
                 break;
         case S_IFDIR:
                 puts("do_ls: path is a directory, listing children");
-                HASH_ITER(hh, d->d_child_ht, item_ptr, d_tmp){
+                HASH_ITER(hh, d->d_child_ht, item_ptr, d_tmp) {
                         puts(item_ptr->name);
+                        has_children = 1;
+                }
+                if (has_children == 0) {
+                        puts("<No files or subdirectories exist.>");
                 }
                 break;
         default:
@@ -285,127 +353,224 @@ void do_ls(char *cmd)
 void do_open(char *cmd)
 {
         // |fsdb> open <path>
-        (void) cmd;
-
+        char *cmd_name;
         char *path;
-        int cmd_argc = 2;
-        int success = -1;
-        path = parse_cmd(cmd,cmd_argc,1);
+        struct dentry *file_dentry;
+        struct file *open_file;
+        if (check_cmd(cmd, 2, 2) == ERROR) {
+                return;
+        }
+        cmd_name = strtok(cmd, WHITESPACE_DELIM);
+        path = strtok(NULL, WHITESPACE_DELIM);
+        (void)cmd_name;
+
+        open_file = (struct file *)kzalloc(sizeof(struct file), 0);
+        if (open_file == NULL) {
+                printf("Fatal error: Insufficient memory\n");
+                return;
+        }
 
         // get the dentry of the path
-        struct dentry *file_dentry;
         file_dentry = dentry_lookup(path);
         if (file_dentry == NULL) {
-                struct file *open_file = (struct file *)kzalloc(sizeof(struct file), 0);
-                success = create_dentry(path, S_IFREG, open_file);
-
-                if(success == 0)
-                {
-                        open_file->fd = next_fd;
-                        HASH_ADD_INT(fd_ht, fd, open_file);
-                        printf("Opened new file %s\n with file descriptor %d.\n", path, next_fd);
-                        next_fd++;
-                }
-                else
-                {
+                // create_dentry also sets the two fields below.
+                if (create_dentry(path, S_IFREG, open_file) == ERROR) {
                         printf("Failed to open new file %s.\n", path);
+                        kfree(open_file);
+                        return;
                 }
-        }
-        else
-        {
-
-                // construct a struct file
-                struct file *open_file = (struct file *)kzalloc(sizeof(struct file), 0);
+        } else {
                 open_file->i = file_dentry->d_inode;
                 open_file->d = file_dentry;
-                open_file->fd = next_fd;
-                //hash_add_int(head, keyfield name, value ptr)
-                //why does the key HAVE to be in the struct being added to the hashtable?
-                HASH_ADD_INT(fd_ht, fd, open_file); // last arg (value) has to be a ptr
-                printf("Opened %s with file descriptor %d.\n", path, next_fd);
-
-                next_fd++;
         }
+        open_file->fd = next_fd++;
+        //hash_add_int(head, keyfield name, value ptr)
+        //why does the key HAVE to be in the struct being added to hashtable?
+        HASH_ADD_INT(fd_ht, fd, open_file);  // last arg (value) has to be ptr
+        printf("Open ");
+        if (file_dentry == NULL) {
+                printf("new ");
+        }
+        printf("file '%s' with fd %d\n", path, open_file->fd);
 }
 
 void do_mkdir(char *cmd)
 {
         // |fsdb> mkdir <path>
-        (void) cmd;
-
-        /* Path parsing */
+        char *cmd_name;
         char *path;
-        int cmd_argc = 2;
-        int success = -1;
-        path = parse_cmd(cmd,cmd_argc,1);
-
-        // before we do anything else
-
-        success = create_dentry(path, S_IFDIR, NULL);
-        if (success == 0) {
-                puts("SUCCESSFULLY PUT NEW DENTRY");
-        } else {
-                puts("Could not find new directory we just made...");
+        if (check_cmd(cmd, 2, 2) == ERROR) {
+                return;
         }
+        cmd_name = strtok(cmd, WHITESPACE_DELIM);
+        path = strtok(NULL, WHITESPACE_DELIM);
+        (void)cmd_name;
+
+        if (create_dentry(path, S_IFDIR, NULL) == ERROR) {
+                puts("Could not create new directory.");
+                return;
+        }
+        puts("SUCCESSFULLY PUT NEW DENTRY");
 }
 
 void do_read(char *cmd)
 {
         // |fsdb> read <fd> <size> <off> [<hostpath>]
-        struct file *f = file_from_cmd(cmd);
-        (void) cmd;
+        char *cmd_name;
+        char *fd_char;
+        char *size_char;
+        char *offset_char;
+        char *hostpath;
+        int fd;
+        int size;
+        int offset;
+        struct file *f;
+        if (check_cmd(cmd, 4, 5) == ERROR) {
+                return;
+        }
+        cmd_name = strtok(cmd, WHITESPACE_DELIM);
+        fd_char = strtok(NULL, WHITESPACE_DELIM);
+        size_char = strtok(NULL, WHITESPACE_DELIM);
+        offset_char = strtok(NULL, WHITESPACE_DELIM);
+        hostpath = strtok(NULL, WHITESPACE_DELIM);
+        if (check_atoi(fd_char) == ERROR) {
+                return;
+        }
+        if (check_atoi(size_char) == ERROR) {
+                return;
+        }
+        if (check_atoi(offset_char) == ERROR) {
+                return;
+        }
+        fd = atoi(fd_char);
+        size = atoi(size_char);
+        offset = atoi(offset_char);
+        (void)cmd_name;
+
+        HASH_FIND_INT(fd_ht, &fd, f);
         puts("Not implemented.");
-        //do_sync_read(struct file *filp, , char __user *buf, ssize_t len,  loff_t *pos);
+        (void)offset; (void)size; (void)hostpath;
+        //do_sync_read(struct file *filp, , char __user *buf, 
+        //                                       ssize_t len,  loff_t *pos);
         // so some sort of fd->file mapping
 
         //for nonexistent files, create them?
         //ramfs_mknod(inode of parent dir, dentry to fill, mode, 0);
-
 }
 
 void do_write(char *cmd)
 {
         // |fsdb> write <fd> <size> <off> [<hostpath>] [rand | zero]
-        char *char_fd;
-        int cmd_argc = 4;
-        char_fd = parse_cmd(cmd,cmd_argc,1);
-        struct file *f = file_from_cmd(cmd);
+        char *cmd_name;
+        char *fd_char;
+        char *size_char;
+        char *offset_char;
+        char *hostpath;
+        char *rand_or_zero;
+        int fd;
+        int size;
+        int offset;
+        struct file *f;
+        if (check_cmd(cmd, 4, 6) == ERROR) {
+                return;
+        }
+        cmd_name = strtok(cmd, WHITESPACE_DELIM);
+        fd_char = strtok(NULL, WHITESPACE_DELIM);
+        size_char = strtok(NULL, WHITESPACE_DELIM);
+        offset_char = strtok(NULL, WHITESPACE_DELIM);
+        hostpath = strtok(NULL, WHITESPACE_DELIM);
+        rand_or_zero = strtok(NULL, WHITESPACE_DELIM);
+        if (check_atoi(fd_char) == ERROR) {
+                return;
+        }
+        if (check_atoi(size_char) == ERROR) {
+                return;
+        }
+        if (check_atoi(offset_char) == ERROR) {
+                return;
+        }
+        fd = atoi(fd_char);
+        size = atoi(size_char);
+        offset = atoi(offset_char);
+        (void)cmd_name;
+
+        HASH_FIND_INT(fd_ht, &fd, f);
         if (f == NULL) {
-                puts("do_stat: Invalid file descriptor");
+                puts("do_write: Invalid file descriptor");
         } else {
-                printf("File: '%s'\n", f->d->d_name.name);
+                printf("do_write: File '%s'\n", f->d->d_name.name);
         }
         puts("Not implemented.");
+        (void)offset; (void)size; (void)hostpath; (void)rand_or_zero;
 }
 
 void do_unlink(char *cmd)
 {
         // |fsdb> unlink <fd>
-        (void) cmd;
-
+        char *cmd_name;
         char *path;
-        int cmd_argc = 2;
-        path = parse_cmd(cmd,cmd_argc,1);
-
-        char *file_to_remove = strdup(basename(path));
-        char *rest_of_path = strdup(dirname(path));
-
+        char *path_basecopy;
+        char *path_dircopy;
+        char *file_to_remove;
+        char *rest_of_path;
         struct dentry *parent_dentry;
         struct dentry *d_tmp;
+        //char *fd_char;
+        //int fd;
+        if (check_cmd(cmd, 2, 2) == ERROR) {
+                return;
+        }
+        cmd_name = strtok(cmd, WHITESPACE_DELIM);
+        path = strtok(NULL, WHITESPACE_DELIM);
+        //fd_char = strtok(NULL, WHITESPACE_DELIM);
+        //if (check_atoi(fd_char) == ERROR) {
+        //        return;
+        //}
+        //fd = atoi(fd_char);
+        (void)cmd_name;
 
+        puts("Not implemented.");
+        puts("1) Is unlink <fd> or unlink <path>?");
+        puts("2) Find out i_nlink problem (files with simple_unlink");
+        return;
+
+        path_basecopy = strdup(path);
+        if (path_basecopy == NULL) {
+                printf("Fatal error: Insufficient memory\n");
+                return;
+        }
+        path_dircopy = strdup(path);
+        if (path_dircopy == NULL) {
+                printf("Fatal error: Insufficient memory\n");
+                free(path_basecopy);
+                return;
+        }
+
+        file_to_remove = basename(path_basecopy);
+        rest_of_path = dirname(path_dircopy);
         parent_dentry = dentry_lookup(rest_of_path);
         if (parent_dentry == NULL) {
                 puts("Error: Invalid path");
+                free(path_basecopy);
+                free(path_dircopy);
                 return;
         }
+
         HASH_FIND_STR(parent_dentry->d_child_ht, file_to_remove, d_tmp);
         if (d_tmp == NULL) { // couldn't find that file in the parent dir
                 puts("Could not delete requested file, it does not exist");
-        } else {
-                // parent directory inode is only needed to set inode's ctime and mtime
-                // d_tmp is the dentry associated with the file we want to unlink
-                parent_dentry->d_inode->i_op->unlink(parent_dentry->d_inode, d_tmp);
+                free(path_basecopy);
+                free(path_dircopy);
+                return;
         }
+
+        // parent directory inode is only needed to set inode's ctime and mtime
+        // d_tmp is the dentry associated with the file we want to unlink
+        parent_dentry->d_inode->i_op->unlink(parent_dentry->d_inode, d_tmp);
+        HASH_DEL(parent_dentry->d_child_ht, d_tmp);
+        free(path_basecopy);
+        free(path_dircopy);
+        return;
 }
 
 void do_truncate(char *cmd)
@@ -426,45 +591,50 @@ void do_flush(char *cmd)
 void do_rename(char *cmd)
 {
         // |fsdb> rename <fd> <path>
-        (void) cmd;
-        char *char_fd;
-        char *new_path;
-        int fd_key;
-        int cmd_argc = 3;
-        char_fd = parse_cmd(strdup(cmd),cmd_argc,1);
-        new_path = parse_cmd(strdup(cmd),cmd_argc,2);
-        if(char_fd == NULL)
-        {
-                puts("stat: missing operand");
+        char *cmd_name;
+        char *fd_char;
+        char *path;
+        int fd;
+        struct file *f;
+        if (check_cmd(cmd, 3, 3) == ERROR) {
+                return;
         }
-        else
-        {
-                fd_key = atoi(char_fd);
+        cmd_name = strtok(cmd, WHITESPACE_DELIM);
+        fd_char = strtok(NULL, WHITESPACE_DELIM);
+        path = strtok(NULL, WHITESPACE_DELIM);
+        if (check_atoi(fd_char) == ERROR) {
+                return;
+        }
+        fd = atoi(fd_char);
+        (void)cmd_name;
 
-                struct file *f;
-                HASH_FIND_INT(fd_ht, &fd_key, f);
-                if (f == NULL) {
-                        puts("do_stat: Invalid file descriptor");
-                } else {
-                	//new inode
-                	struct inode *i = NULL;
-                	//new dentry
-                	//if it is dir, inode->i_op is ramfs_dir_inode_operations
-                	//simple_rename is only a valid op defined for *directories*
-                	
-                	struct dentry *new = dentry_lookup(new_path);
-                	if (new == NULL) {
-                		// not supported..fail for rest.
-                		puts("Returning -1");
-                		return -1;
-                	}
+        HASH_FIND_INT(fd_ht, &fd, f);
+        if (f == NULL) {
+                puts("do_stat: Invalid file descriptor");
+                return;
+        }
 
-                	if (S_ISDIR(f->i->i_mode)){
-    	   			if (!f->i->i_op->rename(f->i, f->d,new->d_inode,new)) {
-    	   				puts("OK");
-    	   				return 0;
-    	   			}
-                	}
+        puts("The below is not complete at all.");
+        //new inode: (needed?) struct inode *i = NULL;
+        //new dentry
+        //if it is dir, inode->i_op is ramfs_dir_inode_operations
+        //simple_rename is only a valid op defined for *directories*
+
+        struct dentry *new = dentry_lookup(path);
+        if (new == NULL) {  // If new name available.
+                // not supported..fail for rest.
+                puts("Returning because of error");
+                puts("Not implmented.");
+                return;
+        }
+
+        if (S_ISDIR(f->i->i_mode)){
+                if (!f->i->i_op->rename(f->i, f->d,new->d_inode,new)) {
+                        puts("OK");
+                        return;
+                }
+                else {
+                        puts("not OK");
                 }
         }
 }
@@ -472,36 +642,49 @@ void do_rename(char *cmd)
 void do_stat(char *cmd)
 {
         // |fsdb> stat <fd>
-        (void) cmd;
-        struct file *f = file_from_cmd(cmd);
+        char *cmd_name;
+        char *fd_char;
+        int fd;
+        struct file *f;
+        char *file_type;
+        if (check_cmd(cmd, 2, 2) == ERROR) {
+                return;
+        }
+        cmd_name = strtok(cmd, WHITESPACE_DELIM);
+        fd_char = strtok(NULL, WHITESPACE_DELIM);
+        if (check_atoi(fd_char) == ERROR) {
+                return;
+        }
+        fd = atoi(fd_char);
+        (void)cmd_name;
 
-        if(f == NULL)
-        {
+        HASH_FIND_INT(fd_ht, &fd, f);
+        if (f == NULL) {
                 puts("do_stat: Invalid file descriptor");
+                return;
         }
-        else
-        {
-                printf("File: '%s'\n", f->d->d_name.name);
-                printf("Size: %d\nBlocks: %d\nIO Block: Unimplemented\n", f->i->i_size, f->i->i_blocks);
-                printf("Link count: %d\n", f->i->i_nlink);
-                char *file_type;
-                switch (f->i->i_mode & S_IFMT) {
-                default:
-                        file_type = "unknown file type";
-                        break;
-                case S_IFREG:
-                        file_type = "regular file";
-                        break;
-                case S_IFDIR:
-                        file_type = "directory";
-                        break;
-                case S_IFLNK:
-                        file_type = "symbolic link";
-                        break;
-                }
-                printf("File type: '%s'\n", file_type);
-                // TODO more print stuff?
+
+        printf("File: '%s'\n", f->d->d_name.name);
+        printf("Size: %d\n", f->i->i_size);
+        printf("Blocks: %d\n", f->i->i_blocks);
+        printf("IO Block: Unimplemented\n");
+        printf("Link count: %d\n", f->i->i_nlink);
+        switch (f->i->i_mode & S_IFMT) {
+        default:
+                file_type = "unknown file type";
+                break;
+        case S_IFREG:
+                file_type = "regular file";
+                break;
+        case S_IFDIR:
+                file_type = "directory";
+                break;
+        case S_IFLNK:
+                file_type = "symbolic link";
+                break;
         }
+        printf("File type: '%s'\n", file_type);
+        // TODO more print stuff?
 }
 
 void do_statfs(char *cmd)
@@ -511,32 +694,53 @@ void do_statfs(char *cmd)
 
         struct kstatfs *buf;
         buf = (struct kstatfs *)kzalloc(sizeof(struct kstatfs), 0);
+        if (buf == NULL) {
+                printf("Fatal error: Insufficient memory\n");
+                return;
+        }
         fsdb.sb->s_op->statfs(fsdb.d_root, buf);
-        printf("f_type: %lu\nf_bsize: %lu\nf_namelen: %lu\n", buf->f_type, buf->f_bsize, buf->f_namelen);
+        printf("f_type: %lu\n", buf->f_type);
+        printf("f_bsize: %lu\n", buf->f_bsize);
+        printf("f_namelen: %lu\n", buf->f_namelen);
         puts("");
-        free(buf);
+        kfree(buf);    // Used kzalloc above.
 }
 
 void do_close(char *cmd)
 {
         // |fsdb> close <fd>
-        (void) cmd;
-        struct file *f = file_from_cmd(cmd);
+        char *cmd_name;
+        char *fd_char;
+        int fd;
+        struct file *f;
+        if (check_cmd(cmd, 2, 2) == ERROR) {
+                return;
+        }
+        cmd_name = strtok(cmd, WHITESPACE_DELIM);
+        fd_char = strtok(NULL, WHITESPACE_DELIM);
+        if (check_atoi(fd_char) == ERROR) {
+                return;
+        }
+        fd = atoi(fd_char);
+        (void)cmd_name;
+
+        HASH_FIND_INT(fd_ht, &fd, f);
         if (f == NULL) {
                 puts("do_close: Invalid file descriptor");
-        } else {
-                //will this work? do I need to pass in the original pointer I had in HASH_ADD_INT???
-                HASH_DEL(fd_ht, f);
-                free(f);
-                puts("Deleted fd from fd_ht");
+                return;
         }
 
+        //will this work? 
+        //do I need to pass in orig pointer I had in HASH_ADD_INT???
+        HASH_DEL(fd_ht, f);
+        kfree(f);      // Used kzalloc above.
+        puts("Deleted fd from fd_ht");
 }
 
 void do_exit(char *cmd)
 {
         (void) cmd;
-        exit_lpfs(); // I think?
+        // Do nothing. main() handles this.
 }
 
 static struct {
@@ -646,7 +850,13 @@ int main(int argc, char **argv)
         exit_lpfs();
 
         if (fsdb.disk.buffer) {
-                unmount_disk(&fsdb.disk);
+                if (strstr(fsdb.mnt_opts, "snapshot")) {
+                        unmount_disk(&fsdb.disk);
+                } else if (strstr("-ramfs", fsdb.mnt_opts)) {
+                        /* No unsetup needed here. */
+                        /* Can free, but unnecessary since end of program */
+                        //kfree(fsdb.sb->__disk->buffer);
+                }
         }
 
         return 0;
