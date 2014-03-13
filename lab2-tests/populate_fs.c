@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
   struct lp_superblock_fmt *sb = (void*)head;
   struct lp_snapshot_fmt *snap0 = head + (2 * LP_SEGSZ);
   struct lp_data_seg_fmt *data1 = head + (3 * LP_SEGSZ);
-  struct lp_inode_map_fmt *in_ent = ((u8*) snap0) + LP_SNAP_IMAP_OFF;
+  struct lp_inode_map_fmt *in_ent = ((u8*) snap0) + LP_SNAP_IMAP_OFF + sizeof(struct lp_inode_map_fmt);;
 
   void* dPayload = ((u8*) data1) + (2 * LP_BLOCKSZ);
   struct lp_inode_fmt* iPayload = ((u8*) data1) + (1 * LP_BLOCKSZ) + sizeof(lp_inode_fmt);
