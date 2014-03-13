@@ -490,6 +490,8 @@ struct dentry *d_alloc(struct dentry *parent, const struct qstr *name)
         return d;
 }
 
+void __d_instantiate(struct dentry *d, struct inode *inode);
+
 /* Pilfered from the kernel with userspacey modifications */
 void d_instantiate(struct dentry *d, struct inode *inode)
 {
@@ -510,7 +512,8 @@ void __d_instantiate(struct dentry *d, struct inode *inode){
      spin_lock(&d->d_lock);
      /* Add given dentry to inode's i_dentry list */
      if (inode)
-                 hlist_add_head(&d->d_alias, &inode->i_dentry);
+                // hlist_add_head(&d->d_alias, &inode->i_dentry);
+         hlist_add_head(&inode->i_dentry, &d->d_alias);
      d->d_inode = inode;
      spin_unlock(&d->d_lock);
 }
