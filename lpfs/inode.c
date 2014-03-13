@@ -160,9 +160,9 @@ struct file_operations lpfs_file_ops = {
 	.aio_write	= generic_file_aio_write,
 	.mmap		= generic_file_mmap,
 
-	.open		= dquot_file_open,
+	.open		= generic_file_open,
 	/* Palmer suggests the generic fsync */
-	.fsync		= simple_fsync,
+	.fsync		= noop_fsync,
 
 
 };
@@ -171,7 +171,7 @@ struct file_operations lpfs_file_ops = {
 struct file_operations lpfs_dir_ops = {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
-	.fsync		= simple_fsync,
+	.fsync		= noop_fsync,
 	.iterate 	= lpfs_readdir // need to implement
 
 };
