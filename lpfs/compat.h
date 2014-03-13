@@ -175,6 +175,11 @@ struct vm_area_struct;
 struct backing_dev_info;
 struct address_space;
 
+struct kstatfs {
+	long f_type;
+	long f_bsize;
+	long f_namelen;
+};
 struct mutex {
 	pthread_mutex_t m;
 };
@@ -256,6 +261,8 @@ struct inode {
 	/* This lock is used to sleep on the I_NEW bit in i_state. */
 	struct mutex __lock;
 
+	struct hlist_head i_dentry;
+
 	UT_hash_handle hh;
 };
 
@@ -283,10 +290,17 @@ struct dentry {
 	struct super_block *d_sb;
 
 	/* apparently uthash requires string keys to be in the struct itself? */
-	char *name;  // this will be the key to search this dentry's parent's d_child_ht
-	UT_hash_handle hh; // we want to hash dentries
+	char name[80]; // this will be the key to search this dentry's parent's d_child_ht
 	struct dentry *d_child_ht;
 //	d_child_ht = NULL; // hash child names -> their dentries. *Must* be NULL initialized.
+
+	/* list of alias inodes, for d_instantiate */
+	struct list_head d_alias;
+
+	/* dget increases this */
+	int refcount;
+
+	UT_hash_handle hh; // make this struct hashable
 
 
 };
@@ -295,7 +309,7 @@ struct file {
 	struct inode *i;
 	struct file_operations *f_op;
 	spinlock_t f_lock;
-	
+
 	/* Added in addition to vedant's suggested file struct */
 	struct dentry *d;
 
@@ -319,20 +333,6 @@ struct kstat {
     unsigned long long      blocks;
 };
 
-struct kstatfs {
-        long f_type;
-        long f_bsize;
-        u64 f_blocks;
-        u64 f_bfree;
-        u64 f_bavail;
-        u64 f_files;
-        u64 f_ffree;
-        __kernel_fsid_t f_fsid;
-        long f_namelen;
-        long f_frsize;
-        long f_flags;
-        long f_spare[4];
-};
 enum {
 	BDI_CAP_NO_ACCT_AND_WRITEBACK,
 	BDI_CAP_MAP_DIRECT,
@@ -580,6 +580,8 @@ void d_instantiate(struct dentry *d, struct inode *inode);
 struct dentry *d_make_root(struct inode *inode);
 void dget(struct dentry *d);
 void d_genocide(struct dentry *d);
+
+void drop_nlink(struct inode *i);
 
 extern int (*__init_func__)(void);
 extern void (*__exit_func__)(void);
