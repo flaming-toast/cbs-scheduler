@@ -185,7 +185,7 @@ struct file_operations lpfs_dir_ops = {
  *
  * these were stolen from ext2
  */
-
+/*
 struct address_space_operations lpfs_aops = {
 	.readpage		= lpfs_readpage,
 //	.readpages		= lpfs_readpages,
@@ -201,3 +201,4 @@ struct address_space_operations lpfs_aops = {
 	.is_partially_uptodate	= block_is_partially_uptodate,
 	.error_remove_page	= generic_error_remove_page,
 };
+*/
