@@ -5,6 +5,7 @@
  */
 
 #include "struct.h"
+#include "compat.h"
 
 #pragma GCC optimize ("-O0")
 
@@ -119,7 +120,7 @@ void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
 }
 
 /* operation tables copied *straight* from ext2, modify to fit lpfs */
-struct super_operations lpfs_super_ops {
+struct super_operations lpfs_super_ops = {
 
 	/* Copied from ext2, then s/ext2/lpfs/
 	 * probably won't have to implement these but I'll
@@ -140,7 +141,7 @@ struct super_operations lpfs_super_ops {
 	
 };
 
-struct inode_operations lpfs_inode_ops {
+struct inode_operations lpfs_inode_ops = {
 	.setattr 	= simple_setattr,
 	.getattr 	= simple_getattr, // stat(2) uses this
 	// need atomic_open for dquot_file_open
@@ -150,7 +151,7 @@ struct inode_operations lpfs_inode_ops {
 };
 
 /* file.c */
-struct file_operations lpfs_file_ops {
+struct file_operations lpfs_file_ops = {
 	.llseek		= generic_file_llseek,
 	.read		= do_sync_read,
 	.write		= do_sync_write, // checkpoint 3
@@ -167,7 +168,7 @@ struct file_operations lpfs_file_ops {
 };
 
 /* dir.c */
-struct file_operations lpfs_dir_ops {
+struct file_operations lpfs_dir_ops = {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
 	.fsync		= simple_fsync,

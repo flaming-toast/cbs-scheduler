@@ -25,15 +25,19 @@ LPFS_LDFLAGS = -lpthread -lrt
 	gcc $(LPFS_CFLAGS) -c -o $@ $<
 
 .lpfs/mkfs-lp: userspace/mkfs-lp.c .lpfs/compat.o 
+	gcc $(LPFS_CFLAGS) -o $@ $^ $(LPFS_LDFLAGS)
+
+.lpfs/populate_fs: lab2-tests/populate_fs.c
 	gcc $(LPFS_CFLAGS) -o $@ $^ $(LPFS_LDFLAGS) 
 
 .lpfs/fsdb: userspace/fsdb.c $(LPFS_OBJS)
 	gcc $(LPFS_CFLAGS) -o $@ $^ $(LPFS_LDFLAGS) 
 
-.lpfs/disk.img: .lpfs/mkfs-lp 
+.lpfs/disk.img: .lpfs/mkfs-lp .lpfs/populate_fs
 	dd if=/dev/zero of=.lpfs/disk.img bs=1M count=128
 	make reset_loop
 	.lpfs/mkfs-lp /dev/loop0
+	.lpfs/populate_fs /dev/loop0
 	sync
 	chmod 777 .lpfs/disk.img
 
