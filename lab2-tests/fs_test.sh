@@ -1,8 +1,8 @@
 NUMTESTS=7
 CORRECT=0
 
-echo "Mounting ramfs..."
-mount -t ramfs ramfs /mnt
+echo "Mounting the filesystem..."
+mount -t lpfs /dev/sda /mnt
 
 echo "Running fs test 0: File reads"
 

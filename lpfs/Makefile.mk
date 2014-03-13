@@ -25,15 +25,19 @@ LPFS_LDFLAGS = -lpthread -lrt
 	gcc $(LPFS_CFLAGS) -c -o $@ $<
 
 .lpfs/mkfs-lp: userspace/mkfs-lp.c .lpfs/compat.o 
+	gcc $(LPFS_CFLAGS) -o $@ $^ $(LPFS_LDFLAGS)
+
+.lpfs/populate_fs: lab2-tests/populate_fs.c
 	gcc $(LPFS_CFLAGS) -o $@ $^ $(LPFS_LDFLAGS) 
 
 .lpfs/fsdb: userspace/fsdb.c $(LPFS_OBJS)
 	gcc $(LPFS_CFLAGS) -o $@ $^ $(LPFS_LDFLAGS) 
 
-.lpfs/disk.img: .lpfs/mkfs-lp 
+.lpfs/disk.img: .lpfs/mkfs-lp .lpfs/populate_fs
 	dd if=/dev/zero of=.lpfs/disk.img bs=1M count=128
 	make reset_loop
 	.lpfs/mkfs-lp /dev/loop0
+	.lpfs/populate_fs /dev/loop0
 	sync
 	chmod 777 .lpfs/disk.img
 
@@ -44,7 +48,18 @@ all: .lpfs/mkfs-lp .lpfs/fsdb
 reset_loop:
 	lsmod | grep -q loop || modprobe loop
 	losetup -d /dev/loop0 2> /dev/null || true
+	# Associate a loopback device with the file
 	losetup /dev/loop0 .lpfs/disk.img
+	# Encrypt storage in the device. cryptsetup will use the Linux
+	# device mapper to create, in this case, /dev/mapper/lpfs.
+	
+	# If you want to use LUKS, you should use the following two
+	# commands (optionally with additional) parameters. The first
+	# command initializes the volume, and sets an initial key. The
+	# second command opens the partition, and creates a mapping
+	# (in this case /dev/mapper/secretfs).
+	cryptsetup -y luksFormat /dev/loop0
+	cryptsetup luksOpen /dev/loop0 lpfs'
 
 .PHONY: fsdb
 fsdb: .lpfs/fsdb .lpfs/disk.img
