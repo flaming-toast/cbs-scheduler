@@ -10,3 +10,10 @@
 *.img
 *.cmd
 *.gz
+
+# lpfs in the kernel
+linux/fs/lpfs
+linux/fs/ramfs
+
+# UML
+linux/arch/x86/um
