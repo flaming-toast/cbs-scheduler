@@ -30,7 +30,8 @@ struct file *fd_ht;
  * Returns: SUCCESS if parsed correctly, ERROR if something went wrong
  *          (i.e. wrong number of arguments for command).
  */
-char *parse_cmd(char *cmd, int exp_argc) {
+
+char *parse_cmd(char *cmd, int exp_argc, int pos) {
         char *cmd_argv[MAX_CMD_ARGC];
         int i;
         int cmd_argc = 0;
@@ -103,8 +104,8 @@ char *parse_cmd(char *cmd, int exp_argc) {
                 return NULL;
         }
 
-        //        return SUCCESS;
-        return strdup(cmd_argv[1]);
+	//        return SUCCESS;
+	return strdup(cmd_argv[pos]);
 }
 
 
@@ -115,7 +116,7 @@ struct file *file_from_cmd(char *cmd)
         char *char_fd;
         int fd_key;
         int cmd_argc = 2;
-        char_fd = parse_cmd(cmd,cmd_argc);
+        char_fd = parse_cmd(cmd,cmd_argc,1);
         if(char_fd == NULL)
         {
                 puts("stat: missing operand");
@@ -133,34 +134,34 @@ struct file *file_from_cmd(char *cmd)
 /* return dentry of last component of the given path */
 /* so....basically the parent dentry */
 struct dentry *dentry_lookup(char *path) {
-        /*
-           if (strcmp((path+(strlen(path)-1)), "/") == 0) {
-           puts("It ends with a /");
-         *(path+strlen(path)-1) = '\0';
-         }
-         puts(path);
-         */
+	/*
+    	   if (strcmp((path+(strlen(path)-1)), "/") == 0) {
+    	   puts("It ends with a /");
+    	 *(path+strlen(path)-1) = '\0';
+    	 }
+    	 puts(path);
+    	 */
 
 
-        char *token;
-        struct dentry *d_tmp; // temp placeholder for parent dentry hash lookups
-        struct dentry *d = fsdb.d_root; // begin with the root dentry
+    	char *token; 
+    	struct dentry *d_tmp; // temp placeholder for parent dentry hash lookups
+    	struct dentry *d = fsdb.d_root; // begin with the root dentry
 
-        char *tokenize_string = strdup(path);
-        char delim[2] = "/";
-        token = strtok(tokenize_string, "/");
+    	char *tokenize_string = strdup(path);
+    	char delim[2] = "/";
+    	token = strtok(tokenize_string, "/");
 
-        while (token != NULL) {
-                /* Look up child dentry by name (token), and fill in d_tmp */
-                HASH_FIND_STR(d->d_child_ht, token, d_tmp);
-                if (d_tmp == NULL) {
-                        return NULL; // invalid path!
-                }
-                d = d_tmp; // new parent dentry
+    	while (token != NULL) {
+		/* Look up child dentry by name (token), and fill in d_tmp */    	
+    		HASH_FIND_STR(d->d_child_ht, token, d_tmp); 
+    		if (d_tmp == NULL) {
+    			return NULL; // invalid path!
+    		}
+    		d = d_tmp; // new parent dentry
 
-                token = strtok(NULL, delim);
-        }
-        return d;
+		token = strtok(NULL, delim);
+    	}
+    	return d;
 }
 
 int create_dentry(char *path, umode_t mode, struct file *file)
@@ -241,7 +242,7 @@ void do_ls(char *cmd)
 
         char *path;
         int cmd_argc = 2;
-        path = parse_cmd(cmd,cmd_argc);
+        path = parse_cmd(cmd,cmd_argc,1);
 
         if (path == NULL) {
                 puts("do_ls: Could not parse cmd");
@@ -289,7 +290,7 @@ void do_open(char *cmd)
         char *path;
         int cmd_argc = 2;
         int success = -1;
-        path = parse_cmd(cmd,cmd_argc);
+        path = parse_cmd(cmd,cmd_argc,1);
 
         // get the dentry of the path
         struct dentry *file_dentry;
@@ -336,7 +337,7 @@ void do_mkdir(char *cmd)
         char *path;
         int cmd_argc = 2;
         int success = -1;
-        path = parse_cmd(cmd,cmd_argc);
+        path = parse_cmd(cmd,cmd_argc,1);
 
         // before we do anything else
 
@@ -367,7 +368,7 @@ void do_write(char *cmd)
         // |fsdb> write <fd> <size> <off> [<hostpath>] [rand | zero]
         char *char_fd;
         int cmd_argc = 4;
-        char_fd = parse_cmd(cmd,cmd_argc);
+        char_fd = parse_cmd(cmd,cmd_argc,1);
         struct file *f = file_from_cmd(cmd);
         if (f == NULL) {
                 puts("do_stat: Invalid file descriptor");
@@ -384,7 +385,7 @@ void do_unlink(char *cmd)
 
         char *path;
         int cmd_argc = 2;
-        path = parse_cmd(cmd,cmd_argc);
+        path = parse_cmd(cmd,cmd_argc,1);
 
         char *file_to_remove = strdup(basename(path));
         char *rest_of_path = strdup(dirname(path));
@@ -426,12 +427,46 @@ void do_rename(char *cmd)
 {
         // |fsdb> rename <fd> <path>
         (void) cmd;
-        puts("Not implemented.");
-        /* hash_find fd_ht with given fd -> returns file struct
-         * get file->d->d_parent (dentry of parent)
-         * wait...rename file at fd to path???
-         */
+        char *char_fd;
+        char *new_path;
+        int fd_key;
+        int cmd_argc = 3;
+        char_fd = parse_cmd(strdup(cmd),cmd_argc,1);
+        new_path = parse_cmd(strdup(cmd),cmd_argc,2);
+        if(char_fd == NULL)
+        {
+                puts("stat: missing operand");
+        }
+        else
+        {
+                fd_key = atoi(char_fd);
 
+                struct file *f;
+                HASH_FIND_INT(fd_ht, &fd_key, f);
+                if (f == NULL) {
+                        puts("do_stat: Invalid file descriptor");
+                } else {
+                	//new inode
+                	struct inode *i = NULL;
+                	//new dentry
+                	//if it is dir, inode->i_op is ramfs_dir_inode_operations
+                	//simple_rename is only a valid op defined for *directories*
+                	
+                	struct dentry *new = dentry_lookup(new_path);
+                	if (new == NULL) {
+                		// not supported..fail for rest.
+                		puts("Returning -1");
+                		return -1;
+                	}
+
+                	if (S_ISDIR(f->i->i_mode)){
+    	   			if (!f->i->i_op->rename(f->i, f->d,new->d_inode,new)) {
+    	   				puts("OK");
+    	   				return 0;
+    	   			}
+                	}
+                }
+        }
 }
 
 void do_stat(char *cmd)
@@ -448,6 +483,7 @@ void do_stat(char *cmd)
         {
                 printf("File: '%s'\n", f->d->d_name.name);
                 printf("Size: %d\nBlocks: %d\nIO Block: Unimplemented\n", f->i->i_size, f->i->i_blocks);
+                printf("Link count: %d\n", f->i->i_nlink);
                 char *file_type;
                 switch (f->i->i_mode & S_IFMT) {
                 default:

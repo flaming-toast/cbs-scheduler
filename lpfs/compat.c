@@ -811,7 +811,8 @@ int simple_unlink(struct inode *dir, struct dentry *dentry)
 
         inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
         //TODO
-        //drop_nlink(inode);
+        drop_nlink(inode);
+        //dput releases the dentry
         //dput(dentry);
         return 0;
 }
@@ -837,7 +838,13 @@ out:
 spin_unlock(&dentry->d_lock);
 return ret;
 */
-        return 0;
+	if (dentry == NULL) { return 1; }
+	if (dentry->d_inode == NULL) {
+	        return 1;
+	} else {
+		return 0;
+	}
+
 }
 
 int simple_rmdir(struct inode *dir, struct dentry *dentry)
@@ -855,28 +862,37 @@ int simple_rmdir(struct inode *dir, struct dentry *dentry)
 int simple_rename(struct inode *old_dir, struct dentry *old_dentry,
                 struct inode *new_dir, struct dentry *new_dentry)
 {
+	/* OKAY WE'RE GONNA SUPPORT ONLY ONE CASE AS PER PIAZZA
         struct inode *inode = old_dentry->d_inode;
         int they_are_dirs = S_ISDIR(old_dentry->d_inode->i_mode);
 
+
         if (!simple_empty(new_dentry))
                 return -ENOTEMPTY;
+       
 
         if (new_dentry->d_inode) {
                 simple_unlink(new_dir, new_dentry);
                 if (they_are_dirs) {
-                        //TODO
-                        //drop_nlink(new_dentry->d_inode);
-                        //drop_nlink(old_dir);
+                        drop_nlink(new_dentry->d_inode);
+                        drop_nlink(old_dir);
                 }
         } else if (they_are_dirs) {
-                //drop_nlink(old_dir);
-                inc_nlink(new_dir);
+        	printf("si");
+                drop_nlink(old_dir);
+    //            inc_nlink(new_dir);
         }
-
+        */
+/*
         old_dir->i_ctime = old_dir->i_mtime = new_dir->i_ctime =
                 new_dir->i_mtime = inode->i_ctime = CURRENT_TIME;
-
-        return 0;
+                */
+	if (old_dentry->d_inode == new_dentry->d_inode) { 
+		// success!!!!!!
+		return 0;
+	} else {
+		return -1;
+	}
 }
 
 loff_t generic_file_llseek(struct file *file, loff_t loff, int x)
@@ -983,3 +999,13 @@ int simple_getattr(struct vfsmount *mnt, struct dentry *dentry,
         return 0;
 }
 
+void drop_nlink(struct inode *inode)
+{
+	// seems to complain when I use atomic ops
+        WARN_ON(inode->i_nlink == 0);
+        spin_lock(&inode->i_lock);
+        inode->i_nlink--;
+        printf("new link count:%d", inode->i_nlink);
+        spin_unlock(&inode->i_lock);
+
+}

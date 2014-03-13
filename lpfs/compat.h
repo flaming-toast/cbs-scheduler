@@ -581,6 +581,8 @@ struct dentry *d_make_root(struct inode *inode);
 void dget(struct dentry *d);
 void d_genocide(struct dentry *d);
 
+void drop_nlink(struct inode *i);
+
 extern int (*__init_func__)(void);
 extern void (*__exit_func__)(void);
 

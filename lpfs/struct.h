@@ -172,11 +172,25 @@ void lpfs_imap_delete(struct lpfs *ctx, u64 ino);
  */
 void lpfs_imap_destroy(struct lpfs *ctx);
 
+/* we could put these in potentially better places, like mirror the layout
+ * in ext2. i.e., have super_operations declared in super.c, file_operations declared 
+ * in file.c, etc -jyu */
+
 /* inode.c */
 extern struct super_operations lpfs_super_ops;
 extern struct inode_operations lpfs_inode_ops;
 extern struct file_operations lpfs_file_ops;
 extern struct file_operations lpfs_dir_ops;
+
+/* For any non-static functions, add their declarations here 
+ * for the operations in the above ops tables 
+ * let's put the actual function definition functions 
+ * in the appropriate file -jyu */
+
+/* Example -- for fsync */
+/* file.c */
+extern int lpfs_fsync(struct file *file, loff_t start, loff_t end,
+		      int datasync);
 
 /*
  * Scan the disk for inode number @ino.
