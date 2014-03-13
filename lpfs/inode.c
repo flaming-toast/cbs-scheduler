@@ -136,23 +136,27 @@ struct super_operations lpfs_super_ops {
 	/* pilfered from ramfs */
 	.show_options	= generic_show_options,
         .drop_inode	= generic_delete_inode,
-	.statfs 	= simple_statfs,
+	.statfs 	= lpfs_statfs, // cannot use generic
 	
 };
 
 struct inode_operations lpfs_inode_ops {
 	.setattr 	= simple_setattr,
-	.getattr 	= simple_getattr
+	.getattr 	= simple_getattr // stat(2) uses this
+	// need atomic_open for dquot_file_open
+	// 
 };
 
 /* file.c */
 struct file_operations lpfs_file_ops {
 	.llseek		= generic_file_llseek,
 	.read		= do_sync_read,
-	.write		= do_sync_write,
-	.aio_read	= generic_file_aio_read,
+	.write		= do_sync_write, // checkpoint 3
+	
+	.aio_read	= generic_file_aio_read,//do_sync_* calls these..
 	.aio_write	= generic_file_aio_write,
 	.mmap		= generic_file_mmap,
+
 	.open		= dquot_file_open,
 	/* Palmer suggests the generic fsync */
 	.fsync		= simple_fsync,
@@ -166,4 +170,30 @@ struct file_operations lpfs_dir_ops {
 	.fsync		= simple_fsync,
 	.iterate 	= lpfs_readdir // need to implement
 
+};
+
+/* inode->i_mapping->aops assigned to a "alloc inode" 
+ * sort of function like ext2_iget or ramfs_get_inode
+ * 
+ * ext2_readpage(struct file, struct page) -> mpage_readpage(page, ext2_get_block) 
+ * -> ext2_get_block(struct inode, sector_t iblock, struct buffer_head *bh_result,int create)
+ *  which just sets bh_result->bsize...
+ *
+ * these were stolen from ext2
+ */
+
+struct address_space_operations lpfs_aops = {
+	.readpage		= lpfs_readpage,
+//	.readpages		= lpfs_readpages,
+	.writepage		= lpfs_writepage,
+//	.writepages		= lpfs_writepages,
+	.write_begin		= block_write_begin,
+	.write_end		= generic_write_end, // see piazza note
+
+	.bmap			= generic_block_bmap, //see piazza note
+	.direct_IO		= lpfs_direct_IO,
+	.migratepage		= buffer_migrate_page,
+
+	.is_partially_uptodate	= block_is_partially_uptodate,
+	.error_remove_page	= generic_error_remove_page,
 };
