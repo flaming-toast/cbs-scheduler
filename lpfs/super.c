@@ -5,32 +5,11 @@
  */
 
 #include "struct.h"
-#include<linux/include/linux/statfs.h>
+#include<linux/statfs.h>
 
 #pragma GCC optimize ("-O0")
 
 
-/* operation tables copied *straight* from ext2, modify to fit lpfs */
-struct super_operations lpfs_super_ops {
-
-        /* Copied from ext2, then s/ext2/lpfs/
-         * probably won't have to implement these but I'll
-         * keep them here for now */
-        /*
-           .alloc_inode	= lpfs_alloc_inode,
-           .destroy_inode	= lpfs_destroy_inode,
-           .write_inode	= lpfs_write_inode,
-           .evict_inode	= lpfs_evict_inode,
-           .put_super	= lpfs_put_super,
-           .sync_fs	= lpfs_sync_fs,
-           */
-
-        /* pilfered from ramfs */
-        .show_options	= generic_show_options,
-        .drop_inode	= generic_delete_inode,
-        .statfs 	= lpfs_statfs,
-
-};
 
 struct lpfs *lpfs_ctx_create(struct super_block *sb)
 {
@@ -155,36 +134,36 @@ fail:
 static int lpfs_load_imap_ents(struct lpfs_darray *d,
                 struct lp_snapshot_fmt *snap, u32 seg_addr);
 
-struct lpfs_darray *lpfs_find_last_segment(struct super_block *sb)
-{
-        return NULL;
-}
-
 int lpfs_do_statfs(struct dentry *dentry, struct kstatfs *buf)
 {
         struct super_block *sb;
-        struct lp_superblock_fmt *sb_fmt;
-        struct lpfs_darray *last_segment;
-        void *sb_info;
-        long used;
+        int used = 0;
+        //struct lp_superblock_fmt *sb_fmt;
+        //void *sb_info;
 
+        // fsid, fstype = magic
+        // f_bsize nr segm
+        // f_freeblocks
+        // sut keep track of segment length. double its size with more information. allow scan through sut to
+        // mkfs-lp.c instead of using 4 bytes, use 8 btytes, second 4 bytes is usage
+        // ffiles, keep counter in sbkkj
+        // garbage collection - pass write to same file many times
         sb = dentry->d_sb;
-        s_fs_info = sb->s_fs_info;
-        u64_id = huge_encode_dev()
-
-        buf->f_type = _sb->s_magic;
+        //s_fs_info = sb->s_fs_info;
+        // seg + lp_snap_imap_off
+        // get fs_info, cast to struct lpfs ptr, that ptr has sb_info
+        buf->f_type = sb->s_magic;
         buf->f_bsize = sb->s_blocksize;
-        buf->f_blocks = sb->s_blocksize_bits / 8 / sb->s_maxbytes//LP_BLKS_PER_SEG * nr_segments;
+        buf->f_blocks = sb->s_blocksize_bits / 8 / sb->s_maxbytes;//LP_BLKS_PER_SEG * nr_segments;
 
-        last_segment = lpfs_find_last_segment(sb);
-        used = last_segment->blk_addr + last_segment->nr_blocks * LP_BLKSZ;// start from checkpoint, find last segment inode map position
+        //last_segment = lpfs_find_last_segment(sb);
+        //used = last_segment->blk_addr + last_segment->nr_blocks * LP_BLKSZ;// start from checkpoint, find last segment inode map position
         buf->f_bfree = buf->f_blocks - used;
         buf->f_bavail = buf->f_bfree;
-        buf->f_files 0; // for each inode_map from checkpoint, iterate through inodes and add to counter if file node.
+        buf->f_files = 0; // for each inode_map from checkpoint, iterate through inodes and add to counter if file node.
         buf->f_ffree = 0; // NOT SURE
-        //TODO I have no idea what to do with file system id
-        buf->f_fsid.val[0] = 0;
-        buf->f_fsid.val[1] = 1;
+        buf->f_fsid.val[0] = sb->s_magic;
+        buf->f_fsid.val[0] = sb->s_magic;
         buf->f_namelen = 255; // might want to define some constant like LPFS_NAME_LEN
         return 0;
 }
@@ -452,6 +431,28 @@ exit:
         }
         return err;
 }
+
+/* operation tables copied *straight* from ext2, modify to fit lpfs */
+struct super_operations lpfs_super_ops = {
+
+        /* Copied from ext2, then s/ext2/lpfs/
+         * probably won't have to implement these but I'll
+         * keep them here for now */
+        /*
+           .alloc_inode	= lpfs_alloc_inode,
+           .destroy_inode	= lpfs_destroy_inode,
+           .write_inode	= lpfs_write_inode,
+           .evict_inode	= lpfs_evict_inode,
+           .put_super	= lpfs_put_super,
+           .sync_fs	= lpfs_sync_fs,
+           */
+
+        /* pilfered from ramfs */
+        .show_options	= generic_show_options,
+        .drop_inode	= generic_delete_inode,
+        .statfs = lpfs_do_statfs,
+
+};
 
 static struct dentry *lpfs_mount(struct file_system_type *fs_type, int flags,
                 const char *dev_name, void *data)
