@@ -43,9 +43,9 @@ static void *inode_map_of(void *snap)
 	return ((u8 *) snap) + LP_SNAP_IMAP_OFF;
 }
 
-static void *payload_of(struct lp_data_seg_fmt *data)
+static void *payload_of(struct lp_data_seg_fmt *data, u32 k)
 {
-	return ((u8 *) data) + LP_BLKSZ;
+	return ((u8 *) data) + ((k + 1) * LP_BLKSZ);
 }
 
 static u64 pointer_to_byte_addr(struct disk *d, void *p)
@@ -60,7 +60,8 @@ void format_disk(struct disk *d)
 	struct lp_snapshot_fmt *snap0 = segment_of(head, 0);
 	struct lp_data_seg_fmt *data1 = segment_of(head, 1);
 	struct lp_inode_map_fmt *imap_ent = inode_map_of(snap0);
-	struct lp_inode_fmt *i_root = payload_of(data1);
+	struct lp_inode_fmt *i_root = payload_of(data1, 0);
+	struct lp_inode_fmt *i_file0 = i_root + 1;
 	u32 *uuid = (void *)&sb->fs_uuid;
 	struct timeval tp;
 	u32 *SUT;
@@ -110,7 +111,7 @@ void format_disk(struct disk *d)
 	sb->last_snap_id = 0;
 	sb->last_snap_seg = 0;
 
-	sb->next_inode_num = LP_ROOT_INO + 1;
+	sb->next_inode_num = LP_ROOT_INO + 2;
 
 	sb->fs_name[0] = 'l';
 	sb->fs_name[1] = 'p';
@@ -137,14 +138,15 @@ void format_disk(struct disk *d)
 	memset(SUT, 0, sb->sut_len);
 
 	snap0->hdr.checksum = 0;
-	snap0->hdr.seg_len = LP_SNAP_IMAP_OFF + sizeof(struct lp_inode_map_fmt);
+	snap0->hdr.seg_len = LP_SNAP_IMAP_OFF +
+		(2 * sizeof(struct lp_inode_map_fmt));
 	snap0->hdr.seg_prev = LP_SEG_NONE;
 	snap0->hdr.seg_next = 1;
 	snap0->hdr.seg_flags = LP_SEG_SNAP;
 
 	snap0->snap_hdr.snap_id = 0;
 	snap0->snap_hdr.snap_ext_seg = LP_SEG_NONE;
-	snap0->snap_hdr.nr_imap_ents = 1;
+	snap0->snap_hdr.nr_imap_ents = 2;
 	snap0->timestamp = (tp.tv_sec * 1000000) + tp.tv_usec;
 
 	snap0->snap_next_seg = LP_SEG_NONE;
@@ -153,30 +155,51 @@ void format_disk(struct disk *d)
 	imap_ent->inode_number = LP_ROOT_INO;
 	imap_ent->inode_byte_addr = pointer_to_byte_addr(d, i_root);
 
+	struct lp_inode_map_fmt *imap0_ent = imap_ent + 1;
+	imap0_ent->inode_number = LP_ROOT_INO + 1;
+	imap0_ent->inode_byte_addr = pointer_to_byte_addr(d, i_file0);
+
 	snap0->hdr.checksum = __lpfs_fnv(snap0, snap0->hdr.seg_len);
 	SUT[0] = snap0->hdr.seg_len;
 
-	memset(data1, 0, 2 * LP_BLKSZ);
+	memset(data1, 0, 3 * LP_BLKSZ);
 
 	data1->hdr.checksum = 0;
-	data1->hdr.seg_len = LP_BLKSZ + sizeof(struct lp_inode_fmt);
+	data1->hdr.seg_len = 3 * LP_BLKSZ;
 	data1->hdr.seg_prev = 0;
 	data1->hdr.seg_next = LP_SEG_NONE;
 	data1->hdr.seg_flags = LP_SEG_DATA;
-	data1->nr_blocks_used = 1;
+	data1->nr_blocks_used = 3;
 
 	u8 *data1_util = data1->block_util;
-	data1_util[0] = 1;
+	data1_util[0] = 2;
+	data1_util[1] = 255;
 
 	i_root->ino = LP_ROOT_INO;
-	i_root->size = 0;
-	i_root->version = 0;
+	i_root->size = 4096;
+	i_root->version = 1;
 	i_root->ctime_usec = snap0->timestamp;
 	i_root->mtime_usec = snap0->timestamp;
 	i_root->uid = 0;
 	i_root->gid = 0;
 	i_root->mode = (u16) 0040755;
 	i_root->link_count = 1;
+	i_root->bmap[0] = pointer_to_byte_addr(d, payload_of(data1, 1))
+		/ LP_BLKSZ;
+
+	i_file0->ino = LP_ROOT_INO + 1;
+	i_file0->size = 0;
+	i_file0->version = 1;
+	i_file0->ctime_usec = snap0->timestamp;
+	i_file0->mtime_usec = snap0->timestamp;
+	i_file0->uid = i_file0->gid = 0;
+	i_file0->mode = (u16) 00755;
+	i_file0->link_count = 1;
+
+	struct lp_dentry_fmt *dirent0 = payload_of(data1, 1);
+	dirent0->inode_number = i_file0->ino;
+	dirent0->name_length = strlen("hello.world");
+	memcpy(&dirent0->name, "hello.world", dirent0->name_length);
 
 	data1->hdr.checksum = __lpfs_fnv(data1, data1->hdr.seg_len);
 	SUT[1] = data1->hdr.seg_len;
