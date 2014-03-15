@@ -73,7 +73,6 @@ void lpfs_ctx_destroy(struct lpfs *ctx)
 {
 	if (ctx->imap_cache) {
 		lpfs_imap_destroy(ctx);
-		kmem_cache_destroy(ctx->imap_cache);
 	}
 
 	if (ctx->SUT.blocks) {
@@ -84,6 +83,7 @@ void lpfs_ctx_destroy(struct lpfs *ctx)
 		lpfs_darray_destroy(&ctx->journal);
 	}
 
+	/*
 	if (ctx->syncer != NULL && !IS_ERR(ctx->syncer)) {
 		kthread_stop(ctx->syncer);
 	}
@@ -91,6 +91,7 @@ void lpfs_ctx_destroy(struct lpfs *ctx)
 	if (ctx->cleaner != NULL && !IS_ERR(ctx->cleaner)) {
 		kthread_stop(ctx->cleaner);
 	}
+	*/
 
 	brelse(ctx->sb_buf);
 	kfree(ctx);
@@ -283,6 +284,7 @@ int lpfs_fill_super(struct super_block *sb, void *data, int silent)
 			goto fail;
 		}
 
+		/*
 		ctx->syncer = kthread_run(lpfs_syncer, ctx, "lpfs_syncer");
 		if (IS_ERR(ctx->syncer)) {
 			goto fail;
@@ -292,6 +294,7 @@ int lpfs_fill_super(struct super_block *sb, void *data, int silent)
 		if (IS_ERR(ctx->cleaner)) {
 			goto fail;
 		}
+		*/
 	}
 
 	i_root = lpfs_inode_lookup(ctx, LP_ROOT_INO);

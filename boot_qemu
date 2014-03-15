@@ -5,7 +5,7 @@ initrd="--initrd .obj/initrd.gz"
 append=""
 monitor=""
 debug=""
-kvm=""
+kvm="" # Set this to "-enable-kvm" if you have kvm.
 memory="-m 512"
 net="-net nic,model=ne2k_pci -net user -redir tcp:8088::8088 -redir tcp:9000::9000"
 smp="-smp 2"
@@ -28,13 +28,12 @@ do
 	shift
     elif [[ "$1" == "--stdio" ]]
     then
-	append="--append console=ttyS0 -nographic"
-	serial="--serial stdio"
+	append="-append console=ttyS0 -nographic"
     elif [[ "$1" == "--debug" ]]
     then
 	gdb_port="1234"
 	debug="-gdb tcp::$gdb_port"
-	kvm="--no-kvm"
+	#kvm="--no-kvm"
 	#wd=""
 
 	# FIXME: gdb doesn't support kernel debugging during early
