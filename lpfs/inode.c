@@ -63,7 +63,7 @@ int lpfs_collect_inodes(struct lpfs *ctx, u64 ino, struct inode *inode)
 		if (head->ino == ino) {
 			i_probe = inode;
 		} else {
-			i_probe = ilookup(ctx->sb, ino);
+			i_probe = ilookup(ctx->sb, head->ino);
 			if (i_probe) {
 				goto skip;
 			} else {
@@ -118,7 +118,13 @@ void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
 	insert_inode_hash(inode);
 }
 
-struct super_operations lpfs_super_ops;
+void lpfs_destroy_inode(struct inode *inode)
+{
+	/* XXX: Mysterious VFS behavior allows stale I_FREEING inodes to
+	 * hang around. */
+	inode->i_state = 0;
+}
+
 struct inode_operations lpfs_inode_ops;
 struct file_operations lpfs_file_ops;
 struct file_operations lpfs_dir_ops;
