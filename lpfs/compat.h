@@ -624,7 +624,8 @@ void save_mount_options(struct super_block *sb, char *options);
 #include <linux/quotaops.h>
 #include <linux/statfs.h>
 #include <linux/kdev_t.h>
-#include <asm-generic/atomic.h>
+//Already included by linux/fs.h?
+//#include <asm-generic/atomic.h>
 
 #endif /* _USERSPACE */
 
