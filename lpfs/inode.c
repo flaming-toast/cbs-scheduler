@@ -125,15 +125,58 @@ static int lpfs_readdir(struct file *file, struct dir_context *ctx)
         return 0;
 }
 
+/* lpfs aops */
+int lpfs_readpage(struct file *, struct page *) { 
+	return mpage_readpage(page, lpfs_get_block);
+}
 
+int lpfs_writepage(struct page *page, struct writeback_control *wbc) {
+	return block_write_full_page(page, ext2_get_block, wbc);
+}
+
+int lpfs_readpages(struct file *filp, struct address_space *mapping,
+		                        struct list_head *pages, unsigned nr_pages) {
+	return mpage_readpages(mapping, pages, nr_pages, lpfs_get_block);
+
+}
+
+int lpfs_writepages(struct address_space *mapping, struct writeback_control *wbc) {
+
+	return block_write_full_page(page, lpfs_get_block, wbc);
+}
+
+int lpfs_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh, int create) {
+
+	// if !create = read
+	// iblock*512 = byte offset on disk
+	// disk_size/block_size = number of blocks on disk
+	// iblock*512/block_size = # of block on disk, remainder is offset within block
+	
+	/* Both ext2 and nilfs2 do this calculation */
+	unsigned maxblocks = bh_result->b_size >> inode->i_blkbits;  
+	int blknum = iblock*512/lpfs->sb_info->block_size; // after we get the blocknum somehow..
+	map_bh(bh_result, inode->i_sb, blknum); 
+	bh_result->b_size = (1 << inode->i_blkbits); //the first param is the number of blocks (ret in nilfs, # of contig blocks to read)
+
+	return 0;
+
+	
+}
+
+
+void lpfs_destroy_inode(struct inode *inode)
+{
+	/* XXX: Mysterious VFS behavior allows stale I_FREEING inodes to
+	 * hang around. */
+	inode->i_state = 0;
+}
 
 struct inode_operations lpfs_inode_ops = {
         .setattr 	= simple_setattr,
         .getattr 	= simple_getattr, // stat(2) uses this
         // need atomic_open for dquot_file_open
         //
-        // Incorrect generic type. Commented for now.
-        //.atomic_open    = dquot_file_open,
+        .atomic_open    = dquot_file_open,
         .lookup         = simple_lookup,
 };
 
@@ -154,7 +197,6 @@ struct file_operations lpfs_file_ops = {
 
 
 };
-
 /* dir.c */
 struct file_operations lpfs_dir_ops = {
 	.llseek		= generic_file_llseek,
@@ -174,30 +216,14 @@ struct file_operations lpfs_dir_ops = {
  *
  * these were stolen from ext2
  */
-/*
+
 struct address_space_operations lpfs_aops = {
         .readpage		= lpfs_readpage,
-        //	.readpages		= lpfs_readpages,
+        .readpages		= lpfs_readpages,
         .writepage		= lpfs_writepage,
-        //	.writepages		= lpfs_writepages,
-        .write_begin		= block_write_begin,
+        .writepages		= lpfs_writepages,
+        .write_begin		= block_write_begin, // see piazza note
         .write_end		= generic_write_end, // see piazza note
-
         .bmap			= generic_block_bmap, //see piazza note
-        .direct_IO		= lpfs_direct_IO,
-        .migratepage		= buffer_migrate_page,
-
-        .is_partially_uptodate	= block_is_partially_uptodate,
-        .error_remove_page	= generic_error_remove_page,
+        .direct_IO		= blockdev_direct_IO // see piazza note
 };
-*/
-void lpfs_destroy_inode(struct inode *inode)
-{
-	/* XXX: Mysterious VFS behavior allows stale I_FREEING inodes to
-	 * hang around. */
-	inode->i_state = 0;
-}
-
-struct inode_operations lpfs_inode_ops;
-struct file_operations lpfs_file_ops;
-struct file_operations lpfs_dir_ops;
