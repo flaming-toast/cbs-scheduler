@@ -5,7 +5,6 @@
  */
 
 #include "struct.h"
-#include "compat.h"
 
 #pragma GCC optimize ("-O0")
 
@@ -118,6 +117,19 @@ void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
         unlock_new_inode(inode);
         insert_inode_hash(inode);
 }
+
+
+
+
+
+static int lpfs_readdir(struct file *file, struct dir_context *ctx)
+{
+        (void) file; (void) ctx;
+        // Template. To be replaced with bs version and later true vrs.
+        return 0;
+}
+
+
 
 struct inode_operations lpfs_inode_ops = {
         .setattr 	= simple_setattr,

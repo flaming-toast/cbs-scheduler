@@ -621,6 +621,7 @@ void save_mount_options(struct super_block *sb, char *options);
 #include <linux/string.h>
 #include <linux/kthread.h>
 #include <linux/printk.h>
+#include <linux/quotaops.h>
 #include <linux/statfs.h>
 #include <linux/kdev_t.h>
 #include <asm-generic/atomic.h>

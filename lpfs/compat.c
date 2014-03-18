@@ -1028,5 +1028,31 @@ void drop_nlink(struct inode *inode)
         WARN_ON(new_nlink < 0);
 }
 
+/*
+ * Generic helper for ->open on filesystems supporting disk quotas.
+ */
+int dquot_file_open(struct inode *inode, struct file *file)
+{
+        (void) inode; (void) file;
+        // Template. Unsure if used since also has macro...Extra wrapping?
+        // http://lxr.free-electrons.com/source/fs/quota/dquot.c#L1986
+        // http://lxr.free-electrons.com/source/include/linux/quotaops.h#L266
+        return 0;
+}
+
+/*
+ * Called when an inode is about to be open.
+ * We use this to disallow opening large files on 32bit systems if
+ * the caller didn't specify O_LARGEFILE.  On 64bit systems we force
+ * on this flag in sys_open.
+ */
+int generic_file_open(struct inode * inode, struct file * filp)
+{
+        (void) inode; (void) filp;
+        // Template. BTW, why is this filp? File pointer?
+        // http://lxr.free-electrons.com/source/fs/open.c#L1094
+        return 0;
+}
+
 #else /* ! _USERSPACE */
 #endif /* _USERSPACE */
