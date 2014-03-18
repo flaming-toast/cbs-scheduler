@@ -55,12 +55,14 @@ int lpfs_tx_commit(struct lpfs *ctx, void *buf, u32 len, u64 *byte_addr,
 	 * 5) Keep the transaction state updated at all times
 	 * 6) Update the superblock as needed
 	 */
+        (void) ctx; (void) buf; (void) len; (void) byte_addr; (void) byte_addr_hint; (void) flags;
 
 	return -EINVAL;
 }
 
 int lpfs_tx_sync(struct lpfs_tx *tx)
 {
+        (void) tx;
 	return -EINVAL;
 }
 
@@ -78,10 +80,12 @@ void lpfs_tx_destroy(struct lpfs_tx *tx)
 
 int lpfs_syncer(void *data)
 {
+        (void) data;
 	return -EINVAL;
 }
 
 int lpfs_cleaner(void *data)
 {
+        (void) data;
 	return -EINVAL;
 }
