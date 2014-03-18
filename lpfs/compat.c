@@ -103,7 +103,7 @@ static u64 last_ino = 2;
 
 u64 get_next_ino()
 {
-        return atomic_inc(&last_ino);
+        return atomic_add_return(1, &last_ino);
 }
 
 void inc_nlink(struct inode *inode)
@@ -171,12 +171,12 @@ void __iget(struct inode *inode)
 
 void iput(struct inode *inode)
 {
-        BUG_ON(atomic_dec(&inode->i_count) < 0);
+        BUG_ON(atomic_sub_return(1, &inode->i_count) < 0);
 }
 
 void ihold(struct inode *inode)
 {
-        BUG_ON(atomic_inc(&inode->i_count) >= 2);
+        BUG_ON(atomic_add_return(1, &inode->i_count) >= 2);
 }
 
 struct inode *ilookup(struct super_block *sb, u64 ino)
@@ -255,7 +255,7 @@ void sb_breadahead(struct super_block *sb, u32 blk)
 void brelse(struct buffer_head *bh)
 {
         __sync_synchronize();
-        int count = atomic_dec(&bh->__count);
+        int count = atomic_sub_return(1, &bh->__count);
         BUG_ON(count < 0);
         if (!count) {
                 kfree(bh);
@@ -1023,13 +1023,9 @@ int simple_getattr(struct vfsmount *mnt, struct dentry *dentry,
 
 void drop_nlink(struct inode *inode)
 {
-	// seems to complain when I use atomic ops
-        WARN_ON(inode->i_nlink == 0);
-        spin_lock(&inode->i_lock);
-        inode->i_nlink--;
-        printf("new link count:%d", inode->i_nlink);
-        spin_unlock(&inode->i_lock);
-
+        int new_nlink = atomic_sub_return(1, &inode->i_nlink);
+        printk("new link count: %d", new_nlink);
+        WARN_ON(new_nlink < 0);
 }
 
 #else /* ! _USERSPACE */
