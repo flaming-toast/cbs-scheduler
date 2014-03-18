@@ -5,11 +5,35 @@
  */
 
 #include "struct.h"
+#include "lpfs.h"
 #include<linux/statfs.h>
 
 #pragma GCC optimize ("-O0")
 
+void lpfs_ctx_destroy(struct lpfs *ctx);
+int lpfs_do_statfs(struct dentry *dentry, struct kstatfs *buf);
 
+/* operation tables copied *straight* from ext2, modify to fit lpfs */
+struct super_operations lpfs_super_ops = {
+
+        /* Copied from ext2, then s/ext2/lpfs/
+         * probably won't have to implement these but I'll
+         * keep them here for now */
+        /*
+           .alloc_inode	= lpfs_alloc_inode,
+           .destroy_inode	= lpfs_destroy_inode,
+           .write_inode	= lpfs_write_inode,
+           .evict_inode	= lpfs_evict_inode,
+           .put_super	= lpfs_put_super,
+           .sync_fs	= lpfs_sync_fs,
+           */
+
+        /* pilfered from ramfs */
+        .show_options	= generic_show_options,
+        .drop_inode	= generic_delete_inode,
+        .statfs 	= lpfs_do_statfs,
+
+};
 
 struct lpfs *lpfs_ctx_create(struct super_block *sb)
 {
@@ -138,10 +162,8 @@ int lpfs_do_statfs(struct dentry *dentry, struct kstatfs *buf)
 {
         struct super_block *sb;
         int used = 0;
-        //struct lp_superblock_fmt *sb_fmt;
-        //void *sb_info;
+        struct lp_superblock_fmt *sb_fmt;
 
-        // fsid, fstype = magic
         // f_bsize nr segm
         // f_freeblocks
         // sut keep track of segment length. double its size with more information. allow scan through sut to
@@ -149,12 +171,12 @@ int lpfs_do_statfs(struct dentry *dentry, struct kstatfs *buf)
         // ffiles, keep counter in sbkkj
         // garbage collection - pass write to same file many times
         sb = dentry->d_sb;
-        //s_fs_info = sb->s_fs_info;
+        sb_fmt = (lp_superblock_fmt *)sb->s_fs_info;
         // seg + lp_snap_imap_off
         // get fs_info, cast to struct lpfs ptr, that ptr has sb_info
         buf->f_type = sb->s_magic;
-        buf->f_bsize = sb->s_blocksize;
-        buf->f_blocks = sb->s_blocksize_bits / 8 / sb->s_maxbytes;//LP_BLKS_PER_SEG * nr_segments;
+        buf->f_bsize = sb_fmt->block_size;
+        buf->f_blocks = sb_fmt->nr_segments * LP_BLKS_PER_SEG;
 
         //last_segment = lpfs_find_last_segment(sb);
         //used = last_segment->blk_addr + last_segment->nr_blocks * LP_BLKSZ;// start from checkpoint, find last segment inode map position

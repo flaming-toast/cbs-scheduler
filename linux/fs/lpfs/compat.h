@@ -36,7 +36,7 @@
 #include <userspace/uthash.h>
 
 typedef uint8_t u8;
-typedef uint8_t u16;
+typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint32_t fmode_t;
@@ -175,6 +175,17 @@ struct vm_area_struct;
 struct backing_dev_info;
 struct address_space;
 
+struct kstatfs {
+	long f_type;
+	long f_bsize;
+  u64 f_blocks;
+  u64 f_bfree;
+  u64_f_bavail;
+  u64 f_files;
+  u64 f_ffree;
+	long f_namelen;
+  //fsid ??
+};
 struct mutex {
 	pthread_mutex_t m;
 };
@@ -256,6 +267,9 @@ struct inode {
 	/* This lock is used to sleep on the I_NEW bit in i_state. */
 	struct mutex __lock;
 
+        /* Node in dentry's alias list...I think? Check with Js */
+	struct hlist_node i_dentry;
+
 	UT_hash_handle hh;
 };
 
@@ -277,6 +291,54 @@ struct dentry {
 	struct qstr d_name;
 	struct inode *d_inode;
 	struct dentry *d_parent;
+
+	/* pointer to superblock for call to fsdb.sb->s_op->statfs(dentry, kstatfs buf)
+	 * which uses dentry->d_sb */
+	struct super_block *d_sb;
+
+	/* apparently uthash requires string keys to be in the struct itself? */
+	char name[80]; // this will be the key to search this dentry's parent's d_child_ht
+	struct dentry *d_child_ht;
+//	d_child_ht = NULL; // hash child names -> their dentries. *Must* be NULL initialized.
+
+	/* list of alias inodes, for d_instantiate */
+        // Is this hlist_head or list_head?
+	struct hlist_head d_alias;
+
+	/* dget increases this */
+	int refcount;
+
+	UT_hash_handle hh; // make this struct hashable
+
+
+};
+/* vfs.txt: A file object represents a file opened by a process. */
+struct file {
+	struct inode *i;
+	struct file_operations *f_op;
+	spinlock_t f_lock;
+
+	/* Added in addition to vedant's suggested file struct */
+	struct dentry *d;
+
+	/* For open fd management...*/
+	int fd;
+	UT_hash_handle hh;
+};
+/* Stolen from stat.h and statfs.h for do_stat and do_statfs */
+// for do_stat let's list ino,nlink, mode, ctime, mtime
+struct kstat {
+    u64             ino;
+    dev_t           dev;
+    umode_t         mode;
+    unsigned int    nlink;
+    dev_t           rdev;
+    loff_t          size;
+    struct timespec  atime;
+    struct timespec mtime;
+    struct timespec ctime;
+    unsigned long   blksize;
+    unsigned long long      blocks;
 };
 
 enum {
@@ -526,6 +588,8 @@ void d_instantiate(struct dentry *d, struct inode *inode);
 struct dentry *d_make_root(struct inode *inode);
 void dget(struct dentry *d);
 void d_genocide(struct dentry *d);
+
+void drop_nlink(struct inode *i);
 
 extern int (*__init_func__)(void);
 extern void (*__exit_func__)(void);

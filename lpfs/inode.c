@@ -5,7 +5,6 @@
  */
 
 #include "struct.h"
-#include "compat.h"
 
 #pragma GCC optimize ("-O0")
 
@@ -119,12 +118,26 @@ void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
         insert_inode_hash(inode);
 }
 
+
+
+
+
+static int lpfs_readdir(struct file *file, struct dir_context *ctx)
+{
+        (void) file; (void) ctx;
+        // Template. To be replaced with bs version and later true vrs.
+        return 0;
+}
+
+
+
 struct inode_operations lpfs_inode_ops = {
         .setattr 	= simple_setattr,
         .getattr 	= simple_getattr, // stat(2) uses this
         // need atomic_open for dquot_file_open
         //
-        .atomic_open    = dquot_file_open,
+        // Incorrect generic type. Commented for now.
+        //.atomic_open    = dquot_file_open,
         .lookup         = simple_lookup,
 };
 
@@ -151,7 +164,7 @@ struct file_operations lpfs_dir_ops = {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
 	.fsync		= noop_fsync,
-	.iterate 	= lpfs_readdir // need to implement
+	//.iterate 	= lpfs_readdir // need to implement
 
 
 };
