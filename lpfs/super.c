@@ -184,7 +184,7 @@ int lpfs_do_statfs(struct dentry *dentry, struct kstatfs *buf)
 
         buf->f_type = sb->s_magic;
         buf->f_bsize = sb->s_blocksize;
-        buf->f_blocks = sb->s_blocksize_bits / 8 / sb->s_maxbytes / LP_BLKS_PER_SEG * nr_segments;
+        buf->f_blocks = sb->s_blocksize_bits / 8 / sb->s_maxbytes; // LP_BLKS_PER_SEG * nr_segments;
 
         last_segment = lpfs_find_last_segment(sb);
         used = last_segment->blk_addr + last_segment->nr_blocks * LP_BLKSZ;// start from checkpoint, find last segment inode map position
