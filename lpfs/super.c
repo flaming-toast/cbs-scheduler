@@ -5,13 +5,14 @@
  */
 
 #include "struct.h"
-#include<linux/include/linux/statfs.h>
 
 #pragma GCC optimize ("-O0")
 
+void lpfs_ctx_destroy(struct lpfs *ctx);
+int lpfs_do_statfs(struct dentry *dentry, struct kstatfs *buf);
 
 /* operation tables copied *straight* from ext2, modify to fit lpfs */
-struct super_operations lpfs_super_ops {
+struct super_operations lpfs_super_ops = {
 
         /* Copied from ext2, then s/ext2/lpfs/
          * probably won't have to implement these but I'll
@@ -28,7 +29,7 @@ struct super_operations lpfs_super_ops {
         /* pilfered from ramfs */
         .show_options	= generic_show_options,
         .drop_inode	= generic_delete_inode,
-        .statfs 	= lpfs_statfs,
+        .statfs 	= lpfs_do_statfs,
 
 };
 
@@ -163,24 +164,33 @@ struct lpfs_darray *lpfs_find_last_segment(struct super_block *sb)
 int lpfs_do_statfs(struct dentry *dentry, struct kstatfs *buf)
 {
         struct super_block *sb;
-        struct lp_superblock_fmt *sb_fmt;
+        struct lp_superblock_fmt *sb_fmt = NULL;
         struct lpfs_darray *last_segment;
-        void *sb_info;
+        void *sb_info = NULL;
         long used;
+
+        // How is this used? Defined, but left alone...
+        void *s_fs_info = NULL;
+        u64 u64_id = 0;
+        (void) sb_info;
+        (void) sb_fmt;
+        (void) s_fs_info;
+        (void) u64_id;
 
         sb = dentry->d_sb;
         s_fs_info = sb->s_fs_info;
-        u64_id = huge_encode_dev()
+        // u64_id = huge_encode_dev();
+        // huge_encode_dev requires more args. Also unused value.
 
-        buf->f_type = _sb->s_magic;
+        buf->f_type = sb->s_magic;
         buf->f_bsize = sb->s_blocksize;
-        buf->f_blocks = sb->s_blocksize_bits / 8 / sb->s_maxbytes//LP_BLKS_PER_SEG * nr_segments;
+        buf->f_blocks = sb->s_blocksize_bits / 8 / sb->s_maxbytes / LP_BLKS_PER_SEG * nr_segments;
 
         last_segment = lpfs_find_last_segment(sb);
         used = last_segment->blk_addr + last_segment->nr_blocks * LP_BLKSZ;// start from checkpoint, find last segment inode map position
         buf->f_bfree = buf->f_blocks - used;
         buf->f_bavail = buf->f_bfree;
-        buf->f_files 0; // for each inode_map from checkpoint, iterate through inodes and add to counter if file node.
+        buf->f_files = 0; // for each inode_map from checkpoint, iterate through inodes and add to counter if file node.
         buf->f_ffree = 0; // NOT SURE
         //TODO I have no idea what to do with file system id
         buf->f_fsid.val[0] = 0;
