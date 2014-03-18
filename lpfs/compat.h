@@ -185,6 +185,8 @@ struct kstatfs {
   u64 f_ffree;
 	long f_namelen;
   //fsid ??
+  // Defined in header posix_types.h also included by linux/fs.h
+  __kernel_fsid_t f_fsid;
 };
 struct mutex {
 	pthread_mutex_t m;
@@ -590,6 +592,10 @@ void dget(struct dentry *d);
 void d_genocide(struct dentry *d);
 
 void drop_nlink(struct inode *i);
+
+int dquot_file_open(struct inode *inode, struct file *file);
+int generic_file_open(struct inode * inode, struct file * filp);
+ssize_t generic_read_dir(struct file *filp, char __user *buf, size_t siz, loff_t *ppos);
 
 extern int (*__init_func__)(void);
 extern void (*__exit_func__)(void);

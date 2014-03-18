@@ -1054,5 +1054,12 @@ int generic_file_open(struct inode * inode, struct file * filp)
         return 0;
 }
 
+ssize_t generic_read_dir(struct file *filp, char __user *buf, size_t siz, loff_t *ppos)
+{
+        (void) filp; (void) buf; (void) siz; (void) ppos;
+        // The original also just returned error.
+        return -1;
+}
+
 #else /* ! _USERSPACE */
 #endif /* _USERSPACE */

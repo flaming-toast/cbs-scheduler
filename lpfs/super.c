@@ -158,6 +158,7 @@ static int lpfs_load_imap_ents(struct lpfs_darray *d,
 
 struct lpfs_darray *lpfs_find_last_segment(struct super_block *sb)
 {
+        (void) sb;
         return NULL;
 }
 

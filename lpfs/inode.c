@@ -136,7 +136,8 @@ struct inode_operations lpfs_inode_ops = {
         .getattr 	= simple_getattr, // stat(2) uses this
         // need atomic_open for dquot_file_open
         //
-        .atomic_open    = dquot_file_open,
+        // Incorrect generic type. Commented for now.
+        //.atomic_open    = dquot_file_open,
         .lookup         = simple_lookup,
 };
 
