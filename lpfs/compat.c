@@ -720,11 +720,14 @@ int lpfs_checksum(void *buf, size_t len, size_t cksum_off)
 /************************************************************/
 /************************************************************/
 
+/* These also are missing in userspace! */
+#ifdef _USERSPACE
 struct file_operations simple_dir_operations;
 struct inode_operations page_symlink_inode_operations;
 
 int page_symlink(struct inode *inode, const char *symname, int len)
 {
+        (void) inode; (void) symname; (void) len;
         /*
            struct address_space *mapping = inode->i_mapping;
            struct page *page;
@@ -762,6 +765,7 @@ return err;
 
 void generic_delete_inode(struct inode *node)
 {
+        (void) node;
         return;
 }
 
@@ -777,11 +781,13 @@ int simple_statfs(struct dentry *dentry, struct kstatfs *buf)
 // done
 int generic_show_options(struct seq_file *file, struct dentry *entry)
 {
+        (void) file; (void) entry;
         return 0;
 }
 
 struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 {
+        (void) dir; (void) dentry; (void) flags;
 /*
         struct dentry_operations simple_dentry_operations = {
                 .d_delete = simple_delete_dentry,
@@ -852,6 +858,7 @@ return ret;
 
 int simple_rmdir(struct inode *dir, struct dentry *dentry)
 {
+        (void) dir;
         if (!simple_empty(dentry))
                 return -ENOTEMPTY;
 
@@ -865,6 +872,7 @@ int simple_rmdir(struct inode *dir, struct dentry *dentry)
 int simple_rename(struct inode *old_dir, struct dentry *old_dentry,
                 struct inode *new_dir, struct dentry *new_dentry)
 {
+        (void) old_dir; (void) new_dir;
 	/* OKAY WE'RE GONNA SUPPORT ONLY ONE CASE AS PER PIAZZA
         struct inode *inode = old_dentry->d_inode;
         int they_are_dirs = S_ISDIR(old_dentry->d_inode->i_mode);
@@ -900,46 +908,55 @@ int simple_rename(struct inode *old_dir, struct dentry *old_dentry,
 
 loff_t generic_file_llseek(struct file *file, loff_t loff, int x)
 {
+        (void) file; (void) x;
         return loff;
 }
 
 ssize_t do_sync_read(struct file *file, char __user *user, size_t size, loff_t *loff)
 {
+        (void) file; (void) user; (void) loff;
         return size;
 }
 
 ssize_t do_sync_write(struct file *file, const char __user *user, size_t size, loff_t *loff)
 {
+        (void) file; (void) user; (void) loff;
         return size;
 }
 
 ssize_t generic_file_aio_read(struct kiocb *kiocb_o, const struct iovec *iovec_o, unsigned long l, loff_t loff)
 {
+        (void) kiocb_o; (void) iovec_o; (void) l; (void) loff;
         return (ssize_t)-1;
 }
 
 ssize_t generic_file_aio_write(struct kiocb *kiocb_o, const struct iovec *iovec_o, unsigned long l, loff_t loff)
 {
+        (void) kiocb_o; (void) iovec_o; (void) l; (void) loff;
         return (ssize_t)-1;
 }
 
 int generic_file_mmap(struct file *file, struct vm_area_struct *vm_area_o)
 {
+        (void) file; (void) vm_area_o;
         return 0;
 }
 
 int noop_fsync(struct file *file, loff_t loff1, loff_t loff2, int datasync)
 {
+        (void) file; (void) loff1; (void) loff2; (void) datasync;
         return 0;
 }
 
 ssize_t generic_file_splice_write(struct pipe_inode_info *info, struct file *file, size_t size, unsigned int x)
 {
+        (void) info; (void) file; (void) size; (void)x;
         return (ssize_t)-1;
 }
 
 ssize_t generic_file_splice_read(struct file *file, struct pipe_inode_info *info, size_t size, unsigned int x)
 {
+        (void) file; (void) info; (void) size; (void) x;
         return (ssize_t)-1;
 }
 
@@ -959,6 +976,7 @@ ssize_t generic_file_splice_read(struct file *file, struct pipe_inode_info *info
  */
 int simple_setattr(struct dentry *dentry, struct iattr *iattr)
 {
+        (void) dentry; (void) iattr;
         return 0;
         /*
            struct inode *inode = dentry->d_inodes,
@@ -996,6 +1014,7 @@ void generic_fillattr(struct inode *inode, struct kstat *stat)
 int simple_getattr(struct vfsmount *mnt, struct dentry *dentry,
                 struct kstat *stat)
 {
+        (void) mnt;
         struct inode *inode = dentry->d_inode;
         generic_fillattr(inode, stat);
         //stat->blocks = inode->i_mapping->nrpages << (PAGE_CACHE_SHIFT - 9);
@@ -1012,3 +1031,6 @@ void drop_nlink(struct inode *inode)
         spin_unlock(&inode->i_lock);
 
 }
+
+#else /* ! _USERSPACE */
+#endif /* _USERSPACE */
