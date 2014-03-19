@@ -51,7 +51,7 @@ int lpfs_tx_commit(struct lpfs *ctx, void *buf, u32 len, u64 *byte_addr,
 	 *	- Create a new transaction, try again
 	 * 3) Append everything to the journal, unless flags & FROM_JNL
 	 * 4) Carefully update the SUT
-	 *	- Inode map updates require up to 4 SUT updates
+	 *	- Inode updates require up to 4 SUT updates
 	 * 5) Keep the transaction state updated at all times
 	 * 6) Update the superblock as needed
 	 */

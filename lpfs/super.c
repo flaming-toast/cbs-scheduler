@@ -109,13 +109,16 @@ void lpfs_ctx_destroy(struct lpfs *ctx)
                 lpfs_darray_destroy(&ctx->journal);
         }
 
-        if (ctx->syncer != NULL && !IS_ERR(ctx->syncer)) {
-                kthread_stop(ctx->syncer);
-        }
+	/*
+	if (ctx->syncer != NULL && !IS_ERR(ctx->syncer)) {
+		kthread_stop(ctx->syncer);
+	}
 
-        if (ctx->cleaner != NULL && !IS_ERR(ctx->cleaner)) {
-                kthread_stop(ctx->cleaner);
-        }
+	if (ctx->cleaner != NULL && !IS_ERR(ctx->cleaner)) {
+		kthread_stop(ctx->cleaner);
+	}
+	*/
+
 
         brelse(ctx->sb_buf);
         kfree(ctx);
@@ -293,86 +296,89 @@ static int lpfs_load_journal(struct lpfs* ctx);
 
 int lpfs_fill_super(struct super_block *sb, void *data, int silent)
 {
-        int err;
-        int snap_id;
-        struct lpfs *ctx;
-        struct inode *i_root;
-        struct lpfs_tx *snap_tx = NULL;
-        (void) silent;
+	int err;
+	int snap_id;
+	struct lpfs *ctx;
+	struct inode *i_root;
+	struct lpfs_tx *snap_tx = NULL;
+	(void) silent;
 
-        err = 0;
-        ctx = lpfs_ctx_create(sb);
-        if (!ctx) {
-                printk(KERN_ERR "lpfs: Failed to mount disk");
-                return -EIO;
-        }
+	err = 0;
+	ctx = lpfs_ctx_create(sb);
+	if (!ctx) {
+		printk(KERN_ERR "lpfs: Failed to mount disk");
+		return -EIO;
+	}
 
-        snap_id = (int) ctx->sb_info.last_snap_id;
-        if (data) {
-                err = sscanf(data, "snapshot=%d", &snap_id);
-                if (err != 1 || snap_id < 0
-                                || snap_id > (int) ctx->sb_info.last_snap_id)
-                {
-                        snap_id = (int) ctx->sb_info.last_snap_id;
-                }
-        }
+	snap_id = (int) ctx->sb_info.last_snap_id;
+	if (data) {
+		err = sscanf(data, "snapshot=%d", &snap_id);
+		if (err != 1 || snap_id < 0
+		    || snap_id > (int) ctx->sb_info.last_snap_id)
+		{
+			snap_id = (int) ctx->sb_info.last_snap_id;
+		}
+	}
 
-        sb->s_flags |= MS_NODIRATIME | MS_NOATIME;
-        if (snap_id < (int) ctx->sb_info.last_snap_id) {
-                sb->s_mode = FMODE_READ | FMODE_EXCL;
-                sb->s_flags |= MS_RDONLY;
-        } else {
-                sb->s_mode = FMODE_READ | FMODE_WRITE | FMODE_EXCL;
-        }
+	sb->s_flags |= MS_NODIRATIME | MS_NOATIME;
+	if (snap_id < (int) ctx->sb_info.last_snap_id) {
+		sb->s_mode = FMODE_READ | FMODE_EXCL;
+		sb->s_flags |= MS_RDONLY;
+	} else {
+		sb->s_mode = FMODE_READ | FMODE_WRITE | FMODE_EXCL;
+	}
 
-        sb->s_magic = LPFS_MAGIC;
-        sb->s_maxbytes = MAX_LFS_FILESIZE;
-        sb->s_op = &lpfs_super_ops;
-        sb->s_max_links = LP_LINK_MAX;
-        memcpy((void *) &sb->s_id, (void *) &ctx->sb_info.fs_name, 32);
-        memcpy((void *) &sb->s_uuid, (void *) &ctx->sb_info.fs_uuid, 16);
-        sb->s_fs_info = ctx;
+	sb->s_magic = LPFS_MAGIC;
+	sb->s_maxbytes = MAX_LFS_FILESIZE;
+	sb->s_op = &lpfs_super_ops;
+	sb->s_max_links = LP_LINK_MAX;
+	memcpy((void *) &sb->s_id, (void *) &ctx->sb_info.fs_name, 32);
+	memcpy((void *) &sb->s_uuid, (void *) &ctx->sb_info.fs_uuid, 16);
+	sb->s_fs_info = ctx;
 
-        err = lpfs_load_snapshot(ctx, snap_id, &snap_tx);
-        if (err) {
-                printk(KERN_ERR "lpfs: Failed to load snapshot %d", snap_id);
-                goto fail;
-        }
+	err = lpfs_load_snapshot(ctx, snap_id, &snap_tx);
+	if (err) {
+		printk(KERN_ERR "lpfs: Failed to load snapshot %d", snap_id);
+		goto fail;
+	}
 
-        if (!(sb->s_flags & MS_RDONLY)) {
-                BUG_ON(!snap_tx);
+	if (!(sb->s_flags & MS_RDONLY)) {
+		BUG_ON(!snap_tx);
 
-                err = lpfs_load_sut(ctx);
-                if (err) {
-                        goto fail;
-                }
+		err = lpfs_load_sut(ctx);
+		if (err) {
+			goto fail;
+		}
 
-                err = lpfs_load_journal(ctx);
-                if (err) {
-                        goto fail;
-                }
+		err = lpfs_load_journal(ctx);
+		if (err) {
+			goto fail;
+		}
 
-                ctx->syncer = kthread_run(lpfs_syncer, ctx, "lpfs_syncer");
-                if (IS_ERR(ctx->syncer)) {
-                        goto fail;
-                }
+		/*
+		ctx->syncer = kthread_run(lpfs_syncer, ctx, "lpfs_syncer");
+		if (IS_ERR(ctx->syncer)) {
+			goto fail;
+		}
 
-                ctx->cleaner = kthread_run(lpfs_cleaner, ctx, "lpfs_cleaner");
-                if (IS_ERR(ctx->cleaner)) {
-                        goto fail;
-                }
-        }
+		ctx->cleaner = kthread_run(lpfs_cleaner, ctx, "lpfs_cleaner");
+		if (IS_ERR(ctx->cleaner)) {
+			goto fail;
+		}
+		*/
+	}
 
-        i_root = lpfs_inode_lookup(ctx, LP_ROOT_INO);
-        if (!i_root) {
-                err = -EIO;
-                printk(KERN_ERR "lpfs: Could not locate root inode");
-                goto fail;
-        }
+	i_root = lpfs_inode_lookup(ctx, LP_ROOT_INO);
+	if (!i_root) {
+		err = -EIO;
+		printk(KERN_ERR "lpfs: Could not locate root inode");
+		goto fail;
+	}
 
-        sb->s_root = d_make_root(i_root);
+	sb->s_root = d_make_root(i_root);
 
-        return 0;
+	return 0;
+
 
 fail:
         lpfs_ctx_destroy(ctx);

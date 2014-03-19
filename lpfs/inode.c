@@ -30,54 +30,53 @@ static void lpfs_fill_inode(struct lpfs *ctx,
                 struct lp_inode_fmt *d_inode);
 
 int lpfs_collect_inodes(struct lpfs *ctx, u64 ino, struct inode *inode)
-{
+{                          
         struct buffer_head *bh;
-        struct lpfs_inode_map *imap, *i_srch;
-        struct lp_inode_fmt *head;
-        struct inode *i_probe;
-        u64 ino_blk;
-        u64 ino_off;
-        u64 head_off;
+	struct lpfs_inode_map *imap, *i_srch;
+	struct lp_inode_fmt *head;
+	struct inode *i_probe;
+	u64 ino_blk;
+	u64 ino_off;
+	u64 head_off;
 
-        i_srch = lpfs_imap_lookup(ctx, ino);
-        if (!i_srch) {
-                return -ENOENT;
-        }
+	i_srch = lpfs_imap_lookup(ctx, ino);
+	if (!i_srch) {
+		return -ENOENT;
+	}
 
-        bh = sb_bread(ctx->sb, i_srch->inode_byte_addr / LP_BLKSZ);
-        if (bh == NULL) {
-                return -EIO;
-        }
+	bh = sb_bread(ctx->sb, i_srch->inode_byte_addr / LP_BLKSZ);
+	if (bh == NULL) {
+		return -EIO;
+	}
 
-        ihold(inode);
+	ihold(inode);
 
-        for (head = (struct lp_inode_fmt *) bh->b_data;
-                        LP_DIFF(bh->b_data, head) < LP_BLKSZ && head->ino > 0; ++head)
-        {
-                imap = head->ino == ino ? i_srch
-                        : lpfs_imap_lookup(ctx, head->ino);
-                if (!imap) {
-                        continue;
-                }
+	for (head = (struct lp_inode_fmt *) bh->b_data;
+	     LP_DIFF(bh->b_data, head) < LP_BLKSZ && head->ino > 0; ++head)
+	{
+		imap = head->ino == ino ? i_srch
+					: lpfs_imap_lookup(ctx, head->ino);
+		if (!imap) {
+			continue;
+		}
 
-                if (head->ino == ino) {
-                        i_probe = inode;
-                } else {
-                        i_probe = ilookup(ctx->sb, ino);
-                        if (i_probe) {
-                                goto skip;
-                        } else {
-                                i_probe = iget_locked(ctx->sb, head->ino);
-                        }
-                }
+		if (head->ino == ino) {
+			i_probe = inode;
+		} else {
+			i_probe = ilookup(ctx->sb, head->ino);
+			if (i_probe) {
+				goto skip;
+			} else {
+				i_probe = iget_locked(ctx->sb, head->ino);
+			}
+		}
 
-                ino_blk = imap->inode_byte_addr / LP_BLKSZ;
-                ino_off = imap->inode_byte_addr % LP_BLKSZ;
-                head_off = LP_DIFF(bh->b_data, head);
-                if (ino_blk == bh->b_blocknr && ino_off == head_off) {
-                        lpfs_fill_inode(ctx, i_probe, head);
-                }
-
+		ino_blk = imap->inode_byte_addr / LP_BLKSZ;
+		ino_off = imap->inode_byte_addr % LP_BLKSZ;
+		head_off = LP_DIFF(bh->b_data, head);
+		if (ino_blk == bh->b_blocknr && ino_off == head_off) {
+			lpfs_fill_inode(ctx, i_probe, head);
+		}
 skip:
                 iput(i_probe);
         }
@@ -117,9 +116,6 @@ void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
         unlock_new_inode(inode);
         insert_inode_hash(inode);
 }
-
-
-
 
 
 static int lpfs_readdir(struct file *file, struct dir_context *ctx)
@@ -195,3 +191,13 @@ struct address_space_operations lpfs_aops = {
         .error_remove_page	= generic_error_remove_page,
 };
 */
+void lpfs_destroy_inode(struct inode *inode)
+{
+	/* XXX: Mysterious VFS behavior allows stale I_FREEING inodes to
+	 * hang around. */
+	inode->i_state = 0;
+}
+
+struct inode_operations lpfs_inode_ops;
+struct file_operations lpfs_file_ops;
+struct file_operations lpfs_dir_ops;

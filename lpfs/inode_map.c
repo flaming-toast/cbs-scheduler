@@ -97,11 +97,19 @@ void lpfs_imap_delete(struct lpfs *ctx, u64 ino)
 
 void lpfs_imap_destroy(struct lpfs *ctx)
 {
-	struct rb_node *cur;
-	struct lpfs_inode_map *imap;
+	struct rb_node *cur = NULL;
+	struct lpfs_inode_map *imap = NULL;
 
-	for (cur = rb_first(&(ctx->inode_map)); cur; cur = rb_next(cur)) {
+	while ((cur = rb_first(&(ctx->inode_map)))) {
 		imap = rb_entry(cur, struct lpfs_inode_map, rb);
+		if (!imap) {
+			printk(KERN_ERR "imap_destroy: !imap\n");
+			WARN_ON(imap);
+			break;
+		}
+
+		cur = rb_next(cur);
+		rb_erase(&imap->rb, &ctx->inode_map);
 		kmem_cache_free(ctx->imap_cache, imap);
 	}
 }
