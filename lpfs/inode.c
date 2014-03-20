@@ -153,20 +153,27 @@ int lpfs_writepages(struct address_space *mapping,
 int lpfs_get_block(struct inode *inode, sector_t iblock,
                    struct buffer_head *bh_result, int create) {
 	// if !create = read
-	// iblock*512 = byte offset on disk
-	// disk_size/block_size = number of blocks on disk
-	// iblock*512/block_size = # of block on disk, remainder is offset within block
-	
-	/* Both ext2 and nilfs2 do this calculation */
-	unsigned maxblocks = bh_result->b_size >> inode->i_blkbits;
+	/* Both ext2 and nilfs2 do this calculation.... */
+//	unsigned maxblocks = bh_result->b_size >> inode->i_blkbits;
         struct lpfs *l = (struct lpfs *)inode->i_sb->s_fs_info; 
-	int blknum = iblock*512/(int)l->sb_info.block_size; // after we get the blocknum somehow..
+
+	// iblock is logical block offset into the file of interest. convert iblock -> actual block number on disk.
+	// we don't have a block map in our inode struct, should read the inode fmt from disk?
+	
+	i_srch = lpfs_imap_lookup(l, inode->i_no);
+
+	// get inode block on disk, which has bmap of data blocks
+	bh = sb_bread(inode->i_sb, i_srch->inode_byte_addr / LP_BLKSZ); 
+	head = (struct lp_inode_fmt *) bh->b_data;
+
+	// assuming this gives us the data block address..........	
+	int blkaddr = head->bmap[i_block];
+	int blknum = blkaddr / LP_BLKSZ
+
 	map_bh(bh_result, inode->i_sb, blknum); 
 	bh_result->b_size = (1 << inode->i_blkbits); //the first param is the number of blocks (ret in nilfs, # of contig blocks to read)
-        (void) maxblocks;
+//        (void) maxblocks;
 	return 0;
-
-	
 }
 
 static int lpfs_write_begin(struct file *file, struct address_space *mapping,
@@ -193,10 +200,15 @@ static ssize_t lpfs_direct_IO(int rw, struct kiocb *iocb,
 
 struct dentry *lpfs_lookup(struct inode *inode, struct dentry *dentry, unsigned int something) {
         (void) inode; (void) dentry; (void) something;
+        int i, blknum;
+        for (i = 0; i < inode->i_blocks; i++) {
+        blknum = inode->i_mapping->a_ops->bmap(inode->i_mapping, i);
+        bh = sb_bread(inode->i_sb, i);
+        // or dentry fmt?
+	struct lp_inode_fmt *tmp = (struct lp_inode_fmt *) bh->b_data;
+	}
         return NULL;
 }
-
-
 
 void lpfs_destroy_inode(struct inode *inode)
 {
