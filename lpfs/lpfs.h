@@ -69,7 +69,9 @@ struct lp_segment_info_fmt {
 	u32 seg_len;		// Length of the segment, in bytes
 	u32 seg_prev;		// Segment address of the next segment
 	u32 seg_next;		// Segment address of the previous segment
-	u32 seg_flags;		// enum lp_segment_flags
+	u32 seg_flags;		// enum
+	u32 seg_snap_id;       // The id associated with this snapshot.
+	
 };
 
 struct lp_inode_map_fmt {
