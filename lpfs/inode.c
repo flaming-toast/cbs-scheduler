@@ -31,7 +31,7 @@ static void lpfs_fill_inode(struct lpfs *ctx,
 
 int lpfs_collect_inodes(struct lpfs *ctx, u64 ino, struct inode *inode)
 {
-	struct buffer_head *bh;
+        struct buffer_head *bh;
 	struct lpfs_inode_map *imap, *i_srch;
 	struct lp_inode_fmt *head;
 	struct inode *i_probe;
@@ -77,7 +77,6 @@ int lpfs_collect_inodes(struct lpfs *ctx, u64 ino, struct inode *inode)
 		if (ino_blk == bh->b_blocknr && ino_off == head_off) {
 			lpfs_fill_inode(ctx, i_probe, head);
 		}
-
 skip:
 		iput(i_probe);
 	}
