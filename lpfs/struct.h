@@ -8,6 +8,9 @@
 
 #include "lpfs.h"
 #include "compat.h"
+//#ifdnef _USERSPACE
+#include <linux/workqueue.h>
+//#endif
 
 #define LP_DIFF(p0, pf) (((u64) (pf)) - ((u64) (p0)))
 #define LP_OFFSET(p, off) ((void*) (((char*) (p)) + (off)))
@@ -26,6 +29,8 @@ struct lpfs_darray {
 };
 
 struct lpfs {
+	struct workqueue_struct *gcwq;
+	struct delayed_work gc;
 	struct super_block *sb;
 	struct buffer_head *sb_buf;
 	struct lp_superblock_fmt sb_info;
@@ -38,9 +43,6 @@ struct lpfs {
 
 	struct lpfs_darray SUT;
 	struct lpfs_darray journal;
-
-	struct task_struct *syncer;
-	struct task_struct *cleaner;
 };
 
 struct lpfs_inode_map {
