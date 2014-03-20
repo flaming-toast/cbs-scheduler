@@ -5,10 +5,14 @@
  */
 
 #include "struct.h"
+#include <linux/mpage.h>
+#include <linux/aio.h>
+#include <uapi/linux/uio.h>
 
 #pragma GCC optimize ("-O0")
 
 static int lpfs_collect_inodes(struct lpfs *ctx, u64 ino, struct inode *inode);
+int lpfs_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh, int create);
 
 struct inode *lpfs_inode_lookup(struct lpfs *ctx, u64 ino)
 {
@@ -89,29 +93,34 @@ skip:
 void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
 		struct lp_inode_fmt *d_inode)
 {
-	inode->i_ino = d_inode->ino;
-	set_nlink(inode, d_inode->link_count);
-	i_uid_write(inode, d_inode->uid);
-	i_gid_write(inode, d_inode->gid);
-	inode->i_version = d_inode->version;
-	inode->i_size = d_inode->size;
-	inode->i_atime = CURRENT_TIME;
-	inode->i_mtime = ns_to_timespec(d_inode->mtime_usec * NSEC_PER_USEC);
-	inode->i_ctime = ns_to_timespec(d_inode->ctime_usec * NSEC_PER_USEC);
-	inode->i_blkbits = LP_BLKSZ_BITS;
-	inode->i_blocks = (inode->i_size / LP_BLKSZ)
-		+ (blkcnt_t) ((inode->i_size % LP_BLKSZ) != 0);
-	inode->i_mode = d_inode->mode;
+        inode->i_ino = d_inode->ino;
+        set_nlink(inode, d_inode->link_count);
+        i_uid_write(inode, d_inode->uid);
+        i_gid_write(inode, d_inode->gid);
+        inode->i_version = d_inode->version;
+        inode->i_size = d_inode->size;
+        inode->i_atime = CURRENT_TIME;
+        inode->i_mtime = ns_to_timespec(d_inode->mtime_usec * NSEC_PER_USEC);
+        inode->i_ctime = ns_to_timespec(d_inode->ctime_usec * NSEC_PER_USEC);
+        inode->i_blkbits = LP_BLKSZ_BITS;
+        inode->i_blocks = (inode->i_size / LP_BLKSZ)
+                + (blkcnt_t) ((inode->i_size % LP_BLKSZ) != 0);
+        inode->i_mode = d_inode->mode;
 
-	inode->i_sb = ctx->sb;
+        inode->i_sb = ctx->sb;
 
-	inode->i_op = &lpfs_inode_ops;
+        inode->i_op = &lpfs_inode_ops;
+        inode->i_mapping->a_ops = &lpfs_aops;
 
-	if (inode->i_mode & S_IFDIR) {
-		inode->i_fop = &lpfs_dir_ops;
-	} else {
-		inode->i_fop = &lpfs_file_ops;
-	}
+        if (inode->i_mode & S_IFDIR) {
+                inode->i_fop = &lpfs_dir_ops;
+        } else {
+                inode->i_fop = &lpfs_file_ops;
+        }
+
+        unlock_new_inode(inode);
+        insert_inode_hash(inode);
+}
 
 	unlock_new_inode(inode);
 	insert_inode_hash(inode);
@@ -127,16 +136,88 @@ static int lpfs_readdir(struct file *file, struct dir_context *ctx)
 }
 */
 
+/* lpfs aops */
+int lpfs_readpage(struct file *file, struct page *page) {
+	return mpage_readpage(page, lpfs_get_block);
+}
 
+int lpfs_writepage(struct page *page, struct writeback_control *wbc) {
+	return block_write_full_page(page, lpfs_get_block, wbc);
+}
+
+int lpfs_readpages(struct file *filp, struct address_space *mapping,
+                   struct list_head *pages, unsigned nr_pages) {
+	return mpage_readpages(mapping, pages, nr_pages, lpfs_get_block);
+
+}
+
+int lpfs_writepages(struct address_space *mapping,
+                    struct writeback_control *wbc) {
+	return mpage_writepages(mapping, wbc, lpfs_get_block);
+}
+
+int lpfs_get_block(struct inode *inode, sector_t iblock,
+                   struct buffer_head *bh_result, int create) {
+	// if !create = read
+	// iblock*512 = byte offset on disk
+	// disk_size/block_size = number of blocks on disk
+	// iblock*512/block_size = # of block on disk, remainder is offset within block
+
+	/* Both ext2 and nilfs2 do this calculation */
+	unsigned maxblocks = bh_result->b_size >> inode->i_blkbits;
+        struct lpfs *l = (struct lpfs *)inode->i_sb->s_fs_info;
+	int blknum = iblock*512/(int)l->sb_info.block_size; // after we get the blocknum somehow..
+	map_bh(bh_result, inode->i_sb, blknum);
+	bh_result->b_size = (1 << inode->i_blkbits); //the first param is the number of blocks (ret in nilfs, # of contig blocks to read)
+        (void) maxblocks;
+	return 0;
+
+
+}
+
+static int lpfs_write_begin(struct file *file, struct address_space *mapping,
+                             loff_t pos, unsigned len, unsigned flags,
+                             struct page **pagep, void **fsdata)
+{
+        (void) file;
+        return block_write_begin(mapping, pos, len, flags, pagep, lpfs_get_block);
+}
+
+static sector_t lpfs_bmap(struct address_space *mapping, sector_t block)
+{
+        return generic_block_bmap(mapping, block, lpfs_get_block);
+}
+
+static ssize_t lpfs_direct_IO(int rw, struct kiocb *iocb,
+                              const struct iovec *iov, loff_t offset,
+                              unsigned long nr_segs)
+{
+        struct file *file = iocb->ki_filp;
+        struct inode *inode = file->f_mapping->host;
+        return blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs, lpfs_get_block);
+}
+
+struct dentry *lpfs_lookup(struct inode *inode, struct dentry *dentry, unsigned int something) {
+        (void) inode; (void) dentry; (void) something;
+        return NULL;
+}
+
+
+
+void lpfs_destroy_inode(struct inode *inode)
+{
+	/* XXX: Mysterious VFS behavior allows stale I_FREEING inodes to
+	 * hang around. */
+	inode->i_state = 0;
+}
 
 struct inode_operations lpfs_inode_ops = {
-	.setattr 	= simple_setattr,
-	.getattr 	= simple_getattr, // stat(2) uses this
-	// need atomic_open for dquot_file_open
-	//
-	// Incorrect generic type. Commented for now.
-	//.atomic_open    = dquot_file_open,
-	.lookup         = simple_lookup,
+        .setattr 	= simple_setattr,
+        .getattr 	= simple_getattr, // stat(2) uses this
+        // need atomic_open for dquot_file_open
+        //
+        //.atomic_open    = dquot_file_open,
+        .lookup         = lpfs_lookup,
 };
 
 /* file.c */
@@ -156,7 +237,6 @@ struct file_operations lpfs_file_ops = {
 
 
 };
-
 /* dir.c */
 struct file_operations lpfs_dir_ops = {
 	.llseek		= generic_file_llseek,
@@ -176,30 +256,14 @@ struct file_operations lpfs_dir_ops = {
  *
  * these were stolen from ext2
  */
-/*
-   struct address_space_operations lpfs_aops = {
-   .readpage		= lpfs_readpage,
-//	.readpages		= lpfs_readpages,
-.writepage		= lpfs_writepage,
-//	.writepages		= lpfs_writepages,
-.write_begin		= block_write_begin,
-.write_end		= generic_write_end, // see piazza note
 
-.bmap			= generic_block_bmap, //see piazza note
-.direct_IO		= lpfs_direct_IO,
-.migratepage		= buffer_migrate_page,
-
-.is_partially_uptodate	= block_is_partially_uptodate,
-.error_remove_page	= generic_error_remove_page,
+struct address_space_operations lpfs_aops = {
+        .readpage		= lpfs_readpage,
+        .readpages		= lpfs_readpages,
+        .writepage		= lpfs_writepage,
+        .writepages		= lpfs_writepages,
+        .write_begin		= lpfs_write_begin, // see piazza note
+        .write_end		= generic_write_end, // see piazza note
+        .bmap			= lpfs_bmap, //see piazza note
+        .direct_IO		= lpfs_direct_IO // see piazza note
 };
-*/
-void lpfs_destroy_inode(struct inode *inode)
-{
-	/* XXX: Mysterious VFS behavior allows stale I_FREEING inodes to
-	 * hang around. */
-	inode->i_state = 0;
-}
-
-struct inode_operations lpfs_inode_ops;
-struct file_operations lpfs_file_ops;
-struct file_operations lpfs_dir_ops;

@@ -13,20 +13,28 @@
 void lpfs_ctx_destroy(struct lpfs *ctx);
 int lpfs_do_statfs(struct dentry *dentry, struct kstatfs *buf);
 
+/*
+struct inode* lpfs_alloc_inode(struct super_block *sb) {
+	return NULL;
+}
+*/
+
 /* operation tables copied *straight* from ext2, modify to fit lpfs */
 struct super_operations lpfs_super_ops = {
 
         /* Copied from ext2, then s/ext2/lpfs/
          * probably won't have to implement these but I'll
          * keep them here for now */
-        /*
-           .alloc_inode	= lpfs_alloc_inode,
+       
+//           .alloc_inode	= lpfs_alloc_inode,
+/*
            .destroy_inode	= lpfs_destroy_inode,
            .write_inode	= lpfs_write_inode,
            .evict_inode	= lpfs_evict_inode,
            .put_super	= lpfs_put_super,
            .sync_fs	= lpfs_sync_fs,
-           */
+*/
+           
 
         /* pilfered from ramfs */
         .show_options	= generic_show_options,

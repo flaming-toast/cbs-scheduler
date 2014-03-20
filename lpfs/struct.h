@@ -183,6 +183,7 @@ extern struct super_operations lpfs_super_ops;
 extern struct inode_operations lpfs_inode_ops;
 extern struct file_operations lpfs_file_ops;
 extern struct file_operations lpfs_dir_ops;
+extern struct address_space_operations lpfs_aops;
 
 /* For any non-static functions, add their declarations here 
  * for the operations in the above ops tables 
