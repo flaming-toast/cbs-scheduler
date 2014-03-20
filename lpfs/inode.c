@@ -110,6 +110,7 @@ void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
         inode->i_sb = ctx->sb;
 
         inode->i_op = &lpfs_inode_ops;
+        inode->i_mapping->a_ops = &lpfs_aops;
 
         if (inode->i_mode & S_IFDIR) {
                 inode->i_fop = &lpfs_dir_ops;
@@ -190,6 +191,12 @@ static ssize_t lpfs_direct_IO(int rw, struct kiocb *iocb,
         return blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs, lpfs_get_block);
 }
 
+struct dentry *lpfs_lookup(struct inode *inode, struct dentry *dentry, unsigned int something) {
+        (void) inode; (void) dentry; (void) something;
+        return NULL;
+}
+
+
 
 void lpfs_destroy_inode(struct inode *inode)
 {
@@ -204,7 +211,7 @@ struct inode_operations lpfs_inode_ops = {
         // need atomic_open for dquot_file_open
         //
         //.atomic_open    = dquot_file_open,
-        .lookup         = simple_lookup,
+        .lookup         = lpfs_lookup,
 };
 
 /* file.c */
