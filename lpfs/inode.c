@@ -193,7 +193,10 @@ static ssize_t lpfs_direct_IO(int rw, struct kiocb *iocb,
 
 struct dentry *lpfs_lookup(struct inode *inode, struct dentry *dentry, unsigned int something) {
         (void) inode; (void) dentry; (void) something;
-        return NULL;
+        if (S_ISDIR(inode->mode)) {
+          struct buffer_head *bh = sb_bread(ctx->sb, i_srch->inode_byte_addr / LP_BLKSZ);
+          struct lp_inode_fmt * ih = (struct lp_inode_fmt*)bh-> 
+        }
 }
 
 
