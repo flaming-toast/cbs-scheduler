@@ -632,6 +632,10 @@ void save_mount_options(struct super_block *sb, char *options);
 #include <linux/kdev_t.h>
 //Already included by linux/fs.h?
 //#include <asm-generic/atomic.h>
+#include <linux/pagemap.h>
+#include <linux/mm.h>
+#include <linux/syscalls.h>
+#include <linux/dirent.h>
 
 #endif /* _USERSPACE */
 

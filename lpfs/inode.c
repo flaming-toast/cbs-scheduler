@@ -126,15 +126,86 @@ void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
 	insert_inode_hash(inode);
 }
 
-/*
- * TODO: uncomment later
+static unsigned lpfs_last_byte(struct inode *inode, unsigned long page_nr)
+{
+        unsigned last_byte = inode->i_size;
+        last_byte -= page_nr << PAGE_CACHE_SHIFT;
+        if (last_byte > PAGE_CACHE_SIZE) {
+                last_byte = PAGE_CACHE_SIZE;
+        }
+        return last_byte;
+        // Find min(inode->i_size - page_nr << PAGE_CACHE_SHIFT, PAGE_CACHE_SIZE)
+}
+
 static int lpfs_readdir(struct file *file, struct dir_context *ctx)
 {
-	(void) file; (void) ctx;
-	// Template. To be replaced with bs version and later true vrs.
-	return 0;
+        loff_t pos = ctx->pos;
+        struct inode *inode = file->f_inode;
+        struct super_block *sb = inode->i_sb;
+        unsigned int offset = pos & ~PAGE_CACHE_MASK;
+        unsigned long n = pos >> PAGE_CACHE_SHIFT;
+        unsigned long npages = (inode->i_size+PAGE_CACHE_SIZE-1) >> PAGE_CACHE_SHIFT;
+
+        if (pos > inode->i_size - (sizeof(struct linux_dirent64)+0)) {
+                return 0;
+        }
+
+        for ( ; n < npages; n++, offset = 0) {
+                char *kaddr, *limit;
+                struct linux_dirent64 *de;
+                int counter = 0;
+                struct page *page = read_mapping_page(inode->i_mapping, n, NULL);
+                // TODO: Do check later?
+                kaddr = page_address(page);
+                de = (struct linux_dirent64 *)(kaddr + offset);
+                limit = kaddr + lpfs_last_byte(inode, n) - (sizeof(struct linux_dirent64)+0);
+
+                while ((char *) de <= limit) {
+                        if ((int)de->d_ino == 2) {
+                                printk("Found crap! %d\n", counter);
+          break;
+                        }
+                        printk("d_ino: %d\n", (int)de->d_ino);
+                        de = (struct linux_dirent64 *)((char*)de + 1);
+                        counter++;
+                }
+
+                // TODO: CHECK de->d_off and de->d_reclen
+                for ( ; (char *)de <= limit; de = (struct linux_dirent64 *)((char *)de + de->d_off)) {
+                        printk("de->d_off %lu de->d_reclen %d\n", (long unsigned int)de->d_off, (int)de->d_reclen);
+                        if (de->d_reclen == 0) {
+                                return -1;
+                        }
+                        if (de->d_ino) {
+                                unsigned char t;
+                                if (inode->i_mode & S_IFDIR) {
+                                        t = DT_DIR;
+                                } else if (inode->i_mode & S_IFREG) {
+                                        t = DT_REG;
+                                } else if (inode->i_mode & S_IFBLK ) {
+                                        t = DT_BLK;
+                                } else {
+                                        t = DT_UNKNOWN;
+                                }
+
+                                if (!dir_emit(ctx, de->d_name, strlen(de->d_name), de->d_ino, t)) {
+                                        kunmap(page);
+                                        page_cache_release(page);
+                                        return 0;
+                                }
+                        }
+                        ctx->pos += de->d_off;  // or de->d_reclen
+                }
+                kunmap(page);
+                page_cache_release(page);
+        }
+
+        (void) file; (void) ctx; (void) sb;
+        // Template. To be replaced with bs version and later true vrs.
+        return 0;
 }
-*/
+
+
 
 /* lpfs aops */
 int lpfs_readpage(struct file *file, struct page *page) {
@@ -166,7 +237,7 @@ int lpfs_get_block(struct inode *inode, sector_t iblock,
 	/* Both ext2 and nilfs2 do this calculation */
 	unsigned maxblocks = bh_result->b_size >> inode->i_blkbits;
         struct lpfs *l = (struct lpfs *)inode->i_sb->s_fs_info;
-	int blknum = iblock*512/(int)l->sb_info.block_size; // after we get the blocknum somehow..
+	__u64 blknum = iblock;  //iblock*512/(int)l->sb_info.block_size; // after we get the blocknum somehow..
 	map_bh(bh_result, inode->i_sb, blknum);
 	bh_result->b_size = (1 << inode->i_blkbits); //the first param is the number of blocks (ret in nilfs, # of contig blocks to read)
         (void) maxblocks;
