@@ -41,7 +41,7 @@ LPFS_LDFLAGS = -lpthread -lrt
 	sync
 	chmod 777 .lpfs/disk.img
 
-all: .lpfs/mkfs-lp .lpfs/fsdb
+all: .lpfs/mkfs-lp #.lpfs/fsdb
 
 # Ensure that .lpfs/disk.img is attached to /dev/loop0.
 .PHONY: reset_loop

@@ -33,12 +33,46 @@ struct super_operations lpfs_super_ops = {
 
 };
 
+
+void lpfs_gc(struct work_struct *w) {
+        /*\
+        struct lp_super_block_fmt *sb;
+        int err = 0;
+        struct lpfs_darray d;
+        struct lp_snapshot_fmt *snap = NULL;
+        struct lp_segment_info_fmt segments;
+        u32 cur_segment;
+        struct lp_inode_map_fmt inodes;
+        u64 inode_addr;
+        */
+
+        printk("This actually ran");
+        /*
+        sb = ((struct lpfs *) ctx)->sb_info;
+        cur_segment = sb->last_snap_seg;
+        if (cur_segment != LP_SEG_NONE) {
+                err = lpfs_read_segment(ctx, &d, cur_segment);
+                if (err) {
+                        printk(KERN_ERR "lpfs: Failed to read segment");
+                        goto fail;
+                }
+                snap = (struct lp_snapshot_fmt *) lpfs_darray_buf(&d, 0);
+                inodes = (u8*) snap + LP_SNAP_IMAP_OFF;
+        }
+        inode_addr = inodes->inode_byte_addr;
+        */
+//fail:
+        //queue_delayed_work(((struct lpfs *) ctx)->gcwq, ((struct lpfs *) ctx)->gc, 10000);
+
+}
+
 struct lpfs *lpfs_ctx_create(struct super_block *sb)
 {
         int err;
         struct buffer_head *bh;
         struct lp_superblock_fmt *sb_fmt;
         struct lpfs *ctx = NULL;
+        //struct delayed_work gc;
 
         sb->s_blocksize = LP_BLKSZ;
         sb->s_blocksize_bits = LP_BLKSZ_BITS;
@@ -87,6 +121,12 @@ struct lpfs *lpfs_ctx_create(struct super_block *sb)
         INIT_LIST_HEAD(&ctx->txs_list);
         spin_lock_init(&ctx->txs_lock);
 
+        ctx->gcwq = create_singlethread_workqueue("Garbage Collector");
+        INIT_DELAYED_WORK(&(ctx->gc), lpfs_gc);
+        //ctx->gc = gc;
+        //PREPARE_WORK(gc, lpfs_gc, (void *) ctx);
+        queue_delayed_work(ctx->gcwq, &(ctx->gc), 10000);
+
         return ctx;
 
 fail:
@@ -108,6 +148,14 @@ void lpfs_ctx_destroy(struct lpfs *ctx)
         if (ctx->journal.blocks) {
                 lpfs_darray_destroy(&ctx->journal);
         }
+
+        if (ctx->gcwq) {
+                if (&(ctx->gc)) {
+                    cancel_delayed_work(&(ctx->gc));
+                }
+                destroy_workqueue(ctx->gcwq);
+        }
+
 
 	/*
 	if (ctx->syncer != NULL && !IS_ERR(ctx->syncer)) {
