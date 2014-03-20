@@ -199,15 +199,27 @@ static ssize_t lpfs_direct_IO(int rw, struct kiocb *iocb,
 }
 
 struct dentry *lpfs_lookup(struct inode *inode, struct dentry *dentry, unsigned int something) {
+        int i;
+        int j;
+        struct inode* res = NULL;
         (void) inode; (void) dentry; (void) something;
-        int i, blknum;
-        for (i = 0; i < inode->i_blocks; i++) {
-        blknum = inode->i_mapping->a_ops->bmap(inode->i_mapping, i);
-        bh = sb_bread(inode->i_sb, i);
-        // or dentry fmt?
-	struct lp_inode_fmt *tmp = (struct lp_inode_fmt *) bh->b_data;
-	}
-        return NULL;
+        if (S_ISDIR(inode->i_mode)) {
+          for (i = 0; i < inode->i_blocks; i++) {
+            sector_t baddr = inode->i_mapping->a_ops->bmap(inode->i_mapping, i);
+            struct buffer_head *bh = sb_bread(inode->i_sb, baddr);
+            get_bh(bh);
+            for (j = 0; j < bh->b_size; j++) {
+              struct lp_dentry_fmt* de = (struct lp_dentry_fmt*)(bh->b_data + (j * sizeof(struct lp_dentry_fmt))); 
+              if (strcmp(de->name, dentry->d_name.name) == 0) { 
+                res = lpfs_inode_lookup(inode->i_private, de->inode_number);
+                goto ret;
+              }
+            }
+          }
+        }
+ret:
+        d_add(dentry, res);
+        return dentry;
 }
 
 void lpfs_destroy_inode(struct inode *inode)
