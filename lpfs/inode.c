@@ -5,10 +5,14 @@
  */
 
 #include "struct.h"
+#include <linux/mpage.h>
+#include <linux/aio.h>
+#include <uapi/linux/uio.h>
 
 #pragma GCC optimize ("-O0")
 
 static int lpfs_collect_inodes(struct lpfs *ctx, u64 ino, struct inode *inode);
+int lpfs_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh, int create);
 
 struct inode *lpfs_inode_lookup(struct lpfs *ctx, u64 ino)
 {
@@ -126,41 +130,64 @@ static int lpfs_readdir(struct file *file, struct dir_context *ctx)
 }
 
 /* lpfs aops */
-int lpfs_readpage(struct file *, struct page *) { 
+int lpfs_readpage(struct file *file, struct page *page) { 
 	return mpage_readpage(page, lpfs_get_block);
 }
 
 int lpfs_writepage(struct page *page, struct writeback_control *wbc) {
-	return block_write_full_page(page, ext2_get_block, wbc);
+	return block_write_full_page(page, lpfs_get_block, wbc);
 }
 
 int lpfs_readpages(struct file *filp, struct address_space *mapping,
-		                        struct list_head *pages, unsigned nr_pages) {
+                   struct list_head *pages, unsigned nr_pages) {
 	return mpage_readpages(mapping, pages, nr_pages, lpfs_get_block);
 
 }
 
-int lpfs_writepages(struct address_space *mapping, struct writeback_control *wbc) {
-
-	return block_write_full_page(page, lpfs_get_block, wbc);
+int lpfs_writepages(struct address_space *mapping,
+                    struct writeback_control *wbc) {
+	return mpage_writepages(mapping, wbc, lpfs_get_block);
 }
 
-int lpfs_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh, int create) {
-
+int lpfs_get_block(struct inode *inode, sector_t iblock,
+                   struct buffer_head *bh_result, int create) {
 	// if !create = read
 	// iblock*512 = byte offset on disk
 	// disk_size/block_size = number of blocks on disk
 	// iblock*512/block_size = # of block on disk, remainder is offset within block
 	
 	/* Both ext2 and nilfs2 do this calculation */
-	unsigned maxblocks = bh_result->b_size >> inode->i_blkbits;  
-	int blknum = iblock*512/lpfs->sb_info->block_size; // after we get the blocknum somehow..
+	unsigned maxblocks = bh_result->b_size >> inode->i_blkbits;
+        struct lpfs *l = (struct lpfs *)inode->i_sb->s_fs_info; 
+	int blknum = iblock*512/(int)l->sb_info.block_size; // after we get the blocknum somehow..
 	map_bh(bh_result, inode->i_sb, blknum); 
 	bh_result->b_size = (1 << inode->i_blkbits); //the first param is the number of blocks (ret in nilfs, # of contig blocks to read)
-
+        (void) maxblocks;
 	return 0;
 
 	
+}
+
+static int lpfs_write_begin(struct file *file, struct address_space *mapping,
+                             loff_t pos, unsigned len, unsigned flags,
+                             struct page **pagep, void **fsdata)
+{
+        (void) file;
+        return block_write_begin(mapping, pos, len, flags, pagep, lpfs_get_block);
+}
+
+static sector_t lpfs_bmap(struct address_space *mapping, sector_t block)
+{
+        return generic_block_bmap(mapping, block, lpfs_get_block);
+}
+
+static ssize_t lpfs_direct_IO(int rw, struct kiocb *iocb, 
+                              const struct iovec *iov, loff_t offset,
+                              unsigned long nr_segs)
+{
+        struct file *file = iocb->ki_filp;
+        struct inode *inode = file->f_mapping->host;
+        return blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs, lpfs_get_block);
 }
 
 
@@ -176,7 +203,7 @@ struct inode_operations lpfs_inode_ops = {
         .getattr 	= simple_getattr, // stat(2) uses this
         // need atomic_open for dquot_file_open
         //
-        .atomic_open    = dquot_file_open,
+        //.atomic_open    = dquot_file_open,
         .lookup         = simple_lookup,
 };
 
@@ -222,8 +249,8 @@ struct address_space_operations lpfs_aops = {
         .readpages		= lpfs_readpages,
         .writepage		= lpfs_writepage,
         .writepages		= lpfs_writepages,
-        .write_begin		= block_write_begin, // see piazza note
+        .write_begin		= lpfs_write_begin, // see piazza note
         .write_end		= generic_write_end, // see piazza note
-        .bmap			= generic_block_bmap, //see piazza note
-        .direct_IO		= blockdev_direct_IO // see piazza note
+        .bmap			= lpfs_bmap, //see piazza note
+        .direct_IO		= lpfs_direct_IO // see piazza note
 };
