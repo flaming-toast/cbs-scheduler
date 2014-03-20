@@ -45,8 +45,11 @@ void lpfs_gc(struct work_struct *w) {
         struct lp_inode_map_fmt inodes;
         u64 inode_addr;
         */
-
+        //Because stupidity in Linux requires stupidity.
+        struct lpfs *ctx = container_of(container_of(w, struct delayed_work, work), struct lpfs, gc);
+        
         printk("This actually ran");
+
         /*
         sb = ((struct lpfs *) ctx)->sb_info;
         cur_segment = sb->last_snap_seg;
