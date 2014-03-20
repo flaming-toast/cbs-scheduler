@@ -11,11 +11,16 @@
 void lpfs_ctx_destroy(struct lpfs *ctx);
 int lpfs_do_statfs(struct dentry *dentry, struct kstatfs *buf);
 
-/*
+
 struct inode* lpfs_alloc_inode(struct super_block *sb) {
-	return NULL;
+  struct inode * in = kmem_cache_alloc(((struct lpfs*)(sb->s_fs_info))->imap_cache, GFP_KERNEL);
+  if (!in) {
+    return NULL;
+  }
+  in->i_private = sb->s_fs_info;
+  return in;
 }
-*/
+
 
 /* operation tables copied *straight* from ext2, modify to fit lpfs */
 struct super_operations lpfs_super_ops = {
