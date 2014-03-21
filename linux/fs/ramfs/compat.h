@@ -36,7 +36,7 @@
 #include <userspace/uthash.h>
 
 typedef uint8_t u8;
-typedef uint16_t u16;
+typedef uint8_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint32_t fmode_t;
@@ -178,15 +178,7 @@ struct address_space;
 struct kstatfs {
 	long f_type;
 	long f_bsize;
-  u64 f_blocks;
-  u64 f_bfree;
-  u64 f_bavail;
-  u64 f_files;
-  u64 f_ffree;
 	long f_namelen;
-  //fsid ??
-  // Defined in header posix_types.h also included by linux/fs.h
-  __kernel_fsid_t f_fsid;
 };
 struct mutex {
 	pthread_mutex_t m;
@@ -269,8 +261,7 @@ struct inode {
 	/* This lock is used to sleep on the I_NEW bit in i_state. */
 	struct mutex __lock;
 
-        /* Node in dentry's alias list...I think? Check with Js */
-	struct hlist_node i_dentry;
+	struct hlist_head i_dentry;
 
 	UT_hash_handle hh;
 };
@@ -304,8 +295,7 @@ struct dentry {
 //	d_child_ht = NULL; // hash child names -> their dentries. *Must* be NULL initialized.
 
 	/* list of alias inodes, for d_instantiate */
-        // Is this hlist_head or list_head?
-	struct hlist_head d_alias;
+	struct list_head d_alias;
 
 	/* dget increases this */
 	int refcount;
@@ -593,10 +583,6 @@ void d_genocide(struct dentry *d);
 
 void drop_nlink(struct inode *i);
 
-int dquot_file_open(struct inode *inode, struct file *file);
-int generic_file_open(struct inode * inode, struct file * filp);
-ssize_t generic_read_dir(struct file *filp, char __user *buf, size_t siz, loff_t *ppos);
-
 extern int (*__init_func__)(void);
 extern void (*__exit_func__)(void);
 
@@ -627,15 +613,6 @@ void save_mount_options(struct super_block *sb, char *options);
 #include <linux/string.h>
 #include <linux/kthread.h>
 #include <linux/printk.h>
-#include <linux/quotaops.h>
-#include <linux/statfs.h>
-#include <linux/kdev_t.h>
-//Already included by linux/fs.h?
-//#include <asm-generic/atomic.h>
-#include <linux/pagemap.h>
-#include <linux/mm.h>
-#include <linux/syscalls.h>
-#include <linux/dirent.h>
 
 #endif /* _USERSPACE */
 

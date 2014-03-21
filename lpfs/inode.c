@@ -16,25 +16,25 @@ int lpfs_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh,
 
 struct inode *lpfs_inode_lookup(struct lpfs *ctx, u64 ino)
 {
-        struct inode *inode = iget_locked(ctx->sb, ino);
-        if (inode->i_state & I_NEW) {
-                if (lpfs_collect_inodes(ctx, ino, inode)) {
-                        iput(inode);
-                        return NULL;
-                } else {
-                        return inode;
-                }
-        } else {
-                return inode;
-        }
+	struct inode *inode = iget_locked(ctx->sb, ino);
+	if (inode->i_state & I_NEW) {
+		if (lpfs_collect_inodes(ctx, ino, inode)) {
+			iput(inode);
+			return NULL;
+		} else {
+			return inode;
+		}
+	} else {
+		return inode;
+	}
 }
 
 static void lpfs_fill_inode(struct lpfs *ctx,
-                struct inode *inode,
-                struct lp_inode_fmt *d_inode);
+		struct inode *inode,
+		struct lp_inode_fmt *d_inode);
 
 int lpfs_collect_inodes(struct lpfs *ctx, u64 ino, struct inode *inode)
-{                          
+{
         struct buffer_head *bh;
 	struct lpfs_inode_map *imap, *i_srch;
 	struct lp_inode_fmt *head;
@@ -56,10 +56,10 @@ int lpfs_collect_inodes(struct lpfs *ctx, u64 ino, struct inode *inode)
 	ihold(inode);
 
 	for (head = (struct lp_inode_fmt *) bh->b_data;
-	     LP_DIFF(bh->b_data, head) < LP_BLKSZ && head->ino > 0; ++head)
+			LP_DIFF(bh->b_data, head) < LP_BLKSZ && head->ino > 0; ++head)
 	{
 		imap = head->ino == ino ? i_srch
-					: lpfs_imap_lookup(ctx, head->ino);
+			: lpfs_imap_lookup(ctx, head->ino);
 		if (!imap) {
 			continue;
 		}
@@ -82,16 +82,16 @@ int lpfs_collect_inodes(struct lpfs *ctx, u64 ino, struct inode *inode)
 			lpfs_fill_inode(ctx, i_probe, head);
 		}
 skip:
-                iput(i_probe);
-        }
+		iput(i_probe);
+	}
 
-        brelse(bh);
-        return 0;
+	brelse(bh);
+	return 0;
 }
 
 
 void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
-                struct lp_inode_fmt *d_inode)
+		struct lp_inode_fmt *d_inode)
 {
         inode->i_ino = d_inode->ino;
         set_nlink(inode, d_inode->link_count);
@@ -122,16 +122,93 @@ void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
         insert_inode_hash(inode);
 }
 
+	unlock_new_inode(inode);
+	insert_inode_hash(inode);
+}
+
+static unsigned lpfs_last_byte(struct inode *inode, unsigned long page_nr)
+{
+        unsigned last_byte = inode->i_size;
+        last_byte -= page_nr << PAGE_CACHE_SHIFT;
+        if (last_byte > PAGE_CACHE_SIZE) {
+                last_byte = PAGE_CACHE_SIZE;
+        }
+        return last_byte;
+        // Find min(inode->i_size - page_nr << PAGE_CACHE_SHIFT, PAGE_CACHE_SIZE)
+}
 
 static int lpfs_readdir(struct file *file, struct dir_context *ctx)
 {
-        (void) file; (void) ctx;
+        loff_t pos = ctx->pos;
+        struct inode *inode = file->f_inode;
+        struct super_block *sb = inode->i_sb;
+        unsigned int offset = pos & ~PAGE_CACHE_MASK;
+        unsigned long n = pos >> PAGE_CACHE_SHIFT;
+        unsigned long npages = (inode->i_size+PAGE_CACHE_SIZE-1) >> PAGE_CACHE_SHIFT;
+
+        if (pos > inode->i_size - (sizeof(struct linux_dirent64)+0)) {
+                return 0;
+        }
+
+        for ( ; n < npages; n++, offset = 0) {
+                char *kaddr, *limit;
+                struct linux_dirent64 *de;
+                int counter = 0;
+                struct page *page = read_mapping_page(inode->i_mapping, n, NULL);
+                // TODO: Do check later?
+                kaddr = page_address(page);
+                de = (struct linux_dirent64 *)(kaddr + offset);
+                limit = kaddr + lpfs_last_byte(inode, n) - (sizeof(struct linux_dirent64)+0);
+
+                while ((char *) de <= limit) {
+                        if ((int)de->d_ino == 2) {
+                                printk("Found crap! %d\n", counter);
+          break;
+                        }
+                        printk("d_ino: %d\n", (int)de->d_ino);
+                        de = (struct linux_dirent64 *)((char*)de + 1);
+                        counter++;
+                }
+
+                // TODO: CHECK de->d_off and de->d_reclen
+                for ( ; (char *)de <= limit; de = (struct linux_dirent64 *)((char *)de + de->d_off)) {
+                        printk("de->d_off %lu de->d_reclen %d\n", (long unsigned int)de->d_off, (int)de->d_reclen);
+                        if (de->d_reclen == 0) {
+                                return -1;
+                        }
+                        if (de->d_ino) {
+                                unsigned char t;
+                                if (inode->i_mode & S_IFDIR) {
+                                        t = DT_DIR;
+                                } else if (inode->i_mode & S_IFREG) {
+                                        t = DT_REG;
+                                } else if (inode->i_mode & S_IFBLK ) {
+                                        t = DT_BLK;
+                                } else {
+                                        t = DT_UNKNOWN;
+                                }
+
+                                if (!dir_emit(ctx, de->d_name, strlen(de->d_name), de->d_ino, t)) {
+                                        kunmap(page);
+                                        page_cache_release(page);
+                                        return 0;
+                                }
+                        }
+                        ctx->pos += de->d_off;  // or de->d_reclen
+                }
+                kunmap(page);
+                page_cache_release(page);
+        }
+
+        (void) file; (void) ctx; (void) sb;
         // Template. To be replaced with bs version and later true vrs.
         return 0;
 }
 
+
+
 /* lpfs aops */
-int lpfs_readpage(struct file *file, struct page *page) { 
+int lpfs_readpage(struct file *file, struct page *page) {
 	return mpage_readpage(page, lpfs_get_block);
 }
 
@@ -189,7 +266,7 @@ static sector_t lpfs_bmap(struct address_space *mapping, sector_t block)
         return generic_block_bmap(mapping, block, lpfs_get_block);
 }
 
-static ssize_t lpfs_direct_IO(int rw, struct kiocb *iocb, 
+static ssize_t lpfs_direct_IO(int rw, struct kiocb *iocb,
                               const struct iovec *iov, loff_t offset,
                               unsigned long nr_segs)
 {
@@ -240,13 +317,13 @@ struct inode_operations lpfs_inode_ops = {
 
 /* file.c */
 struct file_operations lpfs_file_ops = {
-        .llseek		= generic_file_llseek,
-        .read		= do_sync_read,
-        .write		= do_sync_write, // checkpoint 3
+	.llseek		= generic_file_llseek,
+	.read		= do_sync_read,
+	.write		= do_sync_write, // checkpoint 3
 
-        .aio_read	= generic_file_aio_read,//do_sync_* calls these..
-        .aio_write	= generic_file_aio_write,
-        .mmap		= generic_file_mmap,
+	.aio_read	= generic_file_aio_read,//do_sync_* calls these..
+	.aio_write	= generic_file_aio_write,
+	.mmap		= generic_file_mmap,
 
 	.open		= generic_file_open,
 	/* Palmer suggests the generic fsync */
@@ -260,7 +337,7 @@ struct file_operations lpfs_dir_ops = {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
 	.fsync		= noop_fsync,
-	.iterate 	= lpfs_readdir // need to implement
+	//.iterate 	= lpfs_readdir // need to implement
 
 
 };
