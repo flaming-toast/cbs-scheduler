@@ -142,57 +142,42 @@ static int lpfs_readdir(struct file *file, struct dir_context *ctx)
         unsigned long n = pos >> PAGE_CACHE_SHIFT;
         unsigned long npages = (inode->i_size+PAGE_CACHE_SIZE-1) >> PAGE_CACHE_SHIFT;
 
-        if (pos > inode->i_size - (sizeof(struct linux_dirent64)+0)) {
+        if (pos > inode->i_size - (sizeof(struct lp_dentry_fmt))) {
                 return 0;
         }
 
         for ( ; n < npages; n++, offset = 0) {
                 char *kaddr, *limit;
-                struct linux_dirent64 *de;
-                int counter = 0;
+                struct lp_dentry_fmt *de;
                 struct page *page = read_mapping_page(inode->i_mapping, n, NULL);
                 // TODO: Do check later?
                 kaddr = page_address(page);
-                de = (struct linux_dirent64 *)(kaddr + offset);
-                limit = kaddr + lpfs_last_byte(inode, n) - (sizeof(struct linux_dirent64)+0);
+                de = (struct lp_dentry_fmt *)(kaddr + offset);
+                limit = kaddr + lpfs_last_byte(inode, n) - sizeof(struct lp_dentry_fmt);
 
-                /*
-                while ((char *) de <= limit) {
-                        if ((int)de->d_ino == 2) {
-                                printk("Found crap! %d\n", counter);
-          break;
-                        }
-                        printk("d_ino: %d\n", (int)de->d_ino);
-                        de = (struct linux_dirent64 *)((char*)de + 1);
-                        counter++;
-                }
-                */
-
-                // TODO: CHECK de->d_off and de->d_reclen
-                for ( ; (char *)de <= limit; de = (struct linux_dirent64 *)((char *)de + de->d_off)) {
-                        printk("de->d_off %lu de->d_reclen %d\n", (long unsigned int)de->d_off, (int)de->d_reclen);
-                        if (de->d_reclen == 0) {
-                                return -1;
-                        }
-                        if (de->d_ino) {
+                for ( ; (char *)de <= limit; de = de + 1) {
+			if (de->inode_number) {
                                 unsigned char t;
-                                if (inode->i_mode & S_IFDIR) {
+                                struct lpfs *l = sb->s_fs_info;
+                                struct inode *child = lpfs_inode_lookup(l, de->inode_number);
+
+                                if (child->i_mode & S_IFDIR) {
                                         t = DT_DIR;
-                                } else if (inode->i_mode & S_IFREG) {
+                                } else if (child->i_mode & S_IFREG) {
                                         t = DT_REG;
-                                } else if (inode->i_mode & S_IFBLK ) {
+                                } else if (child->i_mode & S_IFBLK ) {
                                         t = DT_BLK;
                                 } else {
                                         t = DT_UNKNOWN;
                                 }
 
-                                if (!dir_emit(ctx, de->d_name, strlen(de->d_name), de->d_ino, t)) {
+                                if (!dir_emit(ctx, de->name, de->name_length, de->inode_number, t)) {
                                         kunmap(page);
                                         page_cache_release(page);
                                         return 0;
                                 }
                         }
-                        ctx->pos += de->d_off;  // or de->d_reclen
+                        ctx->pos += (loff_t)sizeof(struct lp_dentry_fmt);
                 }
                 kunmap(page);
                 page_cache_release(page);
