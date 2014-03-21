@@ -136,9 +136,11 @@ struct lpfs *lpfs_ctx_create(struct super_block *sb)
 
         ctx->gcwq = create_singlethread_workqueue("Garbage Collector");
         INIT_DELAYED_WORK(&(ctx->gc), lpfs_gc);
+        INIT_DELAYED_WORK(&(ctx->fw), lpfs_do_syncer);
         //ctx->gc = gc;
         //PREPARE_WORK(gc, lpfs_gc, (void *) ctx);
         queue_delayed_work(ctx->gcwq, &(ctx->gc), 10000);
+        queue_delayed_work(ctx->gcwq, &(ctx->fw), 10000);
 
         return ctx;
 
@@ -164,6 +166,9 @@ void lpfs_ctx_destroy(struct lpfs *ctx)
         if (ctx->gcwq) {
                 if (&(ctx->gc)) {
                     cancel_delayed_work(&(ctx->gc));
+                }
+                if (&(ctx->fw)) {
+                    cancel_delayed_work(&(ctx->fw));
                 }
                 destroy_workqueue(ctx->gcwq);
         }

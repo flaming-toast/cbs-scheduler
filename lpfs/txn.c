@@ -85,8 +85,6 @@ int lpfs_tx_commit(struct lpfs *ctx, void *buf, u32 len, u64 *byte_addr,
 	// Perform updates to SUT:
 	////////// perform bookkeping on the journal segment, tx segment, and any other segments changed from the operation performed
 
-
-
 	return -EINVAL;
 }
 
@@ -108,6 +106,16 @@ void lpfs_tx_destroy(struct lpfs_tx *tx)
 	kfree(tx);
 }
 
+/*
+void lpfs_do_syncer(void work_struct *w)
+{
+ 	struct lpfs *ctx = container_of(container_of(w, struct delayed_work, work), struct lpfs, fw);
+	scan SUT for segments with dirty txs
+	for each dirty tx:
+	lpfs_tx_sync(tx);
+        queue_delayed_work(ctx->gcwq, &(ctx->fw), 10000);
+}
+*/
 int lpfs_syncer(void *data)
 {
 	(void) data;
