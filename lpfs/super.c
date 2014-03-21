@@ -62,7 +62,7 @@ void lpfs_gc(struct work_struct *w) {
         */
         //Because stupidity in Linux requires stupidity.
         struct lpfs *ctx = container_of(container_of(w, struct delayed_work, work), struct lpfs, gc);
-
+        (void) ctx;
         printk("This actually ran");
 
         /*
@@ -139,13 +139,15 @@ struct lpfs *lpfs_ctx_create(struct super_block *sb)
         INIT_LIST_HEAD(&ctx->txs_list);
         spin_lock_init(&ctx->txs_lock);
 
+        /*  KERNEL PANIC! Need fix.
         ctx->gcwq = create_singlethread_workqueue("Garbage Collector");
         INIT_DELAYED_WORK(&(ctx->gc), lpfs_gc);
-        INIT_DELAYED_WORK(&(ctx->fw), lpfs_do_syncer);
+        //INIT_DELAYED_WORK(&(ctx->fw), lpfs_do_syncer);
         //ctx->gc = gc;
         //PREPARE_WORK(gc, lpfs_gc, (void *) ctx);
         queue_delayed_work(ctx->gcwq, &(ctx->gc), 10000);
         queue_delayed_work(ctx->gcwq, &(ctx->fw), 10000);
+        */
 
         return ctx;
 
@@ -168,6 +170,7 @@ void lpfs_ctx_destroy(struct lpfs *ctx)
                 lpfs_darray_destroy(&ctx->journal);
         }
 
+        /*
         if (ctx->gcwq) {
                 if (&(ctx->gc)) {
                     cancel_delayed_work(&(ctx->gc));
@@ -177,6 +180,7 @@ void lpfs_ctx_destroy(struct lpfs *ctx)
                 }
                 destroy_workqueue(ctx->gcwq);
         }
+        */
 
 
 	/*

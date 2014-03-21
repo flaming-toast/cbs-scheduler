@@ -68,7 +68,7 @@ struct lpfs_tx {
 
 	u32 seg_addr;
 	enum lp_segment_flags seg_type;
-	int sut_updates[4];
+	int *sut_updates;
 	struct lpfs_darray seg;
 };
 

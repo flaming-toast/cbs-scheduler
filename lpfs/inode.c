@@ -122,10 +122,6 @@ void lpfs_fill_inode(struct lpfs *ctx, struct inode *inode,
         insert_inode_hash(inode);
 }
 
-	unlock_new_inode(inode);
-	insert_inode_hash(inode);
-}
-
 static unsigned lpfs_last_byte(struct inode *inode, unsigned long page_nr)
 {
         unsigned last_byte = inode->i_size;
@@ -160,6 +156,7 @@ static int lpfs_readdir(struct file *file, struct dir_context *ctx)
                 de = (struct linux_dirent64 *)(kaddr + offset);
                 limit = kaddr + lpfs_last_byte(inode, n) - (sizeof(struct linux_dirent64)+0);
 
+                /*
                 while ((char *) de <= limit) {
                         if ((int)de->d_ino == 2) {
                                 printk("Found crap! %d\n", counter);
@@ -169,6 +166,7 @@ static int lpfs_readdir(struct file *file, struct dir_context *ctx)
                         de = (struct linux_dirent64 *)((char*)de + 1);
                         counter++;
                 }
+                */
 
                 // TODO: CHECK de->d_off and de->d_reclen
                 for ( ; (char *)de <= limit; de = (struct linux_dirent64 *)((char *)de + de->d_off)) {
@@ -231,21 +229,33 @@ int lpfs_get_block(struct inode *inode, sector_t iblock,
                    struct buffer_head *bh_result, int create) {
 	// if !create = read
 	/* Both ext2 and nilfs2 do this calculation.... */
-//	unsigned maxblocks = bh_result->b_size >> inode->i_blkbits;
-        struct lpfs *l = (struct lpfs *)inode->i_sb->s_fs_info; 
+//	nsigned maxblocks = bh_result->b_size >> inode->i_blkbits;
+        struct lpfs *l;
+        struct lpfs_inode_map *i_srch;
+        struct buffer_head *bh;
+        struct lp_inode_fmt *head;
+        u64 blkaddr;
+        u64 blknum;
+
+        l = (struct lpfs *)inode->i_sb->s_fs_info; 
 
 	// iblock is logical block offset into the file of interest. convert iblock -> actual block number on disk.
 	// we don't have a block map in our inode struct, should read the inode fmt from disk?
 	
-	i_srch = lpfs_imap_lookup(l, inode->i_no);
+	i_srch = lpfs_imap_lookup(l, inode->i_ino);
+        printk("Address of i_srch %p\n", i_srch);
 
 	// get inode block on disk, which has bmap of data blocks
 	bh = sb_bread(inode->i_sb, i_srch->inode_byte_addr / LP_BLKSZ); 
 	head = (struct lp_inode_fmt *) bh->b_data;
+        printk("Address of bh %p\n", bh);
+        printk("Address of head %p\n", head);
 
 	// assuming this gives us the data block address..........	
-	int blkaddr = head->bmap[i_block];
-	int blknum = blkaddr / LP_BLKSZ
+	blkaddr = head->bmap[iblock];
+	blknum = blkaddr; // / LP_BLKSZ;
+
+        printk("Value of %ld %ld\n", (unsigned long)blkaddr, (unsigned long)blknum);
 
 	map_bh(bh_result, inode->i_sb, blknum); 
 	bh_result->b_size = (1 << inode->i_blkbits); //the first param is the number of blocks (ret in nilfs, # of contig blocks to read)
@@ -337,7 +347,7 @@ struct file_operations lpfs_dir_ops = {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
 	.fsync		= noop_fsync,
-	//.iterate 	= lpfs_readdir // need to implement
+	.iterate 	= lpfs_readdir,
 
 
 };

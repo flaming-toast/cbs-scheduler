@@ -55,9 +55,9 @@ int lpfs_tx_commit(struct lpfs *ctx, void *buf, u32 len, u64 *byte_addr,
 	 * 5) Keep the transaction state updated at all times
 	 * 6) Update the superblock as needed
 	 */
-	(void) ctx; (void) buf; (void) len; (void) byte_addr; (void) byte_addr_hint; (void) flags;
-
 	struct lpfs_darray journal = ctx->journal;
+
+        (void) ctx; (void) buf; (void) len; (void) byte_addr; (void) byte_addr_hint; (void) flags;
 	// locate existing transaction  specified by segment addr + byte_addr_hint
 	// IF transaction state is open AND transaction lp_segment_flags match flags AND segment of transaction is large enoguh to contain buf:
 	////////// lock tx
@@ -84,7 +84,7 @@ int lpfs_tx_commit(struct lpfs *ctx, void *buf, u32 len, u64 *byte_addr,
 	// unlock tx
 	// Perform updates to SUT:
 	////////// perform bookkeping on the journal segment, tx segment, and any other segments changed from the operation performed
-
+        (void) journal;
 	return -EINVAL;
 }
 
