@@ -157,19 +157,7 @@ static int lpfs_readdir(struct file *file, struct dir_context *ctx)
 
                 for ( ; (char *)de <= limit; de = de + 1) {
 			if (de->inode_number) {
-                                unsigned char t;
-                                struct lpfs *l = sb->s_fs_info;
-                                struct inode *child = lpfs_inode_lookup(l, de->inode_number);
-
-                                if (child->i_mode & S_IFDIR) {
-                                        t = DT_DIR;
-                                } else if (child->i_mode & S_IFREG) {
-                                        t = DT_REG;
-                                } else if (child->i_mode & S_IFBLK ) {
-                                        t = DT_BLK;
-                                } else {
-                                        t = DT_UNKNOWN;
-                                }
+                                unsigned char t = DT_UNKNOWN;
 
                                 if (!dir_emit(ctx, de->name, de->name_length, de->inode_number, t)) {
                                         kunmap(page);
@@ -274,6 +262,7 @@ struct dentry *lpfs_lookup(struct inode *inode, struct dentry *dentry, unsigned 
         int i;
         int j;
         struct inode* res = NULL;
+        struct lpfs *l = (struct lpfs *)(inode->i_sb->s_fs_info);
         (void) inode; (void) dentry; (void) something;
         if (S_ISDIR(inode->i_mode)) {
           for (i = 0; i < inode->i_blocks; i++) {
@@ -283,7 +272,8 @@ struct dentry *lpfs_lookup(struct inode *inode, struct dentry *dentry, unsigned 
             for (j = 0; j < bh->b_size; j++) {
               struct lp_dentry_fmt* de = (struct lp_dentry_fmt*)(bh->b_data + (j * sizeof(struct lp_dentry_fmt))); 
               if (strcmp(de->name, dentry->d_name.name) == 0) { 
-                res = lpfs_inode_lookup(inode->i_private, de->inode_number);
+                res = lpfs_inode_lookup(l, de->inode_number);
+                //res = lpfs_inode_lookup(inode->i_private, de->inode_number);
                 goto ret;
               }
             }
