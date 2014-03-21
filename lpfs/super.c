@@ -43,7 +43,7 @@ struct super_operations lpfs_super_ops = {
 
         /* pilfered from ramfs */
         .show_options	= generic_show_options,
-        .drop_inode	= generic_delete_inode,
+        .drop_inode	= generic_drop_inode,
         .statfs 	= lpfs_do_statfs,
 
 };
@@ -417,7 +417,7 @@ int lpfs_fill_super(struct super_block *sb, void *data, int silent)
 		}
 		*/
 	}
-
+        sb->s_flags |= MS_ACTIVE;
 	i_root = lpfs_inode_lookup(ctx, LP_ROOT_INO);
 	if (!i_root) {
 		err = -EIO;

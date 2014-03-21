@@ -142,57 +142,30 @@ static int lpfs_readdir(struct file *file, struct dir_context *ctx)
         unsigned long n = pos >> PAGE_CACHE_SHIFT;
         unsigned long npages = (inode->i_size+PAGE_CACHE_SIZE-1) >> PAGE_CACHE_SHIFT;
 
-        if (pos > inode->i_size - (sizeof(struct linux_dirent64)+0)) {
+        if (pos > inode->i_size - (sizeof(struct lp_dentry_fmt))) {
                 return 0;
         }
 
         for ( ; n < npages; n++, offset = 0) {
                 char *kaddr, *limit;
-                struct linux_dirent64 *de;
-                int counter = 0;
+                struct lp_dentry_fmt *de;
                 struct page *page = read_mapping_page(inode->i_mapping, n, NULL);
                 // TODO: Do check later?
                 kaddr = page_address(page);
-                de = (struct linux_dirent64 *)(kaddr + offset);
-                limit = kaddr + lpfs_last_byte(inode, n) - (sizeof(struct linux_dirent64)+0);
+                de = (struct lp_dentry_fmt *)(kaddr + offset);
+                limit = kaddr + lpfs_last_byte(inode, n) - sizeof(struct lp_dentry_fmt);
 
-                /*
-                while ((char *) de <= limit) {
-                        if ((int)de->d_ino == 2) {
-                                printk("Found crap! %d\n", counter);
-          break;
-                        }
-                        printk("d_ino: %d\n", (int)de->d_ino);
-                        de = (struct linux_dirent64 *)((char*)de + 1);
-                        counter++;
-                }
-                */
+                for ( ; (char *)de <= limit; de = de + 1) {
+			if (de->inode_number) {
+                                unsigned char t = DT_UNKNOWN;
 
-                // TODO: CHECK de->d_off and de->d_reclen
-                for ( ; (char *)de <= limit; de = (struct linux_dirent64 *)((char *)de + de->d_off)) {
-                        printk("de->d_off %lu de->d_reclen %d\n", (long unsigned int)de->d_off, (int)de->d_reclen);
-                        if (de->d_reclen == 0) {
-                                return -1;
-                        }
-                        if (de->d_ino) {
-                                unsigned char t;
-                                if (inode->i_mode & S_IFDIR) {
-                                        t = DT_DIR;
-                                } else if (inode->i_mode & S_IFREG) {
-                                        t = DT_REG;
-                                } else if (inode->i_mode & S_IFBLK ) {
-                                        t = DT_BLK;
-                                } else {
-                                        t = DT_UNKNOWN;
-                                }
-
-                                if (!dir_emit(ctx, de->d_name, strlen(de->d_name), de->d_ino, t)) {
+                                if (!dir_emit(ctx, de->name, de->name_length, de->inode_number, t)) {
                                         kunmap(page);
                                         page_cache_release(page);
                                         return 0;
                                 }
                         }
-                        ctx->pos += de->d_off;  // or de->d_reclen
+                        ctx->pos += (loff_t)sizeof(struct lp_dentry_fmt);
                 }
                 kunmap(page);
                 page_cache_release(page);
@@ -234,6 +207,7 @@ int lpfs_get_block(struct inode *inode, sector_t iblock,
         struct lpfs_inode_map *i_srch;
         struct buffer_head *bh;
         struct lp_inode_fmt *head;
+        char *bh_limit;
         u64 blkaddr;
         u64 blknum;
 
@@ -243,19 +217,33 @@ int lpfs_get_block(struct inode *inode, sector_t iblock,
 	// we don't have a block map in our inode struct, should read the inode fmt from disk?
 	
 	i_srch = lpfs_imap_lookup(l, inode->i_ino);
-        printk("Address of i_srch %p\n", i_srch);
+        //printk("Address of i_srch %p\n", i_srch);
 
 	// get inode block on disk, which has bmap of data blocks
 	bh = sb_bread(inode->i_sb, i_srch->inode_byte_addr / LP_BLKSZ); 
 	head = (struct lp_inode_fmt *) bh->b_data;
-        printk("Address of bh %p\n", bh);
-        printk("Address of head %p\n", head);
+
+        /* Got the block containing the inode, but it may not be first inode */
+        bh_limit = bh->b_data + bh->b_size;
+        for (; (char *)head < bh_limit; head = head + 1) {
+                if (head->ino == inode->i_ino) {
+                        break;    // Found!
+                }
+        }
+        if (head->ino != inode->i_ino) {
+                printk("No such inode %d exists\n", (int)(inode->i_ino));
+                return -1;
+        }
+        //for ( ; (char *)de <= limit; de = de + 1) { 
+
+        //printk("Address of bh %p\n", bh);
+        //printk("Address of head %p\n", head);
 
 	// assuming this gives us the data block address..........	
 	blkaddr = head->bmap[iblock];
 	blknum = blkaddr; // / LP_BLKSZ;
 
-        printk("Value of %ld %ld\n", (unsigned long)blkaddr, (unsigned long)blknum);
+        //printk("Value of %ld %ld\n", (unsigned long)blkaddr, (unsigned long)blknum);
 
 	map_bh(bh_result, inode->i_sb, blknum); 
 	bh_result->b_size = (1 << inode->i_blkbits); //the first param is the number of blocks (ret in nilfs, # of contig blocks to read)
@@ -289,16 +277,18 @@ struct dentry *lpfs_lookup(struct inode *inode, struct dentry *dentry, unsigned 
         int i;
         int j;
         struct inode* res = NULL;
+        struct lpfs *l = (struct lpfs *)(inode->i_sb->s_fs_info);
         (void) inode; (void) dentry; (void) something;
         if (S_ISDIR(inode->i_mode)) {
           for (i = 0; i < inode->i_blocks; i++) {
             sector_t baddr = inode->i_mapping->a_ops->bmap(inode->i_mapping, i);
             struct buffer_head *bh = sb_bread(inode->i_sb, baddr);
             get_bh(bh);
-            for (j = 0; j < bh->b_size; j++) {
+            for (j = 0; j < bh->b_size/(int)(sizeof(struct lp_dentry_fmt)); j++) {
               struct lp_dentry_fmt* de = (struct lp_dentry_fmt*)(bh->b_data + (j * sizeof(struct lp_dentry_fmt))); 
               if (strcmp(de->name, dentry->d_name.name) == 0) { 
-                res = lpfs_inode_lookup(inode->i_private, de->inode_number);
+                res = lpfs_inode_lookup(l, de->inode_number);
+                //res = lpfs_inode_lookup(inode->i_private, de->inode_number);
                 goto ret;
               }
             }
