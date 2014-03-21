@@ -5,11 +5,24 @@
  */
 
 #include "struct.h"
+#include "lpfs.h"
+#include<linux/statfs.h>
 
 #pragma GCC optimize ("-O0")
 
 void lpfs_ctx_destroy(struct lpfs *ctx);
 int lpfs_do_statfs(struct dentry *dentry, struct kstatfs *buf);
+
+
+struct inode* lpfs_alloc_inode(struct super_block *sb) {
+  struct inode * in = kmem_cache_alloc(((struct lpfs*)(sb->s_fs_info))->imap_cache, GFP_KERNEL);
+  if (!in) {
+    return NULL;
+  }
+  in->i_private = sb->s_fs_info;
+  return in;
+}
+
 
 /* operation tables copied *straight* from ext2, modify to fit lpfs */
 struct super_operations lpfs_super_ops = {
@@ -17,14 +30,16 @@ struct super_operations lpfs_super_ops = {
         /* Copied from ext2, then s/ext2/lpfs/
          * probably won't have to implement these but I'll
          * keep them here for now */
-        /*
-           .alloc_inode	= lpfs_alloc_inode,
+
+//           .alloc_inode	= lpfs_alloc_inode,
+/*
            .destroy_inode	= lpfs_destroy_inode,
            .write_inode	= lpfs_write_inode,
            .evict_inode	= lpfs_evict_inode,
            .put_super	= lpfs_put_super,
            .sync_fs	= lpfs_sync_fs,
-           */
+*/
+
 
         /* pilfered from ramfs */
         .show_options	= generic_show_options,
@@ -47,7 +62,7 @@ void lpfs_gc(struct work_struct *w) {
         */
         //Because stupidity in Linux requires stupidity.
         struct lpfs *ctx = container_of(container_of(w, struct delayed_work, work), struct lpfs, gc);
-        
+        (void) ctx;
         printk("This actually ran");
 
         /*
@@ -124,11 +139,15 @@ struct lpfs *lpfs_ctx_create(struct super_block *sb)
         INIT_LIST_HEAD(&ctx->txs_list);
         spin_lock_init(&ctx->txs_lock);
 
+        /*  KERNEL PANIC! Need fix.
         ctx->gcwq = create_singlethread_workqueue("Garbage Collector");
         INIT_DELAYED_WORK(&(ctx->gc), lpfs_gc);
+        //INIT_DELAYED_WORK(&(ctx->fw), lpfs_do_syncer);
         //ctx->gc = gc;
         //PREPARE_WORK(gc, lpfs_gc, (void *) ctx);
         queue_delayed_work(ctx->gcwq, &(ctx->gc), 10000);
+        queue_delayed_work(ctx->gcwq, &(ctx->fw), 10000);
+        */
 
         return ctx;
 
@@ -143,7 +162,6 @@ void lpfs_ctx_destroy(struct lpfs *ctx)
                 lpfs_imap_destroy(ctx);
                 kmem_cache_destroy(ctx->imap_cache);
         }
-
         if (ctx->SUT.blocks) {
                 lpfs_darray_destroy(&ctx->SUT);
         }
@@ -152,12 +170,17 @@ void lpfs_ctx_destroy(struct lpfs *ctx)
                 lpfs_darray_destroy(&ctx->journal);
         }
 
+        /*
         if (ctx->gcwq) {
                 if (&(ctx->gc)) {
                     cancel_delayed_work(&(ctx->gc));
                 }
+                if (&(ctx->fw)) {
+                    cancel_delayed_work(&(ctx->fw));
+                }
                 destroy_workqueue(ctx->gcwq);
         }
+        */
 
 
 	/*
@@ -169,7 +192,6 @@ void lpfs_ctx_destroy(struct lpfs *ctx)
 		kthread_stop(ctx->cleaner);
 	}
 	*/
-
 
         brelse(ctx->sb_buf);
         kfree(ctx);
@@ -210,47 +232,24 @@ fail:
 static int lpfs_load_imap_ents(struct lpfs_darray *d,
                 struct lp_snapshot_fmt *snap, u32 seg_addr);
 
-struct lpfs_darray *lpfs_find_last_segment(struct super_block *sb)
-{
-        (void) sb;
-        return NULL;
-}
-
 int lpfs_do_statfs(struct dentry *dentry, struct kstatfs *buf)
 {
         struct super_block *sb;
-        struct lp_superblock_fmt *sb_fmt = NULL;
-        struct lpfs_darray *last_segment;
-        void *sb_info = NULL;
-        long used;
-
-        // How is this used? Defined, but left alone...
-        void *s_fs_info = NULL;
-        u64 u64_id = 0;
-        (void) sb_info;
-        (void) sb_fmt;
-        (void) s_fs_info;
-        (void) u64_id;
+        struct lp_superblock_fmt *sb_fmt;
 
         sb = dentry->d_sb;
-        s_fs_info = sb->s_fs_info;
-        // u64_id = huge_encode_dev();
-        // huge_encode_dev requires more args. Also unused value.
-
+        sb_fmt = (struct lp_superblock_fmt *)sb->s_fs_info;
         buf->f_type = sb->s_magic;
-        buf->f_bsize = sb->s_blocksize;
-        buf->f_blocks = sb->s_blocksize_bits / 8 / sb->s_maxbytes; // LP_BLKS_PER_SEG * nr_segments;
-
-        last_segment = lpfs_find_last_segment(sb);
-        used = last_segment->blk_addr + last_segment->nr_blocks * LP_BLKSZ;// start from checkpoint, find last segment inode map position
-        buf->f_bfree = buf->f_blocks - used;
+        buf->f_bsize = sb_fmt->block_size;
+        buf->f_blocks = sb_fmt->nr_segments * LP_BLKS_PER_SEG;
+        buf->f_bfree = buf->f_blocks;
         buf->f_bavail = buf->f_bfree;
-        buf->f_files = 0; // for each inode_map from checkpoint, iterate through inodes and add to counter if file node.
-        buf->f_ffree = 0; // NOT SURE
-        //TODO I have no idea what to do with file system id
-        buf->f_fsid.val[0] = 0;
-        buf->f_fsid.val[1] = 1;
+        buf->f_files = 0;
+        buf->f_ffree = 0;
+        buf->f_fsid.val[0] = sb->s_magic;
+        buf->f_fsid.val[0] = sb->s_magic;
         buf->f_namelen = 255; // might want to define some constant like LPFS_NAME_LEN
+
         return 0;
 }
 
@@ -430,124 +429,123 @@ int lpfs_fill_super(struct super_block *sb, void *data, int silent)
 
 	return 0;
 
-
-fail:
-        lpfs_ctx_destroy(ctx);
-        return err;
+		fail:
+		lpfs_ctx_destroy(ctx);
+	return err;
 }
 
 int lpfs_load_sut(struct lpfs *ctx)
 {
-        int err;
-        err = lpfs_darray_create(ctx, &ctx->SUT,
-                        ctx->sb_info.sut_off / LP_BLKSZ,
-                        (ctx->sb_info.journal_off - ctx->sb_info.sut_off)
-                        / LP_BLKSZ, 1);
-        if (err) {
-                printk(KERN_ERR "lpfs: Could not read SUT");
-                goto exit;
-        }
+	int err;
+	err = lpfs_darray_create(ctx, &ctx->SUT,
+			ctx->sb_info.sut_off / LP_BLKSZ,
+			(ctx->sb_info.journal_off - ctx->sb_info.sut_off)
+			/ LP_BLKSZ, 1);
+	if (err) {
+		printk(KERN_ERR "lpfs: Could not read SUT");
+		goto exit;
+	}
 
 exit:
-        return err;
+	return err;
 }
 
 int lpfs_load_journal(struct lpfs* ctx)
 {
-        int err;
-        u64 jnl_off;
-        struct lp_journal_entry_fmt jnl_ent;
-        void *ent_buf;
-        u32 cksum;
-        u64 final_byte_addr;
+	int err;
+	u64 jnl_off;
+	struct lp_journal_entry_fmt jnl_ent;
+	void *ent_buf;
+	u32 cksum;
+	u64 final_byte_addr;
 
-        err = lpfs_darray_create(ctx, &ctx->journal,
-                        ctx->sb_info.journal_off / LP_BLKSZ,
-                        ctx->sb_info.journal_len / LP_BLKSZ, 1);
-        if (err) {
-                printk(KERN_ERR "lpfs: Could not read journal");
-                goto exit;
-        }
+	err = lpfs_darray_create(ctx, &ctx->journal,
+			ctx->sb_info.journal_off / LP_BLKSZ,
+			ctx->sb_info.journal_len / LP_BLKSZ, 1);
+	if (err) {
+		printk(KERN_ERR "lpfs: Could not read journal");
+		goto exit;
+	}
 
-        for (jnl_off = 0; jnl_off < ctx->sb_info.journal_data_len;
-                        jnl_off += jnl_ent.ent_len + sizeof(struct lp_journal_entry_fmt))
-        {
-                lpfs_darray_read(&ctx->journal, &jnl_ent,
-                                sizeof(struct lp_journal_entry_fmt), jnl_off);
+	for (jnl_off = 0; jnl_off < ctx->sb_info.journal_data_len;
+			jnl_off += jnl_ent.ent_len + sizeof(struct lp_journal_entry_fmt))
+	{
+		lpfs_darray_read(&ctx->journal, &jnl_ent,
+				sizeof(struct lp_journal_entry_fmt), jnl_off);
 
-                ent_buf = kmalloc(jnl_ent.ent_len, GFP_NOIO);
-                if (!ent_buf) {
-                        err = -ENOMEM;
-                        goto exit;
-                }
+		ent_buf = kmalloc(jnl_ent.ent_len, GFP_NOIO);
+		if (!ent_buf) {
+			err = -ENOMEM;
+			goto exit;
+		}
 
-                lpfs_darray_read(&ctx->journal, ent_buf, jnl_ent.ent_len,
-                                jnl_off + sizeof(struct lp_journal_entry_fmt));
+		lpfs_darray_read(&ctx->journal, ent_buf, jnl_ent.ent_len,
+				jnl_off + sizeof(struct lp_journal_entry_fmt));
 
-                cksum = __lpfs_fnv(ent_buf, jnl_ent.ent_len);
-                if (cksum != jnl_ent.ent_checksum) {
-                        err = -EIO;
-                        printk(KERN_ERR "lpfs: Corrupted journal entry");
-                        goto skip;
-                }
+		cksum = __lpfs_fnv(ent_buf, jnl_ent.ent_len);
+		if (cksum != jnl_ent.ent_checksum) {
+			err = -EIO;
+			printk(KERN_ERR "lpfs: Corrupted journal entry");
+			goto skip;
+		}
 
-                err = lpfs_tx_commit(ctx, ent_buf, jnl_ent.ent_len,
-                                &final_byte_addr, jnl_ent.ent_byte_addr,
-                                LP_TX_FROM_JNL | jnl_ent.ent_type);
-                if (err) {
-                        printk(KERN_ERR "lpfs: Could not place journal entry");
-                        goto exit;
-                }
+		err = lpfs_tx_commit(ctx, ent_buf, jnl_ent.ent_len,
+				&final_byte_addr, jnl_ent.ent_byte_addr,
+				LP_TX_FROM_JNL | jnl_ent.ent_type);
+		if (err) {
+			printk(KERN_ERR "lpfs: Could not place journal entry");
+			goto exit;
+		}
 
-                if (jnl_ent.ent_byte_addr != final_byte_addr) {
-                        err = -EINVAL;
-                        printk(KERN_ERR "lpfs: Journal hints have failed");
-                        err = -EFAULT;
-                        goto skip;
-                }
+		if (jnl_ent.ent_byte_addr != final_byte_addr) {
+			err = -EINVAL;
+			printk(KERN_ERR "lpfs: Journal hints have failed");
+			err = -EFAULT;
+			goto skip;
+		}
 
 skip:
-                kfree(ent_buf);
+		kfree(ent_buf);
 
-                if (err) {
-                        goto exit;
-                }
-        }
+		if (err) {
+			goto exit;
+		}
+	}
 
 exit:
-        if (err) {
-                lpfs_darray_destroy(&ctx->journal);
-        }
-        return err;
+	if (err) {
+		lpfs_darray_destroy(&ctx->journal);
+	}
+	return err;
 }
 
 static struct dentry *lpfs_mount(struct file_system_type *fs_type, int flags,
-                const char *dev_name, void *data)
+		const char *dev_name, void *data)
 {
-        printk(KERN_INFO "lpfs: mount %s, %s\n", dev_name, (char *) data);
+	printk(KERN_INFO "lpfs: mount %s, %s\n", dev_name, (char *) data);
 #ifdef __LPFS_DARRAY_TEST
-        return mount_bdev(fs_type, flags, dev_name, data, __lpfs_darray_test);
+	return mount_bdev(fs_type, flags, dev_name, data, __lpfs_darray_test);
 #else
-        return mount_bdev(fs_type, flags, dev_name, data, lpfs_fill_super);
+	return mount_bdev(fs_type, flags, dev_name, data, lpfs_fill_super);
 #endif
 }
 
 static struct file_system_type lpfs_fs_type = {
-        .name = "lpfs",
-        .mount = &lpfs_mount,
-        .kill_sb = &kill_block_super,
-        .fs_flags = FS_REQUIRES_DEV,
-        .owner = THIS_MODULE,
+	.name = "lpfs",
+	.mount = &lpfs_mount,
+	.kill_sb = &kill_block_super,
+	.fs_flags = FS_REQUIRES_DEV,
+	.owner = THIS_MODULE,
 };
 
 int __init lpfs_init(void)
 {
-        return register_filesystem(&lpfs_fs_type);
+	return register_filesystem(&lpfs_fs_type);
 }
 
 void __exit lpfs_exit(void)
 {
-        unregister_filesystem(&lpfs_fs_type);
+	unregister_filesystem(&lpfs_fs_type);
 }
 
 module_init(lpfs_init);

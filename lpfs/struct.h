@@ -31,6 +31,7 @@ struct lpfs_darray {
 struct lpfs {
 	struct workqueue_struct *gcwq;
 	struct delayed_work gc;
+	struct delayed_work fw;
 	struct super_block *sb;
 	struct buffer_head *sb_buf;
 	struct lp_superblock_fmt sb_info;
@@ -43,6 +44,7 @@ struct lpfs {
 
 	struct lpfs_darray SUT;
 	struct lpfs_darray journal;
+	//int segs_awaiting_cleaning[10];
 };
 
 struct lpfs_inode_map {
@@ -175,7 +177,7 @@ void lpfs_imap_delete(struct lpfs *ctx, u64 ino);
 void lpfs_imap_destroy(struct lpfs *ctx);
 
 /* we could put these in potentially better places, like mirror the layout
- * in ext2. i.e., have super_operations declared in super.c, file_operations declared 
+ * in ext2. i.e., have super_operations declared in super.c, file_operations declared
  * in file.c, etc -jyu */
 
 /* inode.c */
@@ -183,10 +185,11 @@ extern struct super_operations lpfs_super_ops;
 extern struct inode_operations lpfs_inode_ops;
 extern struct file_operations lpfs_file_ops;
 extern struct file_operations lpfs_dir_ops;
+extern struct address_space_operations lpfs_aops;
 
-/* For any non-static functions, add their declarations here 
- * for the operations in the above ops tables 
- * let's put the actual function definition functions 
+/* For any non-static functions, add their declarations here
+ * for the operations in the above ops tables
+ * let's put the actual function definition functions
  * in the appropriate file -jyu */
 
 /* Example -- for fsync */
