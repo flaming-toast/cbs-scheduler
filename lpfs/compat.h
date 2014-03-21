@@ -180,11 +180,13 @@ struct kstatfs {
 	long f_bsize;
   u64 f_blocks;
   u64 f_bfree;
-  u64_f_bavail;
+  u64 f_bavail;
   u64 f_files;
   u64 f_ffree;
 	long f_namelen;
   //fsid ??
+  // Defined in header posix_types.h also included by linux/fs.h
+  __kernel_fsid_t f_fsid;
 };
 struct mutex {
 	pthread_mutex_t m;
@@ -591,6 +593,10 @@ void d_genocide(struct dentry *d);
 
 void drop_nlink(struct inode *i);
 
+int dquot_file_open(struct inode *inode, struct file *file);
+int generic_file_open(struct inode * inode, struct file * filp);
+ssize_t generic_read_dir(struct file *filp, char __user *buf, size_t siz, loff_t *ppos);
+
 extern int (*__init_func__)(void);
 extern void (*__exit_func__)(void);
 
@@ -621,6 +627,15 @@ void save_mount_options(struct super_block *sb, char *options);
 #include <linux/string.h>
 #include <linux/kthread.h>
 #include <linux/printk.h>
+#include <linux/quotaops.h>
+#include <linux/statfs.h>
+#include <linux/kdev_t.h>
+//Already included by linux/fs.h?
+//#include <asm-generic/atomic.h>
+#include <linux/pagemap.h>
+#include <linux/mm.h>
+#include <linux/syscalls.h>
+#include <linux/dirent.h>
 
 #endif /* _USERSPACE */
 
