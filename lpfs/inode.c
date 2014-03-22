@@ -207,6 +207,7 @@ int lpfs_get_block(struct inode *inode, sector_t iblock,
         struct lpfs_inode_map *i_srch;
         struct buffer_head *bh;
         struct lp_inode_fmt *head;
+        char *bh_limit;
         u64 blkaddr;
         u64 blknum;
 
@@ -221,6 +222,20 @@ int lpfs_get_block(struct inode *inode, sector_t iblock,
 	// get inode block on disk, which has bmap of data blocks
 	bh = sb_bread(inode->i_sb, i_srch->inode_byte_addr / LP_BLKSZ); 
 	head = (struct lp_inode_fmt *) bh->b_data;
+
+        /* Got the block containing the inode, but it may not be first inode */
+        bh_limit = bh->b_data + bh->b_size;
+        for (; (char *)head < bh_limit; head = head + 1) {
+                if (head->ino == inode->i_ino) {
+                        break;    // Found!
+                }
+        }
+        if (head->ino != inode->i_ino) {
+                printk("No such inode %d exists\n", (int)(inode->i_ino));
+                return -1;
+        }
+        //for ( ; (char *)de <= limit; de = de + 1) { 
+
         //printk("Address of bh %p\n", bh);
         //printk("Address of head %p\n", head);
 
