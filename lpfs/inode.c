@@ -284,7 +284,7 @@ struct dentry *lpfs_lookup(struct inode *inode, struct dentry *dentry, unsigned 
             sector_t baddr = inode->i_mapping->a_ops->bmap(inode->i_mapping, i);
             struct buffer_head *bh = sb_bread(inode->i_sb, baddr);
             get_bh(bh);
-            for (j = 0; j < bh->b_size; j++) {
+            for (j = 0; j < bh->b_size/(int)(sizeof(struct lp_dentry_fmt)); j++) {
               struct lp_dentry_fmt* de = (struct lp_dentry_fmt*)(bh->b_data + (j * sizeof(struct lp_dentry_fmt))); 
               if (strcmp(de->name, dentry->d_name.name) == 0) { 
                 res = lpfs_inode_lookup(l, de->inode_number);
