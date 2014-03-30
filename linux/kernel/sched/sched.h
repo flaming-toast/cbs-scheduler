@@ -326,6 +326,15 @@ struct cfs_rq {
 #endif /* CONFIG_FAIR_GROUP_SCHED */
 };
 
+/* CBS-related fields in a runqueue */
+struct cbs_rq {
+
+	/* Red-black tree of deadlines (for EDF) */
+	struct rb_root deadlines; 
+	struct rb_node *rb_leftmost;
+
+};
+
 static inline int rt_bandwidth_enabled(void)
 {
 	return sysctl_sched_rt_runtime >= 0;
@@ -425,6 +434,7 @@ struct rq {
 	unsigned long nr_load_updates;
 	u64 nr_switches;
 
+	struct cbs_rq cbs;
 	struct cfs_rq cfs;
 	struct rt_rq rt;
 
@@ -1011,6 +1021,7 @@ struct sched_class {
    for (class = sched_class_highest; class; class = class->next)
 
 extern const struct sched_class stop_sched_class;
+extern const struct sched_class cbs_sched_class;
 extern const struct sched_class rt_sched_class;
 extern const struct sched_class fair_sched_class;
 extern const struct sched_class idle_sched_class;
@@ -1039,6 +1050,7 @@ extern void sched_init_granularity(void);
 extern void update_max_interval(void);
 extern void init_sched_rt_class(void);
 extern void init_sched_fair_class(void);
+extern void init_sched_cbs_class(void);
 
 extern void resched_task(struct task_struct *p);
 extern void resched_cpu(int cpu);
@@ -1302,6 +1314,7 @@ extern struct sched_entity *__pick_last_entity(struct cfs_rq *cfs_rq);
 extern void print_cfs_stats(struct seq_file *m, int cpu);
 extern void print_rt_stats(struct seq_file *m, int cpu);
 
+extern void init_cbs_rq(struct cbs_rq *cbs_rq);
 extern void init_cfs_rq(struct cfs_rq *cfs_rq);
 extern void init_rt_rq(struct rt_rq *rt_rq, struct rq *rq);
 
