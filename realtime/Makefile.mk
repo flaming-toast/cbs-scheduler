@@ -42,4 +42,4 @@ install_cbs_proc:
 	cp -u realtime/cbs_proc.h linux/kernel/sched
 	cp -u realtime/cbs_proc_impl.c linux/kernel/sched
 	cp -u realtime/cbs.Makefile linux/kernel/sched/Makefile
-
+	cp -u realtime/snapshot.h linux/kernel/sched/cbs_snapshot.h

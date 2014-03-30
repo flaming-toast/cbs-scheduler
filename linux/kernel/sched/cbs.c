@@ -14,8 +14,7 @@
 #include <trace/events/sched.h>
 
 #include "sched.h"
-
-#define SNAP_MAX_ENTRIES 5
+#include "cbs_snapshot.h"
 
 const struct sched_class cbs_sched_class;
 //static const struct file_operations cbs_snapshot_fops;
@@ -39,6 +38,7 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 }
                       
 static struct task_struct *pick_next_task_cbs(struct rq *rq){
+	/* defer to next scheduler in the chain for now */
 	struct task_struct *p = NULL;
 	return p;
 }
@@ -103,29 +103,50 @@ void init_cbs_rq(struct cbs_rq *rq) {
 
 __init void init_sched_cbs_class(void)
 {
-	printk("init_sched_cbs_class");
+	/*
 	int i;
 	char entry[1];
+	*/
 	/* populate proc directory */
-	struct proc_dir_entry *parent = proc_mkdir("snapshot", NULL);
+
+//	struct proc_dir_entry *parent = proc_mkdir("snapshot", NULL);
+	/*
 	for (i = 0; i < SNAP_MAX_ENTRIES; i++) {
 		sprintf(entry, "%d", i);
 //		proc_create(entry, S_IRUGO|S_IWUGO, parent, &cbs_snapshot_fops);
 		proc_create(entry, S_IRUGO|S_IWUGO, parent, NULL);
 	}
-	
+	*/
 }
 int read_proc(struct file *f, char __user *u, size_t i, loff_t *t)
 {
 	return 0;
 }
 
-/*
 static const struct file_operations cbs_snapshot_fops = {
 	.read = read_proc,
 	//.write = write_proc
 };
-*/
+
+static int __init  init_sched_cbs_procfs(void) {
+
+	struct proc_dir_entry *parent = proc_mkdir("snapshot", NULL);
+
+	int i;
+	char entry[1];
+
+	for (i = 0; i < SNAP_MAX_TRIGGERS; i++) {
+		sprintf(entry, "%d", i);
+		proc_create(entry, S_IRUGO|S_IWUGO, parent, &cbs_snapshot_fops);
+	}
+	return 0;
+}
+
+__initcall(init_sched_cbs_procfs);
+
+
+
+
 /*
  * Pilfered from fair.c and s/fair/cbs/
  * removed GROUP_SCHED ifdef
