@@ -3254,14 +3254,23 @@ static void
 __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
 {
 	p->policy = policy;
+	/* If rt policy is cbs, send signal to task. */
+	if (policy == SCHED_CBS){
+		sigaddset(&p->pending.signal, SIGXCPU);
+		set_tsk_thread_flag(p, TIF_SIGPENDING);
+	}
 	p->rt_priority = prio;
 	p->normal_prio = normal_prio(p);
 	/* we are holding p->pi_lock already */
 	p->prio = rt_mutex_getprio(p);
+
+	p->sched_class = &cbs_sched_class;
+	/*
 	if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
 	else
 		p->sched_class = &fair_sched_class;
+		*/
 	set_load_weight(p);
 }
 
@@ -6454,6 +6463,7 @@ void __init sched_init(void)
 		rq->nr_running = 0;
 		rq->calc_load_active = 0;
 		rq->calc_load_update = jiffies + LOAD_FREQ;
+		init_cbs_rq(&rq->cbs);
 		init_cfs_rq(&rq->cfs);
 		init_rt_rq(&rq->rt, rq);
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -6559,6 +6569,7 @@ void __init sched_init(void)
 	idle_thread_set_boot_cpu();
 #endif
 	init_sched_fair_class();
+	init_sched_cbs_class();
 
 	scheduler_running = 1;
 }
