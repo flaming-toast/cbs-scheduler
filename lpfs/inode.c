@@ -125,6 +125,7 @@ void lpfs_destroy_inode(struct inode *inode)
 	inode->i_state = 0;
 }
 
+struct super_operations lpfs_super_ops;
 struct inode_operations lpfs_inode_ops;
 struct file_operations lpfs_file_ops;
 struct file_operations lpfs_dir_ops;
