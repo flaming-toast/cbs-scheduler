@@ -82,7 +82,7 @@ extern void update_cpu_load_active(struct rq *this_rq);
 
 static inline int rt_policy(int policy)
 {
-	if (policy == SCHED_FIFO || policy == SCHED_RR)
+	if (policy == SCHED_FIFO || policy == SCHED_RR || policy == SCHED_CBS)
 		return 1;
 	return 0;
 }

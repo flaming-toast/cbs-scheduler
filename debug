@@ -1,0 +1,54 @@
+#!/bin/bash -e
+
+serial=""
+initrd="--initrd .obj/initrd.gz"
+append=""
+monitor=""
+debug=""
+kvm="" # -enable-kvm" # Set this to "-enable-kvm" if you have kvm.
+memory="-m 512"
+smp="-smp 2"
+fs=""
+wd="" # -watchdog ib700 -watchdog-action poweroff"
+
+DISK="fs/disk.img"
+
+if [ -e $DISK ]; then
+	fs="-hda $DISK"
+else
+	echo "Warning: $DISK not found."
+fi
+
+while [[ "$1" != "" ]]
+do
+    if [[ "$1" == "--initrd" ]]
+    then
+	initrd="$1 $2"
+	shift
+    fi
+
+    shift
+done
+
+	gdb_port="1234"
+	debug="-gdb tcp::$gdb_port"
+	append="-append console=ttyS0 -nographic"
+	#kvm="--no-kvm"
+	#wd=""
+
+	# FIXME: gdb doesn't support kernel debugging during early
+	# init (unfortunately it actually breaks that running gdb
+	# instance) so we have to wait for until after Linux makes its
+	# 32->64 bit transition before attaching the GDB instance.
+	# This sleep aims to do that, but if you get errors about "bad
+	# 'g' packet, too long" then you'll have to INCREASE this
+	# sleep time.  Apparently fixing this requires hacking on GDB,
+	# something I'm not prepared to do right now.
+	#   -- palmer, Jan 14 2013
+tmux new-session -d "$(pwd)/qemu/x86_64-softmmu/qemu-system-x86_64 \
+    --kernel linux/arch/x86/boot/bzImage \
+    $initrd $append $serial $monitor -gdb tcp::1234 $kvm $memory $net $smp $fs $wd"
+	
+#tmux split-window -h "bash -c 'sleep 5s ;  cgdb $(readlink -f $(pwd)/linux/vmlinux) -ex 'target remote :1234'"
+tmux split-window -h "$(pwd)/cgdb_attach.sh"
+tmux attach
