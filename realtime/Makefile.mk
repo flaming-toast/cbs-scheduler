@@ -7,6 +7,7 @@ REALTIME_OBJ := $(REALTIME_OBJ:./realtime/%=./.obj/realtime.d/%)
 REALTIME_DEP := $(REALTIME_OBJ:%.o:%.d)
 BOGO_MIPS    := $(shell cat /proc/cpuinfo  | grep bogomips | head -n1 | cut -d ':' -f2 | sed s/\ //g)
 REALTIME_FLAGS := -pthread -DBOGO_MIPS=$(BOGO_MIPS)
+CBSTEST_FLAGS := -DCBS_TEST -fms-extensions -Wno-write-strings $(REALTIME_FLAGS)
 
 -include $(REALTIME_DEP) 
 
@@ -17,6 +18,17 @@ all: .obj/realtime
 .obj/realtime.d/%.o : realtime/%.c $(REALTIME_HDR)
 	mkdir -p `dirname $@`
 	gcc -g -c -o $@ $(REALTIME_FLAGS) $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
+
+# Builds a test harness for the cbs code
+all: .obj/test_cbs
+.obj/test_cbs: .obj/test_cbs.d/test_cbs.o .obj/test_cbs.d/cbs.o .obj/test_cbs.d/cbs_proc.o .obj/test_cbs.d/cbs_proc_impl.o
+	gcc -g -static -DCBS_TEST $(CBSTEST_FLAGS) $(CFLAGS) -o "$@" $^ -lcunit -lrt 
+
+.obj/test_cbs.d/%.o: realtime/%.c $(REALTIME_HDR)
+	mkdir -p `dirname $@`
+	gcc -g -c -DCBS_TEST -o $@ $(CBSTEST_FLAGS) $(CFLAGS) -MD -MP -MF ${@:.o=.d} $<
+
+check: .obj/test_cbs.cunit_out
 
 # A simple real-time application that communicates over shared memory
 # to a controlling process.
