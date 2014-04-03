@@ -3264,13 +3264,13 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
 	/* we are holding p->pi_lock already */
 	p->prio = rt_mutex_getprio(p);
 
-	p->sched_class = &cbs_sched_class;
-/*
+//	p->sched_class = &cbs_sched_class; // this will break things.
+
 	if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
 	else
 		p->sched_class = &fair_sched_class;
-		*/
+
 
 	set_load_weight(p);
 }

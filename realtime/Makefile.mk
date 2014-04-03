@@ -43,3 +43,8 @@ install_cbs_proc:
 	cp -u realtime/cbs_proc_impl.c linux/kernel/sched
 	cp -u realtime/cbs.Makefile linux/kernel/sched/Makefile
 	cp -u realtime/snapshot.h linux/kernel/sched/cbs_snapshot.h
+
+setsched:
+	gcc -g -static -o setsched setsched.c
+	linux/usr/gen_init_cpio fs/config | gzip > .obj/initrd.gz
+
