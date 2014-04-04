@@ -66,4 +66,4 @@ clean::
 check:
 	cat $^
 %.cunit_out: %
-	$< > "$@"
+	$< | tee "$@"
