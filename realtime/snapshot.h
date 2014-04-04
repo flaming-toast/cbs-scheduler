@@ -11,7 +11,7 @@
 
 /*
  * Different subsystems can be interrogated by the snapshot subsystem.
- * Each subsystem can provide a different set of events 
+ * Each subsystem can provide a different set of events
  */
 enum snap_event
 {
@@ -25,7 +25,7 @@ enum snap_event
 enum snap_trig
 {
     SNAP_TRIG_BEDGE,    /* Triggers on the edge before an event starts */
-    SNAP_TRIG_BEDGE,    /* Triggers on the after before an event starts */
+    SNAP_TRIG_AEDGE,    /* Triggers on the after before an event starts */
 };
 
 /*
