@@ -16,15 +16,64 @@
 #include "sched.h"
 #include "cbs_snapshot.h"
 
+
+/* An entity is a task if it doesn't "own" a runqueue */
+#define entity_is_task(se)	(!se->my_q)
+
+static inline struct task_struct *task_of(struct sched_entity *se)
+{
+#ifdef CONFIG_SCHED_DEBUG
+	WARN_ON_ONCE(!entity_is_task(se));
+#endif
+	return container_of(se, struct task_struct, se);
+}
+
+static inline int entity_before(struct sched_entity *a,
+				struct sched_entity *b)
+{
+	return (s64)(a->current_deadline - b->current_deadline) < 0;
+}
+
 const struct sched_class cbs_sched_class;
 //static const struct file_operations cbs_snapshot_fops;
 
 static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 {
+	struct cbs_rq *cbs_rq;
+	struct sched_entity *se = &p->se;
+
+	if (se != cbs_rq->curr) {
+		struct rb_node **link = &cbs_rq->deadlines.rb_node;
+		struct *parent = NULL;
+		struct sched_entity *entry;
+		int leftmost = 1;
+
+		while (*link) {
+			parent = *link;
+			entry = rb_entry(parent, struct sched_entity, run_node);
+			if (entity_before(se, entry)) {
+				link = &parent->rb_left;
+			} else {
+				link = &parent->rb_left;
+				leftmost = 0;
+			}
+		}
+		if (leftmost)
+			cbs_rq->rb_leftmost = &se->run_node;
+	}
 }
 
+/* Take off runqueue because task is blocking/sleeping/terminating etc */
 static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 {
+	if (cbs_rq->rb_leftmost == &se->run_node) {
+		struct rb_node *next_node;
+
+		next_node = rb_next(&se->run_node);
+		cbs_rq->rb_leftmost = next_node;
+	}
+
+	rb_erase(&se->run_node, &cfs_rq->deadlines);
 }
 
 static void yield_task_cbs(struct rq *rq){
@@ -39,9 +88,26 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
                       
 static struct task_struct *pick_next_task_cbs(struct rq *rq){
 	/* defer to next scheduler in the chain for now */
+	/*
 	struct task_struct *p = NULL;
 	return p;
+	*/
+
+	struct task_struct *p;
+	struct cbs_rq *cbs_rq = &rq->cbs;
+	struct sched_entity *se;
+
+	if (!cbs_rq->nr_running)
+		return NULL;
+
+	struct rb_node *left = cbs_rq->rb_leftmost;
+	if (!left) // empty tree
+		return NULL;
+	se  = rb_entry(left, struct sched_entity, run_node);
+	p = task_of(se);
+	return p;
 }
+
 static void put_prev_task_cbs(struct rq *rq, struct task_struct *prev)
 {
 

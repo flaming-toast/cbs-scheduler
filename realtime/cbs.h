@@ -19,6 +19,13 @@ enum cbs_type
     CBS_BW,      /* A constant bandwidth server. */
 };
 
+/* Used to identify CBS threads,
+ * will be pointed to by a cbs_t type
+ */
+struct cbs_task { 
+	pid_t pid;
+}
+
 /*
  * Schedule a new real-time task.
  *

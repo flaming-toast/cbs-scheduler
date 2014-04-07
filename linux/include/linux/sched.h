@@ -6,6 +6,9 @@
 
 struct sched_param {
 	int sched_priority;
+	/* for CBS tasks */
+	int cpu_budget;
+	int period;
 };
 
 #include <asm/param.h>	/* for HZ */
@@ -1008,6 +1011,22 @@ struct sched_rt_entity {
 	/* rq "owned" by this entity/group: */
 	struct rt_rq		*my_q;
 #endif
+};
+
+struct sched_cbs_entity {
+	struct rb_node		run_node;
+	unsigned int		on_rq;
+
+	u64 			current_deadline; // next deadline in jiffies + period
+	u64 			current_budget;
+	u64 			cpu_budget;
+	u64 			period;
+
+	u64			exec_start;
+	u64			sum_exec_runtime;
+	u64			vruntime;
+	u64			prev_sum_exec_runtime;
+
 };
 
 

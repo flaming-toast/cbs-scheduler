@@ -329,10 +329,14 @@ struct cfs_rq {
 /* CBS-related fields in a runqueue */
 struct cbs_rq {
 
+	unsigned int nr_running;
+
 	/* Red-black tree of deadlines (for EDF) */
 	struct rb_root deadlines; 
+	/* cache task with earliest deadline */
 	struct rb_node *rb_leftmost;
 
+	struct sched_entity *curr;
 };
 
 static inline int rt_bandwidth_enabled(void)
