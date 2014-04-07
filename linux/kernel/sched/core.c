@@ -3254,22 +3254,28 @@ static void
 __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
 {
 	p->policy = policy;
+
+	/* This was for checkpoint 1 only */
 	/* If rt policy is cbs, send signal to task. */
+	/*
 	if (policy == SCHED_CBS){
 		sigaddset(&p->pending.signal, SIGXCPU);
 		set_tsk_thread_flag(p, TIF_SIGPENDING);
 	}
+	*/
+
 	p->rt_priority = prio;
 	p->normal_prio = normal_prio(p);
 	/* we are holding p->pi_lock already */
 	p->prio = rt_mutex_getprio(p);
 
-//	p->sched_class = &cbs_sched_class; // this will break things.
-
-	if (rt_prio(p->prio))
+	if (policy == SCHED_CBS_BW || SCHED_CBS_RT) {
+		p->sched_class = &cbs_sched_class;
+	} else if (rt_prio(p->prio)) {
 		p->sched_class = &rt_sched_class;
-	else
+	} else {
 		p->sched_class = &fair_sched_class;
+	}
 
 
 	set_load_weight(p);

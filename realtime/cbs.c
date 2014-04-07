@@ -54,9 +54,11 @@ int cbs_create(cbs_t *thread, enum cbs_type type,
 		// do work
 		// how to exec entry o.O
 		// should we use clone instead so we can pass fn pointer?
+		// while return value is CBS_CONTINUE,
+		// call the entry function? otherwise, exit
 	} else {
 		/* Do stuff with the timeval argument period 
-		 * and convert to tickets
+		 * and convert to ticks
 		 */
 		struct sched_param param = {
 			.sched_priority = 2, // do numeric priorities even matter?

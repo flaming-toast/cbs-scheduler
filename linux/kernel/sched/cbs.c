@@ -34,13 +34,24 @@ static inline int entity_before(struct sched_entity *a,
 	return (s64)(a->deadline_ticks_left - b->deadline_ticks_left) < 0;
 }
 
+/* Update current task's runtime stats 
+ */
+static void update_curr(struct cbs_rq *cbs_rq) 
+{
+	struct sched_cbs_entity *curr = cbs_rq->curr;
+	/* update budget and deadline etc */
+
+
+}
+
 const struct sched_class cbs_sched_class;
 //static const struct file_operations cbs_snapshot_fops;
 
 static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 {
 	struct cbs_rq *cbs_rq;
-	struct sched_entity *se = &p->se;
+	struct sched_entity *cbs_se = &p->cbs_se;
+	cbs_rq = cbs_se->cbs_rq;
 
 	if (se != cbs_rq->curr) {
 		struct rb_node **link = &cbs_rq->deadlines.rb_node;
@@ -76,21 +87,47 @@ static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 	rb_erase(&se->run_node, &cfs_rq->deadlines);
 }
 
-static void yield_task_cbs(struct rq *rq){
+static void yield_task_cbs(struct rq *rq)
+{
 }
 
 static bool yield_to_task_cbs(struct rq *rq, struct task_struct *p, bool preempt)
 {
 	return false;
 }
-                      
+
 /*
  * Preempt the current task with a newly woken task if needed:
  */
-static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_flags)
+/* "To drive preemption between tasks, the scheduler sets the flag in timer 
+ * interrupt handler scheduler_tick()" -- core.c
+ * if the flag is set, __schedule() runs the needreschedule
+ * goto, which calls pick_next_task, clears the flag, 
+ * calls context_switch with the newly picked task set.
+ */
+static void
+check_preempt_tick(struct cbs_rq *cbs_rq struct sched_cbs_entity *curr) 
+{
+	if (curr->deadline_ticks_left <= 0) {
+		/* Sets TIF_NEEDS_RESCHED flag,
+		 * test_tsk_need_resched will return true
+		 * for this task
+		 *
+		 * 
+		 */
+		resched_task(cbs_rq->rq->curr);
+		return;
+	}
+
+}
+
+/*
+ * Preempt the current task with a newly woken task if needed:
+ */
+static void check_preempt_curr_cbs(struct rq *rq, struct task_struct *p, int wake_flags)
 {
 	struct task_struct *curr = rq->curr;
-	struct sched_cbs_entity *cbs_se = &curr->cbs_se, *pse = &cbs_se;
+	struct sched_cbs_entity *curr_cbs_se = &curr->cbs_se, *pse = &p->cbs_se;
 
 	/* Idle tasks are by definition preempted by non-idle tasks. */
 	if (unlikely(curr->policy == SCHED_IDLE) &&
@@ -107,7 +144,12 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 	/* CFS calls find_matching_se, which walks up the parent tree
 	 * does CBS care about child tasks? 
 	 */
+
+	if (entity_before(pse, cbs_se);
+		goto preempt;
 preempt:
+	/* resched_task will set the TIF_NEED_RESCHED flag which will be 
+	 *
 	resched_task(curr);
 }
                       
@@ -157,7 +199,25 @@ static void set_curr_task_cbs(struct rq *rq)
 }
 static void task_tick_cbs(struct rq *rq, struct task_struct *curr, int queued)
 {
+	struct cbs_rq *cbs_rq;
+	struct sched_cbs_entity *cbs_se = &curr->cbs_se;
+
+	/* CFS walks up the parent tree and calls entity_tick for each parent se,
+	 * how do we handle children tasks? 
+	 */
+	entity_tick(cbs_rq, se, queued);
+
 }
+
+static void
+entity_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr, int queued)
+{
+
+	update_curr(cbs_rq); //if this hits zero...check_preempt_tick should catch that.
+	check_preempt_tick(struct cbs_rq *cbs_rq, struct sched_cbs_entity *curr);
+}
+
+
 static void task_fork_cbs(struct task_struct *p)
 {
 }
@@ -236,7 +296,7 @@ const struct sched_class cbs_sched_class = {
 	.yield_task		= yield_task_cbs,
 	.yield_to_task		= yield_to_task_cbs,
 
-	.check_preempt_curr	= check_preempt_wakeup,
+	.check_preempt_curr	= check_preempt_curr_cbs,
 
 	.pick_next_task		= pick_next_task_cbs,
 	.put_prev_task		= put_prev_task_cbs,

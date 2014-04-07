@@ -1018,8 +1018,8 @@ struct sched_cbs_entity {
 	unsigned int		on_rq;
 
 	u64 			deadline_ticks_left; // next deadline in jiffies + period
-	u64 			current_budget;
-	u64 			cpu_budget;
+	u64 			current_budget; // should be in ticks
+	u64 			cpu_budget; // ditto
 	u64 			period;
 
 	u64			exec_start;
