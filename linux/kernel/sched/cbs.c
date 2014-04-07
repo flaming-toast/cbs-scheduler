@@ -31,7 +31,7 @@ static inline struct task_struct *task_of(struct sched_entity *se)
 static inline int entity_before(struct sched_entity *a,
 				struct sched_entity *b)
 {
-	return (s64)(a->current_deadline - b->current_deadline) < 0;
+	return (s64)(a->deadline_ticks_left - b->deadline_ticks_left) < 0;
 }
 
 const struct sched_class cbs_sched_class;
@@ -79,11 +79,36 @@ static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 static void yield_task_cbs(struct rq *rq){
 }
 
-static bool yield_to_task_cbs(struct rq *rq, struct task_struct *p, bool preempt){
+static bool yield_to_task_cbs(struct rq *rq, struct task_struct *p, bool preempt)
+{
 	return false;
 }
                       
-static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_flags){
+/*
+ * Preempt the current task with a newly woken task if needed:
+ */
+static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_flags)
+{
+	struct task_struct *curr = rq->curr;
+	struct sched_cbs_entity *cbs_se = &curr->cbs_se, *pse = &cbs_se;
+
+	/* Idle tasks are by definition preempted by non-idle tasks. */
+	if (unlikely(curr->policy == SCHED_IDLE) &&
+	    likely(p->policy != SCHED_IDLE))
+		goto preempt;
+
+	/*
+	 * Batch and idle tasks do not preempt non-idle tasks (their preemption
+	 * is driven by the tick):
+	 */
+	if (unlikely(p->policy != SCHED_CBS_BW) && unlikely(p->policy != SCHED_CBS_RT) || !sched_feat(WAKEUP_PREEMPTION))
+		return;
+
+	/* CFS calls find_matching_se, which walks up the parent tree
+	 * does CBS care about child tasks? 
+	 */
+preempt:
+	resched_task(curr);
 }
                       
 static struct task_struct *pick_next_task_cbs(struct rq *rq){
@@ -169,20 +194,7 @@ void init_cbs_rq(struct cbs_rq *rq) {
 
 __init void init_sched_cbs_class(void)
 {
-	/*
-	int i;
-	char entry[1];
-	*/
-	/* populate proc directory */
 
-//	struct proc_dir_entry *parent = proc_mkdir("snapshot", NULL);
-	/*
-	for (i = 0; i < SNAP_MAX_ENTRIES; i++) {
-		sprintf(entry, "%d", i);
-//		proc_create(entry, S_IRUGO|S_IWUGO, parent, &cbs_snapshot_fops);
-		proc_create(entry, S_IRUGO|S_IWUGO, parent, NULL);
-	}
-	*/
 }
 int read_proc(struct file *f, char __user *u, size_t i, loff_t *t)
 {
@@ -228,7 +240,8 @@ const struct sched_class cbs_sched_class = {
 
 	.pick_next_task		= pick_next_task_cbs,
 	.put_prev_task		= put_prev_task_cbs,
-/*
+
+/* Not responsible for load-balancing migration operations.
 #ifdef CONFIG_SMP
 	.select_task_rq		= select_task_rq_cbs,
 	.migrate_task_rq	= migrate_task_rq_cbs,

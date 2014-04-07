@@ -1017,7 +1017,7 @@ struct sched_cbs_entity {
 	struct rb_node		run_node;
 	unsigned int		on_rq;
 
-	u64 			current_deadline; // next deadline in jiffies + period
+	u64 			deadline_ticks_left; // next deadline in jiffies + period
 	u64 			current_budget;
 	u64 			cpu_budget;
 	u64 			period;
@@ -1067,6 +1067,7 @@ struct task_struct {
 	unsigned int rt_priority;
 	const struct sched_class *sched_class;
 	struct sched_entity se;
+	struct sched_cbs_entity cbs_se;
 	struct sched_rt_entity rt;
 #ifdef CONFIG_CGROUP_SCHED
 	struct task_group *sched_task_group;
