@@ -70,10 +70,11 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	unsigned long new_total_period = total_sched_cbs_period + cbs_se->period;
 
 	/* Schedulability test, check if sum of ratios >= 1 */
-	if (new_total_budget > new_total_period)
+	if (new_total_budget > new_total_period) {
 		/* We don't enqueue the task */
 		return;
 	}
+	
 
 	/* We can enqueue the task if it passed the schedulability test */
 	total_sched_cbs_budget = new_total_budget;
@@ -92,7 +93,7 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	 * else use current values
 	 * jiffies represents time since system booted in ticks
 	 */
-	if (cbs_se->current_budget >= ((jiffies+cbs_se->deadline_ticks_left) - jiffies)*cbs_se->bandwidth) {
+	if ((cbs_se->current_budget*cbs_se->period) >= (((jiffies+cbs_se->deadline_ticks_left) - jiffies)*cbs_se->cpu_budget)) {
 		/* Refresh deadline = period */
 		/* Initially this'd be (0+period), then every other time it'd be prev_deadline + period */
 		cbs_se->deadline_ticks_left = cbs_se->deadline_ticks_left + cbs_se->period;
@@ -139,8 +140,8 @@ static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 
 	rb_erase(&cbs_se->run_node, &cbs_rq->deadlines);
 
-	total_sched_cbs_utilization -= cbs_se->bandwidth;
-	cbs_rq->slack_se->bandwidth += cbs_se->bandwidth;
+	total_sched_cbs_period -= cbs_se->period;
+	total_sched_cbs_budget -= cbs_se->cpu_budget;
 	/* should update slack cbs budget to reflect bandwidth ratio */
 }
 
