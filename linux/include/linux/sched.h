@@ -1021,6 +1021,7 @@ struct sched_cbs_entity {
 	u64 			current_budget; // should be in ticks
 	u64 			cpu_budget; // ditto
 	u64 			period;
+	u64 			bandwidth; // ratio budget/period
 
 	u64			exec_start;
 	u64			sum_exec_runtime;
