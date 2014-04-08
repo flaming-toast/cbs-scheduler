@@ -34,14 +34,24 @@ static inline int entity_before(struct sched_entity *a,
 	return (s64)(a->deadline_ticks_left - b->deadline_ticks_left) < 0;
 }
 
+/* Total utilization; sum of bandwidth ratios Q_s/T_s = U_s of all CBS servers
+ * and hard RT tasks on the cbs runqueue. If U_1 + U_2 + ... + U_i <= 1, 
+ * the set is schedulable by EDF.
+ *
+ * This should be updated when tasks are enqueued or dequeued, and checked when 
+ * a new task is being enqueued. If the schedulability test fails, we will 
+ * not enqueue the task.
+ */
+unsigned int total_sched_cbs_utilization = 0;
+
 /* Update current task's runtime stats 
  */
 static void update_curr(struct cbs_rq *cbs_rq) 
 {
 	struct sched_cbs_entity *curr = cbs_rq->curr;
 	/* update budget and deadline etc */
-
-
+	curr->deadline_ticks_left--;
+	curr->current_budget--;
 }
 
 const struct sched_class cbs_sched_class;
@@ -49,11 +59,25 @@ const struct sched_class cbs_sched_class;
 
 static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 {
+	/* What to do about flags? see fair.c */
 	struct cbs_rq *cbs_rq;
-	struct sched_entity *cbs_se = &p->cbs_se;
+	struct sched_cbs_entity *cbs_se = &p->cbs_se;
 	cbs_rq = cbs_se->cbs_rq;
 
-	if (se != cbs_rq->curr) {
+	/* if c > (d - r)U
+	 * recharge deadline to period,
+	 * recharge budget to max budget
+	 * else use current values
+	 * jiffies represents time since system booted in ticks
+	 */
+	if (cbs_se->current_budget >= ((jiffies+cbs_se->deadline_ticks_left) - jiffies)*cbs_se->bandwidth) {
+		/* Refresh deadline = period */
+		cbs_se->deadline_ticks_left = cbs_se->period;
+		/* Recharge budget  */
+		cbs_se->current_budget = cbs_se->cpu_budget;
+	}
+
+	if (cbs_se != cbs_rq->curr) {
 		struct rb_node **link = &cbs_rq->deadlines.rb_node;
 		struct *parent = NULL;
 		struct sched_entity *entry;
@@ -71,6 +95,8 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 		}
 		if (leftmost)
 			cbs_rq->rb_leftmost = &se->run_node;
+		rb_link_node(&cbs_se->run_node, parent, link);
+		rb_insert_color(&cbs_se->run_node, &cbs_rq->deadlines);
 	}
 }
 
@@ -109,17 +135,33 @@ static void
 check_preempt_tick(struct cbs_rq *cbs_rq struct sched_cbs_entity *curr) 
 {
 	if (curr->deadline_ticks_left <= 0) {
+		/* Our deadline is here but 
+		 * we still have budget, we 
+		 * couldn't meet our deadline
+		 */
+		if (curr->current_budget > 0) { // still have unrun budget
+			/* SIGXCPU? */
+		}
 		/* Sets TIF_NEEDS_RESCHED flag,
 		 * test_tsk_need_resched will return true
 		 * for this task
-		 *
-		 * 
 		 */
+		
 		resched_task(cbs_rq->rq->curr);
 		return;
 	}
 
-}
+	/* We still have some ticks left till deadline,
+	 * check if we have exhausted our budget, 
+	 * do a refresh
+	 */
+	if (curr->current_budget <= 0) {
+		curr->current_budget = curr->cpu_budget;
+		curr->deadline_ticks_left = curr->period;
+	}
+		
+	
+	}
 
 /*
  * Preempt the current task with a newly woken task if needed:
@@ -149,7 +191,7 @@ static void check_preempt_curr_cbs(struct rq *rq, struct task_struct *p, int wak
 		goto preempt;
 preempt:
 	/* resched_task will set the TIF_NEED_RESCHED flag which will be 
-	 *
+	 */
 	resched_task(curr);
 }
                       
@@ -199,7 +241,7 @@ static void set_curr_task_cbs(struct rq *rq)
 }
 static void task_tick_cbs(struct rq *rq, struct task_struct *curr, int queued)
 {
-	struct cbs_rq *cbs_rq;
+	struct cbs_rq *cbs_rq = &rq->cbs;
 	struct sched_cbs_entity *cbs_se = &curr->cbs_se;
 
 	/* CFS walks up the parent tree and calls entity_tick for each parent se,
@@ -252,8 +294,22 @@ void init_cbs_rq(struct cbs_rq *rq) {
 	rq->deadlines = RB_ROOT;
 }
 
-__init void init_sched_cbs_class(void)
+__init void init_sched_cbs_class(struct rq *rq)
 {
+	/* Construct a virtual cbs slack task that will always
+	 * remain on the cbs runqueue. All this task does
+	 * is defer to CFS 
+	 */
+	struct sched_cbs_entity *cbs_slack_se = kzalloc(sizeof(struct sched_cbs_entity), GFP_KERNEL);
+	cbs_slack_se->deadline_ticks_left = 0;
+	/* Should the period be the longest period in the runqueue? And thus deadline = period? */
+	cbs_slack_se->current_budget = 10;
+	cbs_slack_se->cpu_budget = 10;
+	cbs_slack_se->period = 100;
+	cbs_slack_se->is_slack = 1;
+	rq->cbs->slack_se = cbs_slack_se;
+
+	/* link this se into the rbtree */
 
 }
 int read_proc(struct file *f, char __user *u, size_t i, loff_t *t)

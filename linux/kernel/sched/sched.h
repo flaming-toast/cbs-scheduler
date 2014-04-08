@@ -336,7 +336,9 @@ struct cbs_rq {
 	/* cache task with earliest deadline */
 	struct rb_node *rb_leftmost;
 
-	struct sched_entity *curr;
+	struct sched_cbs_entity *slack_se;
+
+	struct sched_cbs_entity *curr;
 };
 
 static inline int rt_bandwidth_enabled(void)

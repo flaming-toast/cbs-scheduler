@@ -1027,6 +1027,8 @@ struct sched_cbs_entity {
 	u64			vruntime;
 	u64			prev_sum_exec_runtime;
 
+	int  			is_slack; // is this the slack cbs "task"?
+
 };
 
 

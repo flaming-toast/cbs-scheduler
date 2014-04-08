@@ -3251,7 +3251,7 @@ static struct task_struct *find_process_by_pid(pid_t pid)
 
 /* Actually do priority change: must hold rq lock. */
 static void
-__setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
+__setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio, const struct sched_param *param)
 {
 	p->policy = policy;
 
@@ -3269,16 +3269,30 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
 	/* we are holding p->pi_lock already */
 	p->prio = rt_mutex_getprio(p);
 
-	if (policy == SCHED_CBS_BW || SCHED_CBS_RT) {
+	if (policy == SCHED_CBS_BW || policy == SCHED_CBS_RT) {
 		p->sched_class = &cbs_sched_class;
+		/* We are essentially initializing a 
+		 * new CBS server. At the beginning, d = 0,
+		 * but will get updated when the task is finally enqueued
+		 * onto the CBS rq
+		 */
+//		if (policy == SCHED_CBS_BW) 
+		p->cbs_se.deadline_ticks_left = 0; 
+		/* These should be in ticks */
+		/* for hard tasks, current_budget is WCET */
+		p->cbs_se.current_budget = param->cpu_budget;
+		p->cbs_se.period = param->period;
 	} else if (rt_prio(p->prio)) {
 		p->sched_class = &rt_sched_class;
 	} else {
 		p->sched_class = &fair_sched_class;
 	}
 
-
 	set_load_weight(p);
+
+	/* Somewhere along the set sched codepath enqueue_task is eventually
+	 * called I think..
+	 */
 }
 
 /*
@@ -3435,7 +3449,7 @@ recheck:
 
 	oldprio = p->prio;
 	prev_class = p->sched_class;
-	__setscheduler(rq, p, policy, param->sched_priority);
+	__setscheduler(rq, p, policy, param->sched_priority, param);
 
 	if (running)
 		p->sched_class->set_curr_task(rq);
@@ -6576,7 +6590,7 @@ void __init sched_init(void)
 	idle_thread_set_boot_cpu();
 #endif
 	init_sched_fair_class();
-	init_sched_cbs_class();
+	init_sched_cbs_class(rq);
 
 	scheduler_running = 1;
 }
