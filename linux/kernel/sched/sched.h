@@ -82,7 +82,7 @@ extern void update_cpu_load_active(struct rq *this_rq);
 
 static inline int rt_policy(int policy)
 {
-	if (policy == SCHED_FIFO || policy == SCHED_RR || policy == SCHED_CBS)
+	if (policy == SCHED_FIFO || policy == SCHED_RR || policy == SCHED_CBS_RT || policy == SCHED_CBS_BW)
 		return 1;
 	return 0;
 }
@@ -334,12 +334,14 @@ struct cbs_rq {
 	/* Red-black tree of deadlines (for EDF) */
 	struct rb_root deadlines; 
 	/* cache task with earliest deadline */
-	struct rb_node *rb_leftmost;
+	struct rb_node *leftmost;
 
 	struct sched_cbs_entity *slack_se;
 
 	struct sched_cbs_entity *curr;
 };
+
+extern void insert_cbs_rq(struct cbs_rq *rq, struct sched_cbs_entity *se, int rebalance);
 
 static inline int rt_bandwidth_enabled(void)
 {
@@ -1056,7 +1058,7 @@ extern void sched_init_granularity(void);
 extern void update_max_interval(void);
 extern void init_sched_rt_class(void);
 extern void init_sched_fair_class(void);
-extern void init_sched_cbs_class(void);
+extern void init_sched_cbs_class(struct rq *rq);
 
 extern void resched_task(struct task_struct *p);
 extern void resched_cpu(int cpu);

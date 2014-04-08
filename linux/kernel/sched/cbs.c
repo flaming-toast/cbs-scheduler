@@ -17,19 +17,14 @@
 #include "cbs_snapshot.h"
 
 
-/* An entity is a task if it doesn't "own" a runqueue */
-#define entity_is_task(se)	(!se->my_q)
 
-static inline struct task_struct *task_of(struct sched_entity *se)
+static inline struct task_struct *task_of(struct sched_cbs_entity *se)
 {
-#ifdef CONFIG_SCHED_DEBUG
-	WARN_ON_ONCE(!entity_is_task(se));
-#endif
-	return container_of(se, struct task_struct, se);
+	return container_of(se, struct task_struct, cbs_se);
 }
 
-static inline int entity_before(struct sched_entity *a,
-				struct sched_entity *b)
+static inline int entity_before(struct sched_cbs_entity *a,
+				struct sched_cbs_entity *b)
 {
 	return (s64)(a->deadline_ticks_left - b->deadline_ticks_left) < 0;
 }
@@ -55,6 +50,7 @@ static void update_curr(struct cbs_rq *cbs_rq)
 	/* Do we need to erase and reinsert into the tree to rebalance? */
 }
 
+
 const struct sched_class cbs_sched_class;
 //static const struct file_operations cbs_snapshot_fops;
 
@@ -63,7 +59,7 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	/* What to do about flags? see fair.c */
 	struct cbs_rq *cbs_rq;
 	struct sched_cbs_entity *cbs_se = &p->cbs_se;
-	cbs_rq = cbs_se->cbs_rq;
+	cbs_rq = &rq->cbs;
 
 	/* Schedulability test, check if sum of ratios >= 1 */
 	if ((total_sched_cbs_utilization+(cbs_se->cpu_budget/cbs_se->period)) >= 1) {
@@ -86,14 +82,14 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 
 	if (cbs_se != cbs_rq->curr) {
 		struct rb_node **link = &cbs_rq->deadlines.rb_node;
-		struct *parent = NULL;
-		struct sched_entity *entry;
+		struct rb_node *parent = NULL;
+		struct sched_cbs_entity *entry;
 		int leftmost = 1;
 
 		while (*link) {
 			parent = *link;
-			entry = rb_entry(parent, struct sched_entity, run_node);
-			if (entity_before(se, entry)) {
+			entry = rb_entry(parent, struct sched_cbs_entity, run_node);
+			if (entity_before(cbs_se, entry)) {
 				link = &parent->rb_left;
 			} else {
 				link = &parent->rb_left;
@@ -101,7 +97,7 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 			}
 		}
 		if (leftmost)
-			cbs_rq->rb_leftmost = &se->run_node;
+			cbs_rq->leftmost = &cbs_se->run_node;
 		rb_link_node(&cbs_se->run_node, parent, link);
 		rb_insert_color(&cbs_se->run_node, &cbs_rq->deadlines);
 	}
@@ -112,13 +108,13 @@ static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 {
 	struct cbs_rq *cbs_rq;
 	struct sched_cbs_entity *cbs_se = &p->cbs_se;
-	cbs_rq = cbs_se->cbs_rq;
+	cbs_rq = &rq->cbs;
 
-	if (cbs_rq->rb_leftmost == &se->run_node) {
+	if (cbs_rq->leftmost == &cbs_se->run_node) {
 		struct rb_node *next_node;
 
-		next_node = rb_next(&se->run_node);
-		cbs_rq->rb_leftmost = next_node;
+		next_node = rb_next(&cbs_se->run_node);
+		cbs_rq->leftmost = next_node;
 	}
 
 	rb_erase(&cbs_se->run_node, &cbs_rq->deadlines);
@@ -147,8 +143,10 @@ static bool yield_to_task_cbs(struct rq *rq, struct task_struct *p, bool preempt
  * calls context_switch with the newly picked task set.
  */
 static void
-check_preempt_tick(struct cbs_rq *cbs_rq struct sched_cbs_entity *curr) 
+check_preempt_tick(struct cbs_rq *cbs_rq, struct sched_cbs_entity *curr) 
 {
+
+	int rebalance = 0;
 	if (curr->deadline_ticks_left <= 0) {
 		/* Our deadline is here but 
 		 * we still have budget, we 
@@ -156,26 +154,56 @@ check_preempt_tick(struct cbs_rq *cbs_rq struct sched_cbs_entity *curr)
 		 */
 		if (curr->current_budget > 0) { // still have unrun budget
 			/* SIGXCPU? */
+			struct task_struct *p = task_of(curr);
 			sigaddset(&p->pending.signal, SIGXCPU);
 			set_tsk_thread_flag(p, TIF_SIGPENDING);
-		}
-		/* Sets TIF_NEEDS_RESCHED flag,
-		 * test_tsk_need_resched will return true
-		 * for this task
-		 */
 
-		resched_task(cbs_rq->rq->curr);
-		return;
+			/* Sets TIF_NEEDS_RESCHED flag,
+		 	 * test_tsk_need_resched will return true
+		 	 * for this task
+		 	 */
+			resched_task(task_of(cbs_rq->curr));
+			return;
+		}
+		/* If we are at the deadline and our budget is <=0, fall through
+		 * to the next case...
+		 */
 	}
 
-	/* We still have some ticks left till deadline,
+	/* 
 	 * check if we have exhausted our budget, 
 	 * do a refresh
 	 */
 	if (curr->current_budget <= 0) {
 		curr->current_budget = curr->cpu_budget;
 		curr->deadline_ticks_left = curr->deadline_ticks_left + curr->period;
+
+		/* Deadline changed, re-sort the tree */
+		rebalance = 1;
+
 	}
+
+	if (rebalance) {
+		insert_cbs_rq(cbs_rq, curr, 1);
+	}
+	/* After rebalancing, check if there is an earlier 
+	 * deadline in the tree, if so
+	 * call resched_task 
+	 */
+	if (container_of(cbs_rq->leftmost, struct sched_cbs_entity, run_node) != curr) {
+		/* Fall throught the scheduler classes in pick_next_tasfdsf,
+		 * cbs will be first.
+		 *
+		 * If a task has been newly enqueued/awoken, and it has an earlier 
+		 * deadline than the slack task, then it will get to run on the
+		 * next pick_next_task call
+		 */
+		resched_task(task_of(cbs_rq->curr));
+	}
+
+	/* If there curr did not exhaust its budget and has deadline_ticks_left,
+	 * then this function does nothing
+	 */
 }
 
 /*
@@ -195,14 +223,14 @@ static void check_preempt_curr_cbs(struct rq *rq, struct task_struct *p, int wak
 	 * Batch and idle tasks do not preempt non-idle tasks (their preemption
 	 * is driven by the tick):
 	 */
-	if (unlikely(p->policy != SCHED_CBS_BW) && unlikely(p->policy != SCHED_CBS_RT) || !sched_feat(WAKEUP_PREEMPTION))
+	if ((unlikely(p->policy != SCHED_CBS_BW) && unlikely(p->policy != SCHED_CBS_RT)) || !sched_feat(WAKEUP_PREEMPTION))
 		return;
 
 	/* CFS calls find_matching_se, which walks up the parent tree
 	 * does CBS care about child tasks? 
 	 */
 
-	if (entity_before(pse, cbs_se);
+	if (entity_before(pse, curr_cbs_se))
 		goto preempt;
 preempt:
 	/* resched_task will set the TIF_NEED_RESCHED flag which will be 
@@ -219,17 +247,24 @@ static struct task_struct *pick_next_task_cbs(struct rq *rq){
 
 	struct task_struct *p;
 	struct cbs_rq *cbs_rq = &rq->cbs;
-	struct sched_entity *se;
+	struct sched_cbs_entity *cbs_se;
+	struct rb_node *left;
 
 	if (!cbs_rq->nr_running)
 		return NULL;
 
-	struct rb_node *left = cbs_rq->rb_leftmost;
+	left = cbs_rq->leftmost;
 	if (!left) // empty tree
 		return NULL;
-	se  = rb_entry(left, struct sched_entity, run_node);
-	p = task_of(se);
-	return p;
+	cbs_se  = rb_entry(left, struct sched_cbs_entity, run_node);
+	cbs_rq->curr = cbs_se;
+	if (cbs_se->is_slack) {
+		printk("Slack task, deferring to CFS");
+		return NULL;
+	} else {
+		p = task_of(cbs_se);
+		return p;
+	}
 }
 
 static void put_prev_task_cbs(struct rq *rq, struct task_struct *prev)
@@ -254,25 +289,35 @@ task_waking_cbs,
 static void set_curr_task_cbs(struct rq *rq)
 {
 }
+
+/* Do we need to continually update the tree? */
+static void
+entity_tick(struct cbs_rq *cbs_rq, struct sched_cbs_entity *curr, int queued)
+{
+
+	/* If we do need to re-sort the tree for any reason, it
+	 * should be done in update_curr...
+	 *
+	 * Need to re-sort when we do a deadline / budget refresh 
+	 * 
+	 */
+	update_curr(cbs_rq); //if this hits zero...check_preempt_tick should catch that.
+	/* If the tree has been resorted, we check if there is a new task
+	 * with an earlier deadline. If so, preempt
+	 */
+	check_preempt_tick(cbs_rq, curr);
+}
+
 static void task_tick_cbs(struct rq *rq, struct task_struct *curr, int queued)
 {
+	
 	struct cbs_rq *cbs_rq = &rq->cbs;
 	struct sched_cbs_entity *cbs_se = &curr->cbs_se;
 
 	/* CFS walks up the parent tree and calls entity_tick for each parent se,
 	 * how do we handle children tasks? 
 	 */
-	entity_tick(cbs_rq, se, queued);
-
-}
-
-/* Do we need to continually update the tree? */
-static void
-entity_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr, int queued)
-{
-
-	update_curr(cbs_rq); //if this hits zero...check_preempt_tick should catch that.
-	check_preempt_tick(struct cbs_rq *cbs_rq, struct sched_cbs_entity *curr);
+	entity_tick(cbs_rq, cbs_se, queued);
 }
 
 
@@ -316,17 +361,21 @@ __init void init_sched_cbs_class(struct rq *rq)
 	 * remain on the cbs runqueue. All this task does
 	 * is defer to CFS 
 	 */
+	struct cbs_rq *cbs_rq = &rq->cbs;
+
 	struct sched_cbs_entity *cbs_slack_se = kzalloc(sizeof(struct sched_cbs_entity), GFP_KERNEL);
 	cbs_slack_se->deadline_ticks_left = 0;
 	/* Should the period be the longest period in the runqueue? And thus deadline = period? */
 	/* bandwidth of slack cbs = 1 - total_sched_utilization */
+
 	cbs_slack_se->current_budget = 10;
-	cbs_slack_se->cpu_budget = 10;
-	cbs_slack_se->period = 100;
+	cbs_slack_se->period = 100000;
+	cbs_slack_se->cpu_budget = (1 - total_sched_cbs_utilization)*cbs_slack_se->period;
 	cbs_slack_se->is_slack = 1;
-	rq->cbs->slack_se = cbs_slack_se;
+	cbs_rq->slack_se = cbs_slack_se;
 
 	/* link this se into the rbtree */
+	insert_cbs_rq(cbs_rq, cbs_slack_se, 0);
 
 }
 int read_proc(struct file *f, char __user *u, size_t i, loff_t *t)
@@ -398,3 +447,30 @@ const struct sched_class cbs_sched_class = {
 
 };
 
+void insert_cbs_rq(struct cbs_rq *cbs_rq, struct sched_cbs_entity *insert, int rebalance) 
+{
+	if (rebalance)
+		rb_erase(&insert->run_node, &cbs_rq->deadlines);
+
+	struct rb_node **link;
+	struct rb_node *parent = NULL;
+	struct sched_cbs_entity *entry;
+	int leftmost = 1;
+
+	link = &cbs_rq->deadlines.rb_node;
+
+	while (*link) {
+		parent = *link;
+		entry = rb_entry(parent, struct sched_cbs_entity, run_node);
+		if (entity_before(insert, entry)) {
+			link = &parent->rb_left;
+		} else {
+			link = &parent->rb_right;
+			leftmost = 0;
+		}
+	}
+	if (leftmost)
+		cbs_rq->leftmost = &insert->run_node;
+	rb_link_node(&insert->run_node, parent, link);
+	rb_insert_color(&insert->run_node, &cbs_rq->deadlines);
+}

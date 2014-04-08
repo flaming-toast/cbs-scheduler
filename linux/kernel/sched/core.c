@@ -89,6 +89,61 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
 
+/* If we are currently delegating work to the inferior scheduler classes
+ * via our virtual CBS slack task, we need to account for its 
+ * bandwidth/deadline statistics as well. 
+ *
+ * Check if we can preempt the slack task.
+ */
+void
+check_preempt_slack(struct rq *rq, struct sched_cbs_entity *slack_se) 
+{
+	struct cbs_rq *cbs_rq = &rq->cbs;
+	int rebalance = 0;
+	if (slack_se->deadline_ticks_left <= 0) {
+		if (slack_se->current_budget > 0) {
+			/* What should we do if the slack task
+			 * overruns its budget? 
+			 * We shouldn't remove it, I suppose we can refresh its deadline? 
+			 */
+			/* For tardy slack tasks, this will keep its remaining budget, which 
+			 * I'm not sure is correct behavior
+			 */
+			slack_se->deadline_ticks_left = slack_se->deadline_ticks_left + slack_se->period;
+		}
+		rebalance = 1;
+	}
+
+	/* We still have some ticks left till deadline,
+	 * check if we have exhausted our budget, 
+	 * do a refresh
+	 */
+	if (slack_se->current_budget <= 0) {
+		slack_se->current_budget = slack_se->cpu_budget;
+		slack_se->deadline_ticks_left = slack_se->deadline_ticks_left + slack_se->period;
+		rebalance = 1;
+	}
+
+
+	if (rebalance) {
+		/* Rebalance the cbs tree since deadlines changed */
+		insert_cbs_rq(cbs_rq, slack_se, 1);
+	}
+
+	/* Now check if there is an earlier deadline in the cbs tree */
+	if (container_of(cbs_rq->leftmost, struct sched_cbs_entity, run_node) != slack_se) {
+		/* Fall throught the scheduler classes in pick_next_task,
+		 * cbs will be first.
+		 */
+		resched_task(rq->curr);
+	}
+}
+void update_slack(struct sched_cbs_entity *slack_se)
+{
+	slack_se->deadline_ticks_left--;
+	slack_se->current_budget--;
+}
+
 void start_bandwidth_timer(struct hrtimer *period_timer, ktime_t period)
 {
 	unsigned long delta;
@@ -953,10 +1008,16 @@ static inline void check_class_changed(struct rq *rq, struct task_struct *p,
 		p->sched_class->prio_changed(rq, p, oldprio);
 }
 
+/* Preempt the current task with a newly woken task if needed */
 void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags)
 {
 	const struct sched_class *class;
 
+	/* If the newly awoken task is a cbs task */
+	if (p->sched_class == &cbs_sched_class) {
+		check_preempt_slack(rq, rq->cbs.slack_se);
+	}
+	
 	if (p->sched_class == rq->curr->sched_class) {
 		rq->curr->sched_class->check_preempt_curr(rq, p, flags);
 	} else {
@@ -2161,6 +2222,14 @@ void scheduler_tick(void)
 
 	raw_spin_lock(&rq->lock);
 	update_rq_clock(rq);
+
+	if (curr->policy != SCHED_CBS_RT || curr->policy != SCHED_CBS_BW) {
+		/* This should call  task_tick_cbs ->  entity_tick -> check_preempt_tick, 
+		 * which would set the resched flag 
+		 */
+		update_slack(rq->cbs.slack_se);
+		check_preempt_slack(rq, rq->cbs.slack_se);
+	}
 	curr->sched_class->task_tick(rq, curr, 0);
 	update_cpu_load_active(rq);
 	raw_spin_unlock(&rq->lock);
@@ -3269,7 +3338,8 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio, const
 	/* we are holding p->pi_lock already */
 	p->prio = rt_mutex_getprio(p);
 
-	if (policy == SCHED_CBS_BW || policy == SCHED_CBS_RT) {
+	/* Not sure how to fail or return an error if param is NULL */
+	if ((policy == SCHED_CBS_BW || policy == SCHED_CBS_RT) && param != NULL) {
 		p->sched_class = &cbs_sched_class;
 		/* We are essentially initializing a 
 		 * new CBS server. At the beginning, d = 0,
@@ -3333,7 +3403,8 @@ recheck:
 
 		if (policy != SCHED_FIFO && policy != SCHED_RR &&
 				policy != SCHED_NORMAL && policy != SCHED_BATCH &&
-				policy != SCHED_IDLE && policy != SCHED_CBS)
+				policy != SCHED_IDLE && 
+				policy != SCHED_CBS_BW && policy != SCHED_CBS_RT)
 			return -EINVAL;
 	}
 
@@ -6549,6 +6620,8 @@ void __init sched_init(void)
 #endif
 		init_rq_hrtick(rq);
 		atomic_set(&rq->nr_iowait, 0);
+		/* Init the cbs slack task for per-cpu run queues */
+		init_sched_cbs_class(rq);
 	}
 
 	set_load_weight(&init_task);
@@ -6590,7 +6663,7 @@ void __init sched_init(void)
 	idle_thread_set_boot_cpu();
 #endif
 	init_sched_fair_class();
-	init_sched_cbs_class(rq);
+	//init_sched_cbs_class(rq);
 
 	scheduler_running = 1;
 }
@@ -6641,7 +6714,7 @@ static void normalize_task(struct rq *rq, struct task_struct *p)
 	on_rq = p->on_rq;
 	if (on_rq)
 		dequeue_task(rq, p, 0);
-	__setscheduler(rq, p, SCHED_NORMAL, 0);
+	__setscheduler(rq, p, SCHED_NORMAL, 0, NULL);
 	if (on_rq) {
 		enqueue_task(rq, p, 0);
 		resched_task(rq->curr);
@@ -7597,3 +7670,4 @@ void dump_cpu_task(int cpu)
 	pr_info("Task dump for CPU %d:\n", cpu);
 	sched_show_task(cpu_curr(cpu));
 }
+
