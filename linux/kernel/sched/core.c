@@ -3350,8 +3350,6 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio, const
 		p->cbs_se.deadline_ticks_left = 0;
 		/* These should be in ticks */
 		/* for hard tasks, current_budget is WCET */
-		p->cbs_se.current_budget = p->cbs_se.cpu_budget = NS_TO_JIFFIES(1000000000 * param->cpu_budget * (500000/HZ)/loops_per_jiffy);
-		p->cbs_se.period = NS_TO_JIFFIES(param->period_ns);
 	} else if (rt_prio(p->prio)) {
 		p->sched_class = &rt_sched_class;
 	} else {
@@ -3463,8 +3461,10 @@ recheck:
 	}
 
 	if (p->policy == SCHED_CBS_BW || p->policy == SCHED_CBS_RT) {
+		p->cbs_se.current_budget = p->cbs_se.cpu_budget = NS_TO_JIFFIES(1000000000 * param->cpu_budget * (500000/HZ)/loops_per_jiffy);
+		p->cbs_se.period = NS_TO_JIFFIES(param->period_ns);
 		/* Sanity check */
-		if (param->cpu_budget > param->period)
+		if (p->cbs_se.cpu_budget > p->cbs_se.period)
 			return -EINVAL;
 	}
 
