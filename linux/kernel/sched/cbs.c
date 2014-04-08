@@ -36,8 +36,13 @@ static inline int entity_before(struct sched_cbs_entity *a,
  * This should be updated when tasks are enqueued or dequeued, and checked when 
  * a new task is being enqueued. If the schedulability test fails, we will 
  * not enqueue the task.
+ *
+ * Since we cannot perform floating point arithmetic, a work-around would be 
+ * to keep track of the running total of cpu_budget requested and period, 
+ * and make sure that total_budget <= total_period 
  */
-unsigned int total_sched_cbs_utilization = 0;
+unsigned long total_sched_cbs_budget = 0;
+unsigned long total_sched_cbs_period = 0;
 
 /* Update current task's runtime stats 
  */
@@ -61,11 +66,26 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	struct sched_cbs_entity *cbs_se = &p->cbs_se;
 	cbs_rq = &rq->cbs;
 
+	unsigned long new_total_budget = total_sched_cbs_budget + cbs_se->cpu_budget;
+	unsigned long new_total_period = total_sched_cbs_period + cbs_se->period;
+
 	/* Schedulability test, check if sum of ratios >= 1 */
-	if ((total_sched_cbs_utilization+(cbs_se->cpu_budget/cbs_se->period)) >= 1) {
+	if (new_total_budget > new_total_period)
 		/* We don't enqueue the task */
 		return;
 	}
+
+	/* We can enqueue the task if it passed the schedulability test */
+	total_sched_cbs_budget = new_total_budget;
+	total_sched_cbs_period = new_total_period;
+
+	/* Recalculate slack task bandwidth (1 - total_sched_cbs_utilization)*/
+	/* Instead of dynamically recalculating this each time...might just be 
+	 * a good idea to set aside a percentage -_-
+	 */
+	cbs_rq->slack_se->cpu_budget = 1 - total_sched_cbs_budget;
+	cbs_rq->slack_se->period = total_sched_cbs_period;
+
 	/* if c > (d - r)U
 	 * recharge deadline to period,
 	 * recharge budget to max budget
@@ -288,6 +308,14 @@ task_waking_cbs,
                       
 static void set_curr_task_cbs(struct rq *rq)
 {
+	struct sched_cbs_entity *cbs_se = &rq->curr->cbs_se;
+	struct cbs_rq *cbs_rq = &rq->cbs;
+
+	/* CFS doesn't keep their current task in the tree, 
+	 * it dequeues the task from the rq, not sure if
+	 * we should follow similar approach
+	 */
+	cbs_rq->curr = cbs_se;
 }
 
 /* Do we need to continually update the tree? */
@@ -368,9 +396,10 @@ __init void init_sched_cbs_class(struct rq *rq)
 	/* Should the period be the longest period in the runqueue? And thus deadline = period? */
 	/* bandwidth of slack cbs = 1 - total_sched_utilization */
 
-	cbs_slack_se->current_budget = 10;
+	/* When we start out slack gets 100% utilization as there are no tasks in the run queue yet */
 	cbs_slack_se->period = 100000;
-	cbs_slack_se->cpu_budget = (1 - total_sched_cbs_utilization)*cbs_slack_se->period;
+	cbs_slack_se->cpu_budget = cbs_slack_se->current_budget = cbs_slack_se->period;
+
 	cbs_slack_se->is_slack = 1;
 	cbs_rq->slack_se = cbs_slack_se;
 

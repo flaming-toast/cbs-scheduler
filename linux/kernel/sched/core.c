@@ -3350,7 +3350,7 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio, const
 		p->cbs_se.deadline_ticks_left = 0; 
 		/* These should be in ticks */
 		/* for hard tasks, current_budget is WCET */
-		p->cbs_se.current_budget = param->cpu_budget;
+		p->cbs_se.current_budget = p->cbs_se.cpu_budget = param->cpu_budget;
 		p->cbs_se.period = param->period;
 	} else if (rt_prio(p->prio)) {
 		p->sched_class = &rt_sched_class;
@@ -3460,6 +3460,12 @@ recheck:
 		retval = security_task_setscheduler(p);
 		if (retval)
 			return retval;
+	}
+
+	if (p->policy == SCHED_CBS_BW || p->policy == SCHED_CBS_RT) {
+		/* Sanity check */
+		if (param->cpu_budget > param->period)
+			return -EINVAL;
 	}
 
 	/*
@@ -3580,7 +3586,7 @@ do_sched_setscheduler(pid_t pid, int policy, struct sched_param __user *param)
 
 	if (!param || pid < 0)
 		return -EINVAL;
-	if (copy_from_user(&lparam, param, sizeof(struct sched_param)))
+	if (copy_from_user(&lparam, (struct sched_param *)param, sizeof(struct sched_param)))
 		return -EFAULT;
 
 	rcu_read_lock();
