@@ -30,64 +30,87 @@
  * actually be getting used... does anyone know why? */
 #define sigev_notify_thread_id _sigev_un._tid
 
+struct cbs_task
+{
+	pid_t pid;
+	int ret;
+};
 enum cbs_state
 {
-    CBS_STATE_SLEEP,
-    CBS_STATE_RUNNING,
-    CBS_STATE_READY,
-    CBS_STATE_DONE,
+	CBS_STATE_SLEEP,
+	CBS_STATE_RUNNING,
+	CBS_STATE_READY,
+	CBS_STATE_DONE,
 };
 
 
 int cbs_create(cbs_t *thread, enum cbs_type type,
-	       size_t cpu, struct timeval *period,
-               int (*entry)(void *), void *arg) 
+		size_t cpu, struct timeval *period,
+		int (*entry)(void *), void *arg)
 {
+
+	int period_usec = period->tv_usec;
+	*thread = NULL;
+
 	if (type != CBS_RT && type != CBS_BW) {
 		fprintf(stderr, "Invalid cbs_type");
 		exit(1);
 	}
-	/* Check of period and cpu values are sane, else return EAGAIN */
+	if (cpu == 0 || period_usec == 0)
+	{
+		return EAGAIN;
+	}
 
-	pid_t cbs_task;
-	if ((cbs_task = fork()) == 0) {
-		// do work
-		// how to exec entry o.O
-		// should we use clone instead so we can pass fn pointer?
-		// while return value is CBS_CONTINUE,
-		// call the entry function? otherwise, exit
+	struct cbs_task *task = malloc(sizeof(struct cbs_task));
+	if (task == NULL)
+	{
+	        return -1;
+	}
+
+	task->pid = fork();
+	task->ret = CBS_CONTINUE;
+	if (task->pid < 0) {
+		free(task);
+		return EAGAIN;
+	} else if (task->pid == 0)
+	{
+		// child process executes at entry point
+		while(task->ret == CBS_CONTINUE)
+		{
+			task->ret = entry(arg);
+		}
+		exit(1);
 	} else {
-		/* Do stuff with the timeval argument period 
-		 * and convert to ticks
-		 */
 		struct sched_param param = {
 			.sched_priority = 2, // do numeric priorities even matter?
 			// Note: the scheduling policy of a task available in task->policy
-			.cpu_budget = cpu, // aka Q_s in the paper; convert to ticks 
-			.period = period_ticks // convert to ticks
+			.cpu_budget = cpu,
+			.period = period_usec
 		};
 
 		switch(type){
-			case CBS_RT:
-				sched_setscheduler(cbs_task, SCHED_CBS_RT, &param);
-				break;
-			case CBS_BW:
-				sched_setscheduler(cbs_task, SCHED_CBS_BW, &param);
-				break;
-			default:
-				// shouldn't be here..
-				break;
+		case CBS_RT:
+			sched_setscheduler(task->pid, SCHED_CBS_RT, &param);
+			break;
+		case CBS_BW:
+			sched_setscheduler(task->pid, SCHED_CBS_BW, &param);
+			break;
+		default:
+			// shouldn't be here..
+			break;
 		}
-
+		*thread = task;
 	}
 }
 
 int cbs_join(cbs_t *thread, int *code)
 {
 	/* Should just call wait */
-	struct cbs_task *t = (struct cbs_task *)thread;
-	int status;
-	int pid;
-	pid = waitpid(t->pid, &status, 0); // we could optionally look at status if we want to...
-	return pid; // -1 on error, pid on success
+	struct cbs_task *task = (struct cbs_task *)thread;
+	int status, pid, ret;
+	pid = waitpid(task->pid, &status, 0); // we could optionally look at status if we want to...
+	ret = task->ret;
+	free(task);
+
+	return ret;
 }

@@ -8,6 +8,7 @@ struct sched_param {
 	int sched_priority;
 	/* for CBS tasks */
 	int cpu_budget;
+	// in usec
 	int period;
 };
 
@@ -995,6 +996,8 @@ struct sched_entity {
 	/* Per-entity load-tracking */
 	struct sched_avg	avg;
 #endif
+	// CBS specific
+	struct cbs_rq 		*cbs_rq;
 };
 
 struct sched_rt_entity {
