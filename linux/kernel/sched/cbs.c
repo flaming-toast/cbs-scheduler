@@ -73,7 +73,7 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	unsigned long new_total_period = total_sched_cbs_period + cbs_se->period;
 
 	/* Schedulability test, check if sum of ratios >= 1 */
-	if (new_total_budget > new_total_period)
+	if (new_total_budget > new_total_period) {
 		/* We don't enqueue the task */
 		return;
 	}
