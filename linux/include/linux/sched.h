@@ -7,9 +7,9 @@
 struct sched_param {
 	int sched_priority;
 	/* for CBS tasks */
-	int cpu_budget;
-	// in usec
-	int period;
+	unsigned int cpu_budget;
+	// in nsec
+	unsigned long period_ns;
 };
 
 #include <asm/param.h>	/* for HZ */

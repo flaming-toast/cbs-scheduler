@@ -85,7 +85,7 @@ int cbs_create(cbs_t *thread, enum cbs_type type,
 			.sched_priority = 2, // do numeric priorities even matter?
 			// Note: the scheduling policy of a task available in task->policy
 			.cpu_budget = cpu,
-			.period = period_usec
+			.period_ns = period_usec * 1000
 		};
 
 		switch(type){
