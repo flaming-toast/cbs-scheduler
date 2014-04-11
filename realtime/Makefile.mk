@@ -1,5 +1,6 @@
 # A simple real-time application that communicates over shared memory
 # to a controlling process.
+PROJECT_DIR  := /home/user/group/student-group-3
 REALTIME_SRC := ./realtime/cbs.c ./realtime/rt.c
 REALTIME_HDR := $(wildcard ./realtime/*.h)
 REALTIME_OBJ := $(REALTIME_SRC:%.c=%.o)
@@ -55,3 +56,10 @@ install_cbs_proc:
 	cp -u realtime/cbs_proc_impl.c linux/kernel/sched
 	cp -u realtime/cbs.Makefile linux/kernel/sched/Makefile
 	cp -u realtime/snapshot.h linux/kernel/sched/cbs_snapshot.h
+
+setsched:
+#	gcc  -I$(PROJECT_DIR)/linux/include/  -g -o realtime/setsched realtime/setsched.c
+	gcc -g -static -o realtime/setsched realtime/setsched.c
+	linux/usr/gen_init_cpio fs/config | gzip > .obj/initrd.gz
+#	p-I$(PROJECT_DIR)/linux/include/linux/
+# 	-I$(PROJECT_DIR)/linux/arch/x86/include/ 
