@@ -119,8 +119,8 @@ check_preempt_slack(struct rq *rq, struct sched_cbs_entity *slack_se)
 	 * do a refresh
 	 */
 	if (slack_se->current_budget <= 0) {
-//		slack_se->current_budget = slack_se->cpu_budget;
-		slack_se->current_budget = cbs_rq->total_sched_cbs_budget;
+		slack_se->current_budget = slack_se->cpu_budget;
+//		slack_se->current_budget = cbs_rq->total_sched_cbs_budget;
 		slack_se->deadline = slack_se->deadline + slack_se->period;
 		rebalance = 1;
 	}

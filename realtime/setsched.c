@@ -15,7 +15,7 @@ void sig_handler(int signo) {
 int main(void) {
 	struct cbs_sched_param param = {
 		.sched_priority = 2,
-		.cpu_budget = 10000,
+		.cpu_budget = 10,
 		.period = 100000
 	};
 	pid_t pid;
@@ -25,6 +25,7 @@ int main(void) {
 			printf("Could not catch SIGXCPU");
 		}
 		while(1) { // Sleeping kills things because sched_setscheduler will see that you're not on a run queue, (which means you're not current task) and won't put you on the cbs runqueue :|
+			printf("a");
 		}
 	} else {
 		printf("lol: %d", pid);

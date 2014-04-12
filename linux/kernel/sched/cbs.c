@@ -321,7 +321,6 @@ static void set_curr_task_cbs(struct rq *rq)
 	cbs_rq->curr = cbs_se;
 }
 
-/* Do we need to continually update the tree? */
 static void
 entity_tick(struct cbs_rq *cbs_rq, struct sched_cbs_entity *curr, int queued)
 {
@@ -397,14 +396,14 @@ __init void init_sched_cbs_class(struct rq *rq)
 	struct cbs_rq *cbs_rq = &rq->cbs;
 
 	struct sched_cbs_entity *cbs_slack_se = kzalloc(sizeof(struct sched_cbs_entity), GFP_KERNEL);
-	cbs_slack_se->deadline = 0;
 	/* Should the period be the longest period in the runqueue? And thus deadline = period? */
 	/* bandwidth of slack cbs = 1 - total_sched_utilization */
 
 	/* When we start out slack gets 100% utilization as there are no tasks in the run queue yet */
 	/* These values are quite arbitrary, I'm not sure what to start deadline_ticks_left */
-	cbs_slack_se->period = 100000;
+	cbs_slack_se->period = 10;
 	cbs_slack_se->cpu_budget = cbs_slack_se->current_budget = cbs_slack_se->period;
+	cbs_slack_se->deadline = jiffies + cbs_slack_se->period;
 
 	cbs_slack_se->is_slack = 1;
 	cbs_rq->slack_se = cbs_slack_se;
@@ -485,24 +484,9 @@ const struct sched_class cbs_sched_class = {
 
 void insert_cbs_rq(struct cbs_rq *cbs_rq, struct sched_cbs_entity *insert, int rebalance) 
 {
-	if (rebalance) { // would rebalance after deadline refresh
-/*
-		next_node = rb_next(&insert->run_node); // next earliest deadline
-		if (next_node != NULL) {
-			new_left = 1;
-			new_left_node = next_node;
-//			entry = container_of(next_node, struct sched_cbs_entity, run_node);
-
-			if (entity_before(entry, insert))
-				cbs_rq->leftmost = next_node;
-
-		}
-	*/
-
+	if (rebalance)  // would rebalance after deadline refresh
 		rb_erase(&insert->run_node, &cbs_rq->deadlines);
 	
-	}
-
 	struct rb_node **link;
 	struct rb_node *parent = NULL;
 	struct sched_cbs_entity *entry;
@@ -522,9 +506,19 @@ void insert_cbs_rq(struct cbs_rq *cbs_rq, struct sched_cbs_entity *insert, int r
 			return; // don't change the tree
 		}
 	}
-	if (leftmost)
-		cbs_rq->leftmost = &insert->run_node;
-	
+
 	rb_link_node(&insert->run_node, parent, link);
 	rb_insert_color(&insert->run_node, &cbs_rq->deadlines);
+
+	if (leftmost) {
+		cbs_rq->leftmost = &insert->run_node;
+	} else {
+		struct rb_node *new_left = rb_first(&cbs_rq->deadlines);
+		struct rb_node *ptr;
+		while (ptr = rb_prev(new_left)) 
+			;
+		if (ptr != NULL)
+			new_left = ptr;
+		cbs_rq->leftmost = new_left;
+	}
 }
