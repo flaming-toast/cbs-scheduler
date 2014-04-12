@@ -26,7 +26,13 @@ static inline struct task_struct *task_of(struct sched_cbs_entity *se)
 static inline int entity_before(struct sched_cbs_entity *a,
 				struct sched_cbs_entity *b)
 {
-	return (s64)(a->deadline_ticks_left - b->deadline_ticks_left) < 0;
+	return (s64)(a->deadline - b->deadline) < 0;
+}
+
+static inline int entity_after(struct sched_cbs_entity *a,
+				struct sched_cbs_entity *b)
+{
+	return (s64)(a->deadline - b->deadline) > 0;
 }
 
 /* Total utilization; sum of bandwidth ratios Q_s/T_s = U_s of all CBS servers
@@ -41,8 +47,6 @@ static inline int entity_before(struct sched_cbs_entity *a,
  * to keep track of the running total of cpu_budget requested and period, 
  * and make sure that total_budget <= total_period 
  */
-unsigned long total_sched_cbs_budget = 0;
-unsigned long total_sched_cbs_period = 0;
 
 /* Update current task's runtime stats 
  */
@@ -50,7 +54,7 @@ static void update_curr(struct cbs_rq *cbs_rq)
 {
 	struct sched_cbs_entity *curr = cbs_rq->curr;
 	/* update budget and deadline etc */
-	curr->deadline_ticks_left--;
+	/* No need for a deadline counter, just check the value of jiffies against the deadline */
 	curr->current_budget--;
 	/* Do we need to erase and reinsert into the tree to rebalance? */
 }
@@ -66,8 +70,8 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	struct sched_cbs_entity *cbs_se = &p->cbs_se;
 	cbs_rq = &rq->cbs;
 
-	unsigned long new_total_budget = total_sched_cbs_budget + cbs_se->cpu_budget;
-	unsigned long new_total_period = total_sched_cbs_period + cbs_se->period;
+	unsigned long new_total_budget = cbs_rq->total_sched_cbs_budget + cbs_se->cpu_budget;
+	unsigned long new_total_period = cbs_rq->total_sched_cbs_period + cbs_se->period;
 
 	/* Schedulability test, check if sum of ratios >= 1 */
 	if (new_total_budget > new_total_period) {
@@ -75,17 +79,19 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 		return;
 	}
 	
-
 	/* We can enqueue the task if it passed the schedulability test */
-	total_sched_cbs_budget = new_total_budget;
-	total_sched_cbs_period = new_total_period;
+	cbs_rq->total_sched_cbs_budget = new_total_budget;
+	cbs_rq->total_sched_cbs_period = new_total_period;
 
 	/* Recalculate slack task bandwidth (1 - total_sched_cbs_utilization)*/
 	/* Instead of dynamically recalculating this each time...might just be 
 	 * a good idea to set aside a percentage -_-
 	 */
-	cbs_rq->slack_se->cpu_budget = 1 - total_sched_cbs_budget;
-	cbs_rq->slack_se->period = total_sched_cbs_period;
+	/* The maths are all *wrong* here. We need to figure out either a way to do fpa or 
+	 * do potentially hacky integer arithmetic 
+	 */
+	cbs_rq->slack_se->cpu_budget = cbs_rq->total_sched_cbs_period - cbs_rq->total_sched_cbs_budget;
+	cbs_rq->slack_se->period = cbs_rq->total_sched_cbs_period;
 
 	/* if c > (d - r)U
 	 * recharge deadline to period,
@@ -93,40 +99,27 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	 * else use current values
 	 * jiffies represents time since system booted in ticks
 	 */
-	if ((cbs_se->current_budget*cbs_se->period) >= (((jiffies+cbs_se->deadline_ticks_left) - jiffies)*cbs_se->cpu_budget)) {
+	signed long temp = (cbs_se->deadline - jiffies)*cbs_se->cpu_budget;
+	signed long temp2 = cbs_se->current_budget*cbs_se->period;
+	int temp3 = (temp2 >= temp);
+//	if ((cbs_se->current_budget*cbs_se->period) >= (signed long)((cbs_se->deadline - jiffies)*cbs_se->cpu_budget)) {
+	if (temp3) {
 		/* Refresh deadline = period */
 		/* Initially this'd be (0+period), then every other time it'd be prev_deadline + period */
-		cbs_se->deadline_ticks_left = cbs_se->deadline_ticks_left + cbs_se->period;
+		cbs_se->deadline = jiffies + cbs_se->period; // jiffies is arrival time
 		/* Recharge budget  */
 		cbs_se->current_budget = cbs_se->cpu_budget;
 	}
 
-	if (cbs_se != cbs_rq->curr) {
-		struct rb_node **link = &cbs_rq->deadlines.rb_node;
-		struct rb_node *parent = NULL;
-		struct sched_cbs_entity *entry;
-		int leftmost = 1;
+	insert_cbs_rq(cbs_rq, cbs_se, 0);
 
-		while (*link) {
-			parent = *link;
-			entry = rb_entry(parent, struct sched_cbs_entity, run_node);
-			if (entity_before(cbs_se, entry)) {
-				link = &parent->rb_left;
-			} else {
-				link = &parent->rb_left;
-				leftmost = 0;
-			}
-		}
-		if (leftmost)
-			cbs_rq->leftmost = &cbs_se->run_node;
-		rb_link_node(&cbs_se->run_node, parent, link);
-		rb_insert_color(&cbs_se->run_node, &cbs_rq->deadlines);
-	}
+	cbs_rq->nr_running++;
 }
 
 /* Take off runqueue because task is blocking/sleeping/terminating etc */
 static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 {
+	/* cfs calls update_curr here, not sure if we should */
 	struct cbs_rq *cbs_rq;
 	struct sched_cbs_entity *cbs_se = &p->cbs_se;
 	cbs_rq = &rq->cbs;
@@ -139,10 +132,13 @@ static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 	}
 
 	rb_erase(&cbs_se->run_node, &cbs_rq->deadlines);
+	cbs_se->on_rq = 0;
 
-	total_sched_cbs_period -= cbs_se->period;
-	total_sched_cbs_budget -= cbs_se->cpu_budget;
+	cbs_rq->total_sched_cbs_period -= cbs_se->period;
+	cbs_rq->total_sched_cbs_budget -= cbs_se->cpu_budget;
 	/* should update slack cbs budget to reflect bandwidth ratio */
+
+	cbs_rq->nr_running--;
 }
 
 static void yield_task_cbs(struct rq *rq)
@@ -166,9 +162,8 @@ static bool yield_to_task_cbs(struct rq *rq, struct task_struct *p, bool preempt
 static void
 check_preempt_tick(struct cbs_rq *cbs_rq, struct sched_cbs_entity *curr) 
 {
-
 	int rebalance = 0;
-	if (curr->deadline_ticks_left <= 0) {
+	if (jiffies >= curr->deadline) { // > or >=?
 		/* Our deadline is here but 
 		 * we still have budget, we 
 		 * couldn't meet our deadline
@@ -197,7 +192,7 @@ check_preempt_tick(struct cbs_rq *cbs_rq, struct sched_cbs_entity *curr)
 	 */
 	if (curr->current_budget <= 0) {
 		curr->current_budget = curr->cpu_budget;
-		curr->deadline_ticks_left = curr->deadline_ticks_left + curr->period;
+		curr->deadline = curr->deadline + curr->period; // our previous deadline + period
 
 		/* Deadline changed, re-sort the tree */
 		rebalance = 1;
@@ -222,7 +217,7 @@ check_preempt_tick(struct cbs_rq *cbs_rq, struct sched_cbs_entity *curr)
 		resched_task(task_of(cbs_rq->curr));
 	}
 
-	/* If there curr did not exhaust its budget and has deadline_ticks_left,
+	/* If there curr did not exhaust its budget and deadline is still in the future (jiffies < deadline)
 	 * then this function does nothing
 	 */
 }
@@ -280,7 +275,7 @@ static struct task_struct *pick_next_task_cbs(struct rq *rq){
 	cbs_se  = rb_entry(left, struct sched_cbs_entity, run_node);
 	cbs_rq->curr = cbs_se;
 	if (cbs_se->is_slack) {
-		printk("Slack task, deferring to CFS");
+//		printk("Slack task, deferring to CFS");
 		return NULL;
 	} else {
 		p = task_of(cbs_se);
@@ -290,7 +285,14 @@ static struct task_struct *pick_next_task_cbs(struct rq *rq){
 
 static void put_prev_task_cbs(struct rq *rq, struct task_struct *prev)
 {
-
+	struct sched_cbs_entity *cbs_se = &prev->cbs_se;
+	struct cbs_rq *cbs_rq = &rq->cbs;
+	/* cfs has this extra update_curr call but I don't think
+	 * we need it.
+	if (prev->on_rq)
+		update_curr(cbs_rq);
+	*/
+	cbs_rq->curr = NULL;
 }
  /*                                           
 static int
@@ -319,7 +321,6 @@ static void set_curr_task_cbs(struct rq *rq)
 	cbs_rq->curr = cbs_se;
 }
 
-/* Do we need to continually update the tree? */
 static void
 entity_tick(struct cbs_rq *cbs_rq, struct sched_cbs_entity *curr, int queued)
 {
@@ -382,6 +383,8 @@ static unsigned int get_rr_interval_cbs(struct rq *rq, struct task_struct *task)
 
 void init_cbs_rq(struct cbs_rq *rq) {
 	rq->deadlines = RB_ROOT;
+	rq->total_sched_cbs_budget = 0;
+	rq->total_sched_cbs_period = 0;
 }
 
 __init void init_sched_cbs_class(struct rq *rq)
@@ -393,16 +396,18 @@ __init void init_sched_cbs_class(struct rq *rq)
 	struct cbs_rq *cbs_rq = &rq->cbs;
 
 	struct sched_cbs_entity *cbs_slack_se = kzalloc(sizeof(struct sched_cbs_entity), GFP_KERNEL);
-	cbs_slack_se->deadline_ticks_left = 0;
 	/* Should the period be the longest period in the runqueue? And thus deadline = period? */
 	/* bandwidth of slack cbs = 1 - total_sched_utilization */
 
 	/* When we start out slack gets 100% utilization as there are no tasks in the run queue yet */
-	cbs_slack_se->period = 100000;
+	/* These values are quite arbitrary, I'm not sure what to start deadline_ticks_left */
+	cbs_slack_se->period = 10;
 	cbs_slack_se->cpu_budget = cbs_slack_se->current_budget = cbs_slack_se->period;
+	cbs_slack_se->deadline = jiffies + cbs_slack_se->period;
 
 	cbs_slack_se->is_slack = 1;
 	cbs_rq->slack_se = cbs_slack_se;
+	cbs_rq->nr_running++;
 
 	/* link this se into the rbtree */
 	insert_cbs_rq(cbs_rq, cbs_slack_se, 0);
@@ -479,9 +484,9 @@ const struct sched_class cbs_sched_class = {
 
 void insert_cbs_rq(struct cbs_rq *cbs_rq, struct sched_cbs_entity *insert, int rebalance) 
 {
-	if (rebalance)
+	if (rebalance)  // would rebalance after deadline refresh
 		rb_erase(&insert->run_node, &cbs_rq->deadlines);
-
+	
 	struct rb_node **link;
 	struct rb_node *parent = NULL;
 	struct sched_cbs_entity *entry;
@@ -494,13 +499,26 @@ void insert_cbs_rq(struct cbs_rq *cbs_rq, struct sched_cbs_entity *insert, int r
 		entry = rb_entry(parent, struct sched_cbs_entity, run_node);
 		if (entity_before(insert, entry)) {
 			link = &parent->rb_left;
-		} else {
+		} else if (entity_after(insert, entry)) {
 			link = &parent->rb_right;
 			leftmost = 0;
+		} else {
+			return; // don't change the tree
 		}
 	}
-	if (leftmost)
-		cbs_rq->leftmost = &insert->run_node;
+
 	rb_link_node(&insert->run_node, parent, link);
 	rb_insert_color(&insert->run_node, &cbs_rq->deadlines);
+
+	if (leftmost) {
+		cbs_rq->leftmost = &insert->run_node;
+	} else {
+		struct rb_node *new_left = rb_first(&cbs_rq->deadlines);
+		struct rb_node *ptr;
+		while (ptr = rb_prev(new_left)) 
+			;
+		if (ptr != NULL)
+			new_left = ptr;
+		cbs_rq->leftmost = new_left;
+	}
 }

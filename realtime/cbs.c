@@ -4,6 +4,7 @@
 #define _POSIX_C_SOURCE 199309L
 
 #include <stdlib.h>
+#include <errno.h>
 #include <signal.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -16,10 +17,6 @@
 
 #include "cbs.h"
 
-#ifndef BOGO_MIPS
-#warning "BOGO_MIPS isn't defined, it should be by the build system"
-#endif
-
 #define NANO (1000 * 1000 * 1000)
 #define MICRO (1000 * 1000)
 
@@ -30,6 +27,12 @@
  * actually be getting used... does anyone know why? */
 #define sigev_notify_thread_id _sigev_un._tid
 
+struct cbs_sched_param
+{
+	int sched_priority;
+	unsigned int cpu_budget;
+	unsigned long period_ns;
+};
 struct cbs_task
 {
 	pid_t pid;
@@ -81,7 +84,7 @@ int cbs_create(cbs_t *thread, enum cbs_type type,
 		}
 		exit(1);
 	} else {
-		struct sched_param param = {
+		struct cbs_sched_param param = {
 			.sched_priority = 2, // do numeric priorities even matter?
 			// Note: the scheduling policy of a task available in task->policy
 			.cpu_budget = cpu,
@@ -90,10 +93,10 @@ int cbs_create(cbs_t *thread, enum cbs_type type,
 
 		switch(type){
 		case CBS_RT:
-			sched_setscheduler(task->pid, SCHED_CBS_RT, &param);
+			sched_setscheduler(task->pid, SCHED_CBS_RT, (void *)&param);
 			break;
 		case CBS_BW:
-			sched_setscheduler(task->pid, SCHED_CBS_BW, &param);
+			sched_setscheduler(task->pid, SCHED_CBS_BW, (void *)&param);
 			break;
 		default:
 			// shouldn't be here..

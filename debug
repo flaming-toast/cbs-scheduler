@@ -7,7 +7,7 @@ monitor=""
 debug=""
 kvm="" # -enable-kvm" # Set this to "-enable-kvm" if you have kvm.
 memory="-m 512"
-smp="-smp 2"
+smp="-smp 1"
 fs=""
 wd="" # -watchdog ib700 -watchdog-action poweroff"
 

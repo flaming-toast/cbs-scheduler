@@ -70,7 +70,7 @@ fsdb: .lpfs/fsdb .lpfs/disk.img
 install_lpfs: # $(LPFS_OBJS)
 	mkdir -p linux/fs/lpfs
 	cp -ru lpfs/* linux/fs/lpfs/
-	cp -u userspace/kernel.config linux/.config
+#	cp -u userspace/kernel.config linux/.config
 	cp -u userspace/fs.Kconfig linux/fs/Kconfig
 	cp -u userspace/fs.Makefile linux/fs/Makefile
 
