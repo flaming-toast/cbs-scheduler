@@ -1020,7 +1020,8 @@ struct sched_cbs_entity {
 	struct rb_node		run_node;
 	unsigned int		on_rq;
 
-	u64 			deadline_ticks_left; // next deadline in jiffies + period
+//	u64 			deadline_ticks_left; // next deadline in jiffies + period
+	u64 			deadline; // deadline in jiffies (a value we'll eventually hit in the future)
 	u64 			current_budget; // should be in ticks
 	u64 			cpu_budget; // ditto
 	u64 			period;

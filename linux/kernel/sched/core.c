@@ -100,7 +100,7 @@ check_preempt_slack(struct rq *rq, struct sched_cbs_entity *slack_se)
 {
 	struct cbs_rq *cbs_rq = &rq->cbs;
 	int rebalance = 0;
-	if (slack_se->deadline_ticks_left <= 0) {
+	if (jiffies >= slack_se->deadline) {
 		if (slack_se->current_budget > 0) {
 			/* What should we do if the slack task
 			 * overruns its budget?
@@ -109,7 +109,7 @@ check_preempt_slack(struct rq *rq, struct sched_cbs_entity *slack_se)
 			/* For tardy slack tasks, this will keep its remaining budget, which
 			 * I'm not sure is correct behavior
 			 */
-			slack_se->deadline_ticks_left = slack_se->deadline_ticks_left + slack_se->period;
+			slack_se->deadline = slack_se->deadline + slack_se->period;
 		}
 		rebalance = 1;
 	}
@@ -120,7 +120,8 @@ check_preempt_slack(struct rq *rq, struct sched_cbs_entity *slack_se)
 	 */
 	if (slack_se->current_budget <= 0) {
 		slack_se->current_budget = slack_se->cpu_budget;
-		slack_se->deadline_ticks_left = slack_se->deadline_ticks_left + slack_se->period;
+//		slack_se->current_budget = cbs_rq->total_sched_cbs_budget;
+		slack_se->deadline = slack_se->deadline + slack_se->period;
 		rebalance = 1;
 	}
 
@@ -140,7 +141,6 @@ check_preempt_slack(struct rq *rq, struct sched_cbs_entity *slack_se)
 }
 void update_slack(struct sched_cbs_entity *slack_se)
 {
-	slack_se->deadline_ticks_left--;
 	slack_se->current_budget--;
 }
 
@@ -3346,8 +3346,11 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio, const
 		 * but will get updated when the task is finally enqueued
 		 * onto the CBS rq
 		 */
-//		if (policy == SCHED_CBS_BW)
-		p->cbs_se.deadline_ticks_left = 0;
+
+		/* Since we moved the period and budget init in __sched_setscheduler I suppose
+		 * we could finish up the initialization here..
+		 */
+		p->cbs_se.deadline = 0;
 		/* These should be in ticks */
 		/* for hard tasks, current_budget is WCET */
 	} else if (rt_prio(p->prio)) {
@@ -3460,9 +3463,11 @@ recheck:
 			return retval;
 	}
 
-	if (p->policy == SCHED_CBS_BW || p->policy == SCHED_CBS_RT) {
-		p->cbs_se.current_budget = p->cbs_se.cpu_budget = NS_TO_JIFFIES(1000000000 * param->cpu_budget * (500000/HZ)/loops_per_jiffy);
-		p->cbs_se.period = NS_TO_JIFFIES(param->period_ns);
+	if (policy == SCHED_CBS_BW || policy == SCHED_CBS_RT) {
+//		p->cbs_se.current_budget = p->cbs_se.cpu_budget = NS_TO_JIFFIES(1000000000 * param->cpu_budget * (500000/HZ)/loops_per_jiffy);
+//		p->cbs_se.period = NS_TO_JIFFIES(param->period_ns);
+p->cbs_se.current_budget = p->cbs_se.cpu_budget = param->cpu_budget;
+p->cbs_se.period = param->period_ns;
 		/* Sanity check */
 		if (p->cbs_se.cpu_budget > p->cbs_se.period)
 			return -EINVAL;
