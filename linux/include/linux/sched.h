@@ -6,6 +6,10 @@
 
 struct sched_param {
 	int sched_priority;
+	/* for CBS tasks */
+	unsigned int cpu_budget;
+	// in nsec
+	unsigned long period_ns;
 };
 
 #include <asm/param.h>	/* for HZ */
@@ -992,6 +996,8 @@ struct sched_entity {
 	/* Per-entity load-tracking */
 	struct sched_avg	avg;
 #endif
+	// CBS specific
+	struct cbs_rq 		*cbs_rq;
 };
 
 struct sched_rt_entity {
@@ -1008,6 +1014,25 @@ struct sched_rt_entity {
 	/* rq "owned" by this entity/group: */
 	struct rt_rq		*my_q;
 #endif
+};
+
+struct sched_cbs_entity {
+	struct rb_node		run_node;
+	unsigned int		on_rq;
+
+	u64 			deadline_ticks_left; // next deadline in jiffies + period
+	u64 			current_budget; // should be in ticks
+	u64 			cpu_budget; // ditto
+	u64 			period;
+	u64 			bandwidth; // ratio budget/period
+
+	u64			exec_start;
+	u64			sum_exec_runtime;
+	u64			vruntime;
+	u64			prev_sum_exec_runtime;
+
+	int  			is_slack; // is this the slack cbs "task"?
+
 };
 
 
@@ -1048,6 +1073,7 @@ struct task_struct {
 	unsigned int rt_priority;
 	const struct sched_class *sched_class;
 	struct sched_entity se;
+	struct sched_cbs_entity cbs_se;
 	struct sched_rt_entity rt;
 #ifdef CONFIG_CGROUP_SCHED
 	struct task_group *sched_task_group;
