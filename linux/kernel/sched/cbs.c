@@ -13,9 +13,16 @@
 
 #include <trace/events/sched.h>
 
+#include <linux/gcd.h>
+
 #include "sched.h"
 #include "cbs_snapshot.h"
 
+/* 24.8 fixed point arithmetic for utilization calculations */
+#define div_fp(x,y) ( ((u64)(x) << 8) / (y) )
+#define mul_fp(x,y) ( ((u64)(x) * (u64)(y)) >> 8 )
+#define int_to_fp(x) ( (u32)(x) << 8 )
+#define fp_to_int(x) ((x) >> 8 )
 
 
 static inline struct task_struct *task_of(struct sched_cbs_entity *se)
@@ -70,28 +77,23 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	struct sched_cbs_entity *cbs_se = &p->cbs_se;
 	cbs_rq = &rq->cbs;
 
-	unsigned long new_total_budget = cbs_rq->total_sched_cbs_budget + cbs_se->cpu_budget;
-	unsigned long new_total_period = cbs_rq->total_sched_cbs_period + cbs_se->period;
+	/* bandwidth represented as a 24.8 fp value */
+	unsigned long utilization = div_fp(int_to_fp(cbs_se->cpu_budget), int_to_fp(cbs_se->period));
+
 
 	/* Schedulability test, check if sum of ratios >= 1 */
-	if (new_total_budget > new_total_period) {
-		/* We don't enqueue the task */
+	if (utilization + cbs_rq->total_sched_cbs_utilization > int_to_fp(1))  //0x100
 		return;
-	}
+	else
+		cbs_rq->total_sched_cbs_utilization += utilization;
 	
-	/* We can enqueue the task if it passed the schedulability test */
-	cbs_rq->total_sched_cbs_budget = new_total_budget;
-	cbs_rq->total_sched_cbs_period = new_total_period;
-
 	/* Recalculate slack task bandwidth (1 - total_sched_cbs_utilization)*/
 	/* Instead of dynamically recalculating this each time...might just be 
 	 * a good idea to set aside a percentage -_-
 	 */
-	/* The maths are all *wrong* here. We need to figure out either a way to do fpa or 
-	 * do potentially hacky integer arithmetic 
-	 */
-	cbs_rq->slack_se->cpu_budget = cbs_rq->total_sched_cbs_period - cbs_rq->total_sched_cbs_budget;
-	cbs_rq->slack_se->period = cbs_rq->total_sched_cbs_period;
+	cbs_rq->total_sched_cbs_periods += cbs_se->period;
+	cbs_rq->slack_se->cpu_budget = mul_fp((int_to_fp(1) - cbs_rq->total_sched_cbs_utilization), cbs_rq->total_sched_cbs_periods);
+	cbs_rq->slack_se->period = cbs_rq->total_sched_cbs_periods;
 
 	/* if c > (d - r)U
 	 * recharge deadline to period,
@@ -134,8 +136,7 @@ static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 	rb_erase(&cbs_se->run_node, &cbs_rq->deadlines);
 	cbs_se->on_rq = 0;
 
-	cbs_rq->total_sched_cbs_period -= cbs_se->period;
-	cbs_rq->total_sched_cbs_budget -= cbs_se->cpu_budget;
+	cbs_rq->total_sched_cbs_utilization -= div_fp(int_to_fp(cbs_se->cpu_budget), int_to_fp(cbs_se->period));
 	/* should update slack cbs budget to reflect bandwidth ratio */
 
 	cbs_rq->nr_running--;
@@ -383,8 +384,7 @@ static unsigned int get_rr_interval_cbs(struct rq *rq, struct task_struct *task)
 
 void init_cbs_rq(struct cbs_rq *rq) {
 	rq->deadlines = RB_ROOT;
-	rq->total_sched_cbs_budget = 0;
-	rq->total_sched_cbs_period = 0;
+	rq->total_sched_cbs_utilization = int_to_fp(0); // make sure to do everything in fp arithmetic
 }
 
 __init void init_sched_cbs_class(struct rq *rq)
@@ -407,6 +407,7 @@ __init void init_sched_cbs_class(struct rq *rq)
 
 	cbs_slack_se->is_slack = 1;
 	cbs_rq->slack_se = cbs_slack_se;
+	cbs_rq->total_sched_cbs_periods = cbs_slack_se->period;
 	cbs_rq->nr_running++;
 
 	/* link this se into the rbtree */
