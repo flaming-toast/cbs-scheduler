@@ -384,6 +384,7 @@ static unsigned int get_rr_interval_cbs(struct rq *rq, struct task_struct *task)
 
 void init_cbs_rq(struct cbs_rq *rq) {
 	rq->deadlines = RB_ROOT;
+	rq->total_sched_cbs_utilization = int_to_fp(0); // make sure to do everything in fp arithmetic
 }
 
 __init void init_sched_cbs_class(struct rq *rq)
@@ -407,7 +408,6 @@ __init void init_sched_cbs_class(struct rq *rq)
 	cbs_slack_se->is_slack = 1;
 	cbs_rq->slack_se = cbs_slack_se;
 	cbs_rq->total_sched_cbs_periods = cbs_slack_se->period;
-	cbs_rq->total_sched_cbs_utilization = int_to_fp(0); // make sure to do everything in fp arithmetic
 	cbs_rq->nr_running++;
 
 	/* link this se into the rbtree */
