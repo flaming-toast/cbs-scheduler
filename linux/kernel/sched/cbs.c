@@ -18,16 +18,6 @@
 #include "sched.h"
 #include "cbs_snapshot.h"
 
-/* 24.8 fixed point arithmetic for bandwidth calculations */
-/* I had tried 16.16 but that severely limited the range of period/budget
- * values we can work with. 
- */
-#define div_fp(x,y) ( ((unsigned long)(x) << 8) / (y) )
-#define mul_fp(x,y) ( ((unsigned long)(x) * (unsigned long)(y)) >> 8 )
-#define int_to_fp(x) ( (unsigned int)(x) << 8 )
-#define fp_to_int(x) ((x) >> 8 )
-
-
 static inline struct task_struct *task_of(struct sched_cbs_entity *se)
 {
 	return container_of(se, struct task_struct, cbs_se);
