@@ -340,8 +340,8 @@ struct cbs_rq {
 
 	struct sched_cbs_entity *curr;
 
-	u64 total_sched_cbs_utilization; /* 24.8 fp value */
-	u64 total_sched_cbs_periods; /* Not sure if it makes sense to keep track of this */
+	unsigned long total_sched_cbs_utilization; /* 24.8 fp value */
+	unsigned long total_sched_cbs_periods; /* Not sure if it makes sense to keep track of this */
 };
 
 extern void insert_cbs_rq(struct cbs_rq *rq, struct sched_cbs_entity *se, int rebalance);

@@ -18,10 +18,13 @@
 #include "sched.h"
 #include "cbs_snapshot.h"
 
-/* 24.8 fixed point arithmetic for utilization calculations */
-#define div_fp(x,y) ( ((u64)(x) << 8) / (y) )
-#define mul_fp(x,y) ( ((u64)(x) * (u64)(y)) >> 8 )
-#define int_to_fp(x) ( (u32)(x) << 8 )
+/* 24.8 fixed point arithmetic for bandwidth calculations */
+/* I had tried 16.16 but that severely limited the range of period/budget
+ * values we can work with. 
+ */
+#define div_fp(x,y) ( ((unsigned long)(x) << 8) / (y) )
+#define mul_fp(x,y) ( ((unsigned long)(x) * (unsigned long)(y)) >> 8 )
+#define int_to_fp(x) ( (unsigned int)(x) << 8 )
 #define fp_to_int(x) ((x) >> 8 )
 
 
@@ -78,21 +81,34 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	cbs_rq = &rq->cbs;
 
 	/* bandwidth represented as a 24.8 fp value */
-	unsigned long utilization = div_fp(int_to_fp(cbs_se->cpu_budget), int_to_fp(cbs_se->period));
-
+	unsigned long budget = int_to_fp(cbs_se->cpu_budget);
+	unsigned long period = int_to_fp(cbs_se->period);
+	unsigned long bandwidth = div_fp(budget, period);
+	printk("%lx\n", budget);
+	printk("%lx\n", period);
+	printk("%lx\n", bandwidth);
+	printk("%ld\n", fp_to_int(mul_fp(div_fp(int_to_fp(1000UL), int_to_fp(10000UL)), int_to_fp(cbs_rq->total_sched_cbs_periods+cbs_se->period))));
 
 	/* Schedulability test, check if sum of ratios >= 1 */
-	if (utilization + cbs_rq->total_sched_cbs_utilization > int_to_fp(1))  //0x100
+//	if (bandwidth + cbs_rq->total_sched_cbs_utilization >= int_to_fp(1))  //0x100
+	if (fp_to_int(bandwidth + cbs_rq->total_sched_cbs_utilization) >= (unsigned long)0x5A)  //90%, save 10% for cbs
 		return;
 	else
-		cbs_rq->total_sched_cbs_utilization += utilization;
+		cbs_rq->total_sched_cbs_utilization += bandwidth;
 	
 	/* Recalculate slack task bandwidth (1 - total_sched_cbs_utilization)*/
 	/* Instead of dynamically recalculating this each time...might just be 
 	 * a good idea to set aside a percentage -_-
 	 */
 	cbs_rq->total_sched_cbs_periods += cbs_se->period;
-	cbs_rq->slack_se->cpu_budget = mul_fp((int_to_fp(1) - cbs_rq->total_sched_cbs_utilization), cbs_rq->total_sched_cbs_periods);
+	/* new slack budget =
+	 * total periods * (1 - total_utilization ratio)
+	 */
+	unsigned long new_slack_ratio = int_to_fp(1) - cbs_rq->total_sched_cbs_utilization;
+	unsigned long new_slack_budget = mul_fp(int_to_fp(cbs_rq->total_sched_cbs_periods), new_slack_ratio);
+	cbs_rq->slack_se->cpu_budget = fp_to_int(new_slack_budget);
+	printk("New slack budget is: %lx\n", cbs_rq->slack_se->cpu_budget);
+	printk("New slack budget is: %lu\n", cbs_rq->slack_se->cpu_budget);
 	cbs_rq->slack_se->period = cbs_rq->total_sched_cbs_periods;
 
 	/* if c > (d - r)U
@@ -385,6 +401,7 @@ static unsigned int get_rr_interval_cbs(struct rq *rq, struct task_struct *task)
 void init_cbs_rq(struct cbs_rq *rq) {
 	rq->deadlines = RB_ROOT;
 	rq->total_sched_cbs_utilization = int_to_fp(0); // make sure to do everything in fp arithmetic
+	rq->total_sched_cbs_periods = 0;
 }
 
 __init void init_sched_cbs_class(struct rq *rq)
@@ -401,13 +418,12 @@ __init void init_sched_cbs_class(struct rq *rq)
 
 	/* When we start out slack gets 100% utilization as there are no tasks in the run queue yet */
 	/* These values are quite arbitrary, I'm not sure what to start deadline_ticks_left */
-	cbs_slack_se->period = 10;
+	cbs_slack_se->period = 1000;
 	cbs_slack_se->cpu_budget = cbs_slack_se->current_budget = cbs_slack_se->period;
 	cbs_slack_se->deadline = jiffies + cbs_slack_se->period;
 
 	cbs_slack_se->is_slack = 1;
 	cbs_rq->slack_se = cbs_slack_se;
-	cbs_rq->total_sched_cbs_periods = cbs_slack_se->period;
 	cbs_rq->nr_running++;
 
 	/* link this se into the rbtree */

@@ -2223,7 +2223,7 @@ void scheduler_tick(void)
 	raw_spin_lock(&rq->lock);
 	update_rq_clock(rq);
 
-	if (curr->policy != SCHED_CBS_RT || curr->policy != SCHED_CBS_BW) {
+	if ((curr->policy != SCHED_CBS_RT) && (curr->policy != SCHED_CBS_BW)) {
 		/* This should call  task_tick_cbs ->  entity_tick -> check_preempt_tick,
 		 * which would set the resched flag
 		 */
