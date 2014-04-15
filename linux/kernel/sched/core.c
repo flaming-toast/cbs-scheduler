@@ -3382,6 +3382,8 @@ static bool check_same_owner(struct task_struct *p)
 	return match;
 }
 
+void cbs_task_move_rq(struct task_struct *p);
+
 static int __sched_setscheduler(struct task_struct *p, int policy,
 		const struct sched_param *param, bool user)
 {
@@ -3551,6 +3553,8 @@ recheck:
 
 	rt_mutex_adjust_pi(p);
 
+	if (p->policy == SCHED_CBS_BW || p->policy == SCHED_CBS_RT)
+		cbs_task_move_rq(p);
 	return 0;
 }
 
@@ -4483,6 +4487,33 @@ static int migration_cpu_stop(void *data)
 	__migrate_task(arg->task, raw_smp_processor_id(), arg->dest_cpu);
 	local_irq_enable();
 	return 0;
+}
+
+/* When a new cbs task has been created via setscheduler, call this
+ * to find it an appropriate home. 
+ */
+void cbs_task_move_rq(struct task_struct *p)
+{
+	unsigned long flags;
+	int dest_cpu;
+
+	raw_spin_lock_irqsave(&p->pi_lock, flags);
+	/* Should call select_task_rq_cbs, 
+	 * which returns the cpu id with the lowest cbs utilization
+	 */
+	dest_cpu = p->sched_class->select_task_rq(p, SD_CBS_MIGRATE, 0);
+//	if (dest_cpu == smp_processor_id())
+//		goto unlock;
+
+	if (likely(cpu_active(dest_cpu))) {
+		struct migration_arg arg = { p, dest_cpu };
+
+		raw_spin_unlock_irqrestore(&p->pi_lock, flags);
+		stop_one_cpu(task_cpu(p), migration_cpu_stop, &arg);
+		return;
+	}
+unlock:
+	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 }
 
 #ifdef CONFIG_HOTPLUG_CPU

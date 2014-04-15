@@ -301,13 +301,27 @@ static void put_prev_task_cbs(struct rq *rq, struct task_struct *prev)
 	*/
 	cbs_rq->curr = NULL;
 }
- /*                                           
+
 static int
 select_task_rq_cbs(struct task_struct *p, int sd_flag, int wake_flags)
 {
-	return 0;
+	struct rq *rq;
+	int i;
+	unsigned long utilization; /* 24.8 fp value */
+	int laziest = smp_processor_id();
+	unsigned long min_utilization = cpu_rq(laziest)->cbs.total_sched_cbs_utilization;
+	const struct cpumask *mask = &p->cpus_allowed;
+	for_each_cpu(i, mask) { 
+		rq = cpu_rq(i);
+		utilization = rq->cbs.total_sched_cbs_utilization;
+		if(utilization < min_utilization) 
+			laziest = cpu_of(rq); // or just i
+	}
+
+	return laziest;
 }
 
+/*
 migrate_task_rq_cbs,
                       
 rq_online_cbs,
@@ -392,6 +406,8 @@ void init_cbs_rq(struct cbs_rq *rq) {
 	rq->deadlines = RB_ROOT;
 	rq->total_sched_cbs_utilization = int_to_fp(0); // make sure to do everything in fp arithmetic
 	rq->total_sched_cbs_periods = 0;
+	rq->cpu = smp_processor_id(); // For debugging purposes, but this doesn't get set correctly for some reason, perhaps b/c the initialization code is called from one processor? 
+					
 }
 
 __init void init_sched_cbs_class(struct rq *rq)
@@ -465,17 +481,17 @@ const struct sched_class cbs_sched_class = {
 	.pick_next_task		= pick_next_task_cbs,
 	.put_prev_task		= put_prev_task_cbs,
 
-/* Not responsible for load-balancing migration operations.
 #ifdef CONFIG_SMP
 	.select_task_rq		= select_task_rq_cbs,
+	/*
 	.migrate_task_rq	= migrate_task_rq_cbs,
 
 	.rq_online		= rq_online_cbs,
 	.rq_offline		= rq_offline_cbs,
 
 	.task_waking		= task_waking_cbs,
+	*/
 #endif
-*/
 
 	.set_curr_task          = set_curr_task_cbs,
 	.task_tick		= task_tick_cbs,

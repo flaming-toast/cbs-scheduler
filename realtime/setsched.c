@@ -15,8 +15,8 @@ void sig_handler(int signo) {
 int main(void) {
 	struct cbs_sched_param param = {
 		.sched_priority = 2,
-		.cpu_budget = 50000,
-		.period = 100000
+		.cpu_budget = 1, // bogomips
+		.period_ns = 600000000000 // 1 ms = 1 jiffy; this is 10 seconds
 	};
 	pid_t pid;
 	if ((pid = fork()) == 0) // if child
