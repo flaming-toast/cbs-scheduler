@@ -511,6 +511,7 @@ void write_snapshot(enum snap_event ev, enum snap_trig tr, struct cbs_rq* crq) {
         snapshot_buffer[s_off + head].time_len = cse->deadline;
         head += 1;
       }
+      snapshot_written[buf_idx] = 1;
     }
   }
 }

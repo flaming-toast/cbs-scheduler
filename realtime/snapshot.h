@@ -3,11 +3,25 @@
 #ifndef SNAPSHOT_H
 #define SHAPSHOT_H
 
+#include "cbs_proc.h"
+
 /*
  * The maximum number of snapshots triggers that can be passed to the
  * snapshot interface.
  */
 #define SNAP_MAX_TRIGGERS 8
+
+#define SNAPSHOT_BUF_SIZE ((2 * CBS_MAX_HISTORY) + 2) * SNAP_MAX_TRIGGERS 
+
+extern struct cbs_snapshot_task snapshot_buffer[SNAPSHOT_BUF_SIZE];
+
+extern int snapshot_written[SNAP_MAX_TRIGGERS];
+
+extern enum snap_event sn_events[SNAP_MAX_TRIGGERS];
+extern enum snap_trig sn_triggers[SNAP_MAX_TRIGGERS];
+
+extern struct cbs_snapshot_task history_buffer[CBS_MAX_HISTORY];
+extern int history_buffer_head;
 
 /*
  * Different subsystems can be interrogated by the snapshot subsystem.
