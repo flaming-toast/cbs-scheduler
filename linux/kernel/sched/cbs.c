@@ -35,6 +35,25 @@ static inline int entity_after(struct sched_cbs_entity *a,
 	return (s64)(a->deadline - b->deadline) > 0;
 }
 
+/* An entity is a task if it doesn't "own" a runqueue */
+#define entity_is_task(se)	(!se->my_q)
+
+#define SNAPSHOT_BUF_SIZE ((2 * CBS_MAX_HISTORY) + 2) * SNAP_MAX_TRIGGERS 
+
+/* Ask at OH: How to know how much space to statically allocate, since we don't
+   know how many tasks will be on the runqueue? */
+struct cbs_snapshot_task snapshot_buffer[SNAPSHOT_BUF_SIZE];
+
+int snapshot_written[SNAP_MAX_TRIGGERS];
+
+enum snap_event sn_events[SNAP_MAX_TRIGGERS];
+enum snap_trig sn_triggers[SNAP_MAX_TRIGGERS];
+
+struct cbs_snapshot_task history_buffer[CBS_MAX_HISTORY];
+int history_buffer_head;
+
+static inline struct task_struct *task_of(struct sched_entity *se)
+
 /* Total utilization; sum of bandwidth ratios Q_s/T_s = U_s of all CBS servers
  * and hard RT tasks on the cbs runqueue. If U_1 + U_2 + ... + U_i <= 1, 
  * the set is schedulable by EDF.
@@ -397,7 +416,7 @@ static void switched_to_cbs(struct rq *rq, struct task_struct *p)
 {
 }
                       
-static unsigned int get_rr_interval_cbs(struct rq *rq, struct task_struct *task)
+vstatic unsigned int get_rr_interval_cbs(struct rq *rq, struct task_struct *task)
 {
 	return 0;
 }
@@ -436,9 +455,76 @@ __init void init_sched_cbs_class(struct rq *rq)
 	insert_cbs_rq(cbs_rq, cbs_slack_se, 0);
 
 }
+
+/* Write to a snapshot entry, if there's still room to do so. */
+void write_snapshot(enum snap_event ev, enum snap_trig tr, struct cbs_rq* crq) {
+  int head = 0;
+  int buf_idx = -1;
+  int i = 0;
+  int rq_iter = 0;
+  for (; i < SNAP_MAX_TRIGGERS; i++) {
+    if ((sn_events[i] == ev) && (sn_trigs[i] == tr)) {
+      buf_idx = i;
+    }
+  }
+  if (buf_idx >= 0) { 
+    if (snapshot_written[buf_idx] == 0) {
+      int s_off = (buf_idx * SNAPSHOT_BUF_SIZE);
+      /* Write in the history */
+      for (; head < SNAP_MAX_HISTORY; head++) {
+        struct cbs_snapshot_task h_task = history_buffer[(head + history_buffer_head) % SNAP_MAX_HISTORY];
+        snapshot_buffer[s_off + head].pid = h_task.pid;
+        snapshot_buffer[s_off].time_len = h_task.time_len;
+      }
+      /* Fill in current */
+      struct sched_cbs_entity cse;
+      struct task_struct *p;
+      struct rb_node *left = crq->rb_leftmost;
+      if (!left) {
+        snapshot_buffer[s_off + head].pid = 0;
+        snapshot_buffer[s_off + head].time_len = 0;
+      } else {
+        cse = rb_entry(left, struct sched_cbs_entity, run_node); 
+        p = task_of(cse);
+        snapshot_buffer[s_off + head].pid = p->pid;
+        snapshot_buffer[s_off + head].time_len = cse->deadline;
+      }
+      head +=1;
+      /* Fill in next */
+      struct rb_node *nxt = left->next;
+      if (!nxt) {
+        snapshot_buffer[s_off + head].pid = 0;
+        snapshot_buffer[s_off + head].time_len = 0;
+      } else {
+        cse = rb_entry(nxt, struct sched_cbs_entity, run_node);
+        p = task_of(cse);
+        snapshot_buffer[s_off + head].pid = p->pid;
+        snapshot_buffer[s_off + head].time_len = cse->deadline;
+      }
+      head += 1;
+      nxt = nxt->next;
+      /* Now fill in the rest of the queue. */
+      for (; (rq_iter < CBS_MAX_HISTORY) && (nxt); rq_iter++) {
+        cse = rb_entry(nxt, struct sched_cbs_entity, run_node);
+        p = task_of(cse);
+        snapshot_buffer[s_off + head].pid = p->pid;
+        snapshot_buffer[s_off + head].time_len = cse->deadline;
+        head += 1;
+      }
+    }
+  }
+}
 int read_proc(struct file *f, char __user *u, size_t i, loff_t *t)
 {
-	return 0;
+  int bufNum = atoi(f->f_dentry->d_name->name);
+  long snap_task_byte_len = sizeof(struct cbs_snapshot_task);
+  long snapshot_len = (CBS_MAX_HISTORY * 2) + 2
+  long to_read = i;
+  if (*loff_t + i > (snapshot_len * snap_task_byte_len)) {
+    to_read = (snapshot_len * snap_task_byte_len) - (i + *loff_t);
+  }
+  long nb = copy_to_user(u, (void*)(((char*)(snapshot_buffer + (bufNum * snapshot_len * snap_task_byte_len))) + *loff_t), to_read);
+  return (int)(to_read - nb);
 }
 
 static const struct file_operations cbs_snapshot_fops = {
