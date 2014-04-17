@@ -10,7 +10,7 @@ BOGO_MIPS    := $(shell cat /proc/cpuinfo  | grep bogomips | head -n1 | cut -d '
 REALTIME_FLAGS := -pthread -DBOGO_MIPS=$(BOGO_MIPS)
 CBSTEST_FLAGS := -DCBS_TEST -fms-extensions -Wno-write-strings $(REALTIME_FLAGS)
 
--include $(REALTIME_DEP) 
+-include $(REALTIME_DEP)
 
 all: .obj/realtime
 .obj/realtime: $(REALTIME_OBJ)
@@ -23,7 +23,7 @@ all: .obj/realtime
 # Builds a test harness for the cbs code
 all: .obj/test_cbs
 .obj/test_cbs: .obj/test_cbs.d/test_cbs.o .obj/test_cbs.d/cbs.o .obj/test_cbs.d/cbs_proc.o .obj/test_cbs.d/cbs_proc_impl.o
-	gcc -g -static -DCBS_TEST $(CBSTEST_FLAGS) $(CFLAGS) -o "$@" $^ -lcunit -lrt 
+	gcc -g -static -DCBS_TEST $(CBSTEST_FLAGS) $(CFLAGS) -o "$@" $^ -lcunit -lrt
 
 .obj/test_cbs.d/%.o: realtime/%.c $(REALTIME_HDR)
 	mkdir -p `dirname $@`
@@ -40,7 +40,7 @@ REALTIMECTL_OBJ := $(REALTIMECTL_OBJ:./realtime/%=./.obj/realtimectl.d/%)
 REALTIMECTL_DEP := $(REALTIMECTL_OBJ:%.o:%.d)
 REALTIMECTL_FLAGS := -pthread
 
--include $(REALTIMECTL_DEP) 
+-include $(REALTIMECTL_DEP)
 
 all: .obj/realtimectl
 .obj/realtimectl: $(REALTIMECTL_OBJ)
@@ -53,11 +53,15 @@ all: .obj/realtimectl
 all: install_cbs_proc
 install_cbs_proc:
 	cp -u realtime/cbs_proc.h linux/kernel/sched
-	cp -u realtime/cbs_proc_impl.c linux/kernel/sched
+	cp -u realtime/cbs_proc.c linux/kernel/sched
 	cp -u realtime/cbs.Makefile linux/kernel/sched/Makefile
 	cp -u realtime/snapshot.h linux/kernel/sched/cbs_snapshot.h
-
+	cp -u realtime/snapshot.c linux/kernel/sched/cbs_snapshot.c
 setsched:
 	gcc -g -static -o realtime/setsched realtime/setsched.c
 	gcc -g -static -o realtime/test realtime/test.c
+	linux/usr/gen_init_cpio fs/config | gzip > .obj/initrd.gz
+
+schedtest:
+	gcc -g -static -o realtime/schedtest realtime/cbs_proc.c realtime/cbs.c realtime/schedtest.c
 	linux/usr/gen_init_cpio fs/config | gzip > .obj/initrd.gz

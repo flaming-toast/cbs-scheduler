@@ -3,20 +3,32 @@
 #ifndef SNAPSHOT_H
 #define SHAPSHOT_H
 
+#include <linux/types.h>
+
 /*
  * The maximum number of snapshots triggers that can be passed to the
  * snapshot interface.
  */
 #define SNAP_MAX_TRIGGERS 8
+#define CBS_MAX_HISTORY 64
+
+struct cbs_snapshot_task {
+  long pid;
+  long time_len;
+};
+
+#define SNAPSHOT_BUF_SIZE (130 * SNAP_MAX_TRIGGERS) 
+
 
 /*
  * Different subsystems can be interrogated by the snapshot subsystem.
- * Each subsystem can provide a different set of events 
+ * Each subsystem can provide a different set of events
  */
 enum snap_event
 {
     SNAP_EVENT_CFS_SCHED,     /* Triggers when the CFS scheduler
 			       * context switches a task */
+    SNAP_EVENT_CBS_SCHED,
 };
 
 /*
@@ -27,6 +39,17 @@ enum snap_trig
     SNAP_TRIG_BEDGE,    /* Triggers on the edge before an event starts */
     SNAP_TRIG_AEDGE,    /* Triggers on the after before an event starts */
 };
+
+extern struct cbs_snapshot_task snapshot_buffer[SNAPSHOT_BUF_SIZE];
+
+extern int snapshot_written[SNAP_MAX_TRIGGERS];
+
+extern enum snap_event sn_events[SNAP_MAX_TRIGGERS];
+extern enum snap_trig sn_triggers[SNAP_MAX_TRIGGERS];
+
+extern struct cbs_snapshot_task history_buffer[CBS_MAX_HISTORY];
+extern int history_buffer_head;
+
 
 /*
  * Generates a set of snapshots

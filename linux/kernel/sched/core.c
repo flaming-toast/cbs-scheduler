@@ -3553,8 +3553,10 @@ recheck:
 
 	rt_mutex_adjust_pi(p);
 
+#ifdef CONFIG_SMP
 	if (p->policy == SCHED_CBS_BW || p->policy == SCHED_CBS_RT)
 		cbs_task_move_rq(p);
+#endif
 	return 0;
 }
 

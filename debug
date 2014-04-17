@@ -7,7 +7,7 @@ monitor=""
 debug=""
 kvm="" # -enable-kvm" # Set this to "-enable-kvm" if you have kvm.
 memory="-m 512"
-smp="-smp 2"
+smp="-smp 1"
 fs=""
 wd="" # -watchdog ib700 -watchdog-action poweroff"
 
@@ -48,7 +48,7 @@ done
 tmux new-session -d "$(pwd)/qemu/x86_64-softmmu/qemu-system-x86_64 \
     --kernel linux/arch/x86/boot/bzImage \
     $initrd $append $serial $monitor -gdb tcp::1234 $kvm $memory $net $smp $fs $wd"
-	
+
 #tmux split-window -h "bash -c 'sleep 5s ;  cgdb $(readlink -f $(pwd)/linux/vmlinux) -ex 'target remote :1234'"
 tmux split-window -h "$(pwd)/cgdb_attach.sh"
 tmux attach
