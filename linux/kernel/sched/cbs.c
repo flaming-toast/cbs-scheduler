@@ -153,19 +153,16 @@ static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 	struct sched_cbs_entity *cbs_se = &p->cbs_se;
 	cbs_rq = &rq->cbs;
 
-	rb_erase(&cbs_se->run_node, &cbs_rq->deadlines);
-	/* It is probably not safe to assume that the task being removed is the currently running
-	 * task and therefore the leftmost node, so a simple rb_next() to find the 
-	 * next task with closest deadline would probably not suffice. 
-	 * Let's just search the tree again just in case
+	/* rb erases should not affect the status of leftmost node; however if the task we are 
+	 * removing *is* the leftmost node, then we should update cbs_rq->leftmost
 	 */
-	struct rb_node *new_left = rb_first(&cbs_rq->deadlines);
-	struct rb_node *ptr;
-	while (ptr = rb_prev(new_left)) 
-		;
-	if (ptr != NULL)
-		new_left = ptr;
-	cbs_rq->leftmost = new_left;
+	if (cbs_rq->leftmost == &cbs_se->run_node) {
+		struct rb_node *next_node;
+		next_node = rb_ndext(&cbs_se->run_node);
+		cbs_rq->leftmost = next_node;
+	}
+
+	rb_erase(&cbs_se->run_node, &cbs_rq->deadlines);
 
 	cbs_se->on_rq = 0;
 
