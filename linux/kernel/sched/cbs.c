@@ -594,9 +594,16 @@ const struct sched_class cbs_sched_class = {
 
 void insert_cbs_rq(struct cbs_rq *cbs_rq, struct sched_cbs_entity *insert, int rebalance) 
 {
+        int i;
 	if (rebalance)  // would rebalance after deadline refresh
 		rb_erase(&insert->run_node, &cbs_rq->deadlines);
 	
+        history_buffer_head = 0;
+        for (i = 0; i < CBS_MAX_HISTORY; i++) {
+          history_buffer[i].pid = 0;
+          history_buffer[i].time_len = 0;
+        }
+        
 	struct rb_node **link;
 	struct rb_node *parent = NULL;
 	struct sched_cbs_entity *entry;
