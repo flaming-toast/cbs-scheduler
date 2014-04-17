@@ -3,6 +3,6 @@
 
 struct cbs_sched_param {
 	int sched_priority;
-	int cpu_budget;
-	int period;
+	unsigned int cpu_budget;
+	unsigned long period_ns;
 };

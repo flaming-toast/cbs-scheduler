@@ -10,6 +10,15 @@
 #include "cpupri.h"
 #include "cpuacct.h"
 
+/* 24.8 fixed point arithmetic for bandwidth calculations */
+/* I had tried 16.16 but that severely limited the range of period/budget
+ * values we can work with. 
+ */
+#define div_fp(x,y) ( ((unsigned long)(x) << 8) / (y) )
+#define mul_fp(x,y) ( ((unsigned long)(x) * (unsigned long)(y)) >> 8 )
+#define int_to_fp(x) ( (unsigned int)(x) << 8 )
+#define fp_to_int(x) ((x) >> 8 )
+
 struct rq;
 
 extern __read_mostly int scheduler_running;
@@ -340,8 +349,12 @@ struct cbs_rq {
 
 	struct sched_cbs_entity *curr;
 
-	unsigned long total_sched_cbs_budget;
-	unsigned long total_sched_cbs_period;
+	unsigned long total_sched_cbs_utilization; /* 24.8 fp value */
+	unsigned long total_sched_cbs_periods; /* Not sure if it makes sense to keep track of this */
+
+#ifdef CONFIG_SMP
+	int cpu;
+#endif
 };
 
 extern void insert_cbs_rq(struct cbs_rq *rq, struct sched_cbs_entity *se, int rebalance);

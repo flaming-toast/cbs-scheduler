@@ -2223,7 +2223,7 @@ void scheduler_tick(void)
 	raw_spin_lock(&rq->lock);
 	update_rq_clock(rq);
 
-	if (curr->policy != SCHED_CBS_RT || curr->policy != SCHED_CBS_BW) {
+	if ((curr->policy != SCHED_CBS_RT) && (curr->policy != SCHED_CBS_BW)) {
 		/* This should call  task_tick_cbs ->  entity_tick -> check_preempt_tick,
 		 * which would set the resched flag
 		 */
@@ -3382,6 +3382,8 @@ static bool check_same_owner(struct task_struct *p)
 	return match;
 }
 
+void cbs_task_move_rq(struct task_struct *p);
+
 static int __sched_setscheduler(struct task_struct *p, int policy,
 		const struct sched_param *param, bool user)
 {
@@ -3464,10 +3466,18 @@ recheck:
 	}
 
 	if (policy == SCHED_CBS_BW || policy == SCHED_CBS_RT) {
-//		p->cbs_se.current_budget = p->cbs_se.cpu_budget = NS_TO_JIFFIES(1000000000 * param->cpu_budget * (500000/HZ)/loops_per_jiffy);
-//		p->cbs_se.period = NS_TO_JIFFIES(param->period_ns);
-p->cbs_se.current_budget = p->cbs_se.cpu_budget = param->cpu_budget;
-p->cbs_se.period = param->period_ns;
+		unsigned long tmp = div_fp(int_to_fp(500000), int_to_fp(HZ));
+		unsigned long tmp2 = div_fp(tmp, loops_per_jiffy);
+		tmp2 = fp_to_int(tmp);
+		printk("%lx\n", tmp);
+		printk("%lx\n", tmp2);
+		printk("%ld\n", tmp2);
+
+		p->cbs_se.current_budget = p->cbs_se.cpu_budget = NS_TO_JIFFIES(1000000000 * param->cpu_budget * tmp2);
+		printk("%ld\n", p->cbs_se.current_budget);
+		p->cbs_se.period = NS_TO_JIFFIES(param->period_ns);
+//p->cbs_se.current_budget = p->cbs_se.cpu_budget = param->cpu_budget;
+//p->cbs_se.period = param->period_ns;
 		/* Sanity check */
 		if (p->cbs_se.cpu_budget > p->cbs_se.period)
 			return -EINVAL;
@@ -3543,6 +3553,8 @@ p->cbs_se.period = param->period_ns;
 
 	rt_mutex_adjust_pi(p);
 
+	if (p->policy == SCHED_CBS_BW || p->policy == SCHED_CBS_RT)
+		cbs_task_move_rq(p);
 	return 0;
 }
 
@@ -4475,6 +4487,33 @@ static int migration_cpu_stop(void *data)
 	__migrate_task(arg->task, raw_smp_processor_id(), arg->dest_cpu);
 	local_irq_enable();
 	return 0;
+}
+
+/* When a new cbs task has been created via setscheduler, call this
+ * to find it an appropriate home. 
+ */
+void cbs_task_move_rq(struct task_struct *p)
+{
+	unsigned long flags;
+	int dest_cpu;
+
+	raw_spin_lock_irqsave(&p->pi_lock, flags);
+	/* Should call select_task_rq_cbs, 
+	 * which returns the cpu id with the lowest cbs utilization
+	 */
+	dest_cpu = p->sched_class->select_task_rq(p, SD_CBS_MIGRATE, 0);
+//	if (dest_cpu == smp_processor_id())
+//		goto unlock;
+
+	if (likely(cpu_active(dest_cpu))) {
+		struct migration_arg arg = { p, dest_cpu };
+
+		raw_spin_unlock_irqrestore(&p->pi_lock, flags);
+		stop_one_cpu(task_cpu(p), migration_cpu_stop, &arg);
+		return;
+	}
+unlock:
+	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 }
 
 #ifdef CONFIG_HOTPLUG_CPU

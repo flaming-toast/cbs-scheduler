@@ -58,8 +58,6 @@ install_cbs_proc:
 	cp -u realtime/snapshot.h linux/kernel/sched/cbs_snapshot.h
 
 setsched:
-#	gcc  -I$(PROJECT_DIR)/linux/include/  -g -o realtime/setsched realtime/setsched.c
 	gcc -g -static -o realtime/setsched realtime/setsched.c
+	gcc -g -static -o realtime/test realtime/test.c
 	linux/usr/gen_init_cpio fs/config | gzip > .obj/initrd.gz
-#	p-I$(PROJECT_DIR)/linux/include/linux/
-# 	-I$(PROJECT_DIR)/linux/arch/x86/include/ 
