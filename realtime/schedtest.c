@@ -20,10 +20,10 @@
 
 // type:{0/hard,1/soft} | cpu budget (MIs)| period (usec)
 #define t1_procs 3
-int test1[t1_procs][3] = {
-	{0, 200, 40000},
-	{1, 50, 45000},
-	{1, 60, 60000}
+unsigned long test1[t1_procs][3] = {
+	{0, 2, 40000000},
+	{1, 5, 45000000},
+	{1, 1, 60000000}
 };
 
 struct cbs_tester
@@ -143,9 +143,11 @@ int main()
 
 		test_rq(snap_id);
 		test_utilization(snap_id);
-		sleep(1);
+		sleep(5);
+		keep_running = 0;
 	}
 
+/*
 	for(i = 0; i < t1_procs; i++)
 	{
 	       cbs_join(cbs_ts[i], NULL);
@@ -153,4 +155,5 @@ int main()
 
 	free(cbs_ts);
 	free(ct1);
+	*/
 }

@@ -72,6 +72,7 @@ int cbs_create(cbs_t *thread, enum cbs_type type,
 		return EAGAIN;
 	} else if (task->pid == 0)
 	{
+		task->pid = getpid();
 		task->ret = CBS_CONTINUE;
 		struct cbs_sched_param param = {
 			.sched_priority = 2, // do numeric priorities even matter?
