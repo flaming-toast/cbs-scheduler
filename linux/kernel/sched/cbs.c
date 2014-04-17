@@ -155,7 +155,7 @@ static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 	 */
 	if (cbs_rq->leftmost == &cbs_se->run_node) {
 		struct rb_node *next_node;
-		next_node = rb_ndext(&cbs_se->run_node);
+		next_node = rb_next(&cbs_se->run_node);
 		cbs_rq->leftmost = next_node;
 	}
 
