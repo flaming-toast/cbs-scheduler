@@ -3,6 +3,8 @@
 #ifndef CBS_PROC_H
 #define CBS_PROC_H
 
+#include "snapshot.h"
+
 /*
  * The maximum length of history that CBS needs to keep around for
  * snapshots
