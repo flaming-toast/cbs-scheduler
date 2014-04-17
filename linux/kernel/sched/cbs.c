@@ -320,32 +320,35 @@ static struct task_struct *pick_next_task_cbs(struct rq *rq){
 	if (!left) // empty tree
 		return NULL;
 	cbs_se  = rb_entry(left, struct sched_cbs_entity, run_node);
-        if (cbs_se->is_slack) {
-          if (!(cbs_rq->curr->is_slack)) {
-            write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_BEDGE, cbs_rq);
-            n = task_of(cbs_rq->curr);
-            add_to_history_buf(n->pid);
-            write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_AEDGE, cbs_rq);
-          }  
-        } else {
-          if (cbs_rq->curr->is_slack) {
-            write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_BEDGE, cbs_rq);
-            add_to_history_buf(-1);
-            write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_AEDGE, cbs_rq);
-          } else {
-            n = task_of(cbs_rq->curr);
-            p = task_of(cbs_se);
-            if (n->pid != p->pid) {
+        
+        if (cbs_rq->curr != NULL) {
+          if (cbs_se->is_slack) {
+            if (!(cbs_rq->curr->is_slack)) {
               write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_BEDGE, cbs_rq);
+              n = task_of(cbs_rq->curr);
               add_to_history_buf(n->pid);
               write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_AEDGE, cbs_rq);
+            }  
+          } else {
+            if (cbs_rq->curr->is_slack) {
+              write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_BEDGE, cbs_rq);
+              add_to_history_buf(-1);
+              write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_AEDGE, cbs_rq);
+            } else {
+              n = task_of(cbs_rq->curr);
+              p = task_of(cbs_se);
+              if (n->pid != p->pid) {
+                write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_BEDGE, cbs_rq);
+                add_to_history_buf(n->pid);
+                write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_AEDGE, cbs_rq);
+              }
             }
           }
         }
-	cbs_rq->curr = cbs_se;
-	if (cbs_se->is_slack) {
-//		printk("Slack task, deferring to CFS");
-		return NULL;
+        cbs_rq->curr = cbs_se;
+        if (cbs_se->is_slack) {
+          //		printk("Slack task, deferring to CFS");
+          return NULL;
 	} else {
 		p = task_of(cbs_se);
 		return p;
