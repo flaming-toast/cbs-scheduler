@@ -150,18 +150,32 @@ static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 	struct sched_cbs_entity *cbs_se = &p->cbs_se;
 	cbs_rq = &rq->cbs;
 
+	/* rb erases should not affect the status of leftmost node; however if the task we are 
+	 * removing *is* the leftmost node, then we should update cbs_rq->leftmost
+	 */
 	if (cbs_rq->leftmost == &cbs_se->run_node) {
 		struct rb_node *next_node;
-
-		next_node = rb_next(&cbs_se->run_node);
+		next_node = rb_ndext(&cbs_se->run_node);
 		cbs_rq->leftmost = next_node;
 	}
 
 	rb_erase(&cbs_se->run_node, &cbs_rq->deadlines);
+
 	cbs_se->on_rq = 0;
 
+	/* Recalculate slack task bandwidth (1 - total_sched_cbs_utilization)*/
+	/* Instead of dynamically recalculating this each time...might just be 
+	 * a good idea to set aside a percentage -_-
+	 */
 	cbs_rq->total_sched_cbs_utilization -= div_fp(int_to_fp(cbs_se->cpu_budget), int_to_fp(cbs_se->period));
-	/* should update slack cbs budget to reflect bandwidth ratio */
+	cbs_rq->total_sched_cbs_periods -= cbs_se->period;
+	/* new slack budget =
+	 * total periods * (1 - total_utilization ratio)
+	 */
+	unsigned long new_slack_ratio = int_to_fp(1) - cbs_rq->total_sched_cbs_utilization;
+	unsigned long new_slack_budget = mul_fp(int_to_fp(cbs_rq->total_sched_cbs_periods), new_slack_ratio);
+	cbs_rq->slack_se->cpu_budget = fp_to_int(new_slack_budget);
+	cbs_rq->slack_se->period = cbs_rq->total_sched_cbs_periods;
 
 	cbs_rq->nr_running--;
 }
