@@ -1,4 +1,8 @@
-#include "snapshot.h"
+#include "cbs_snapshot.h"
+#include <linux/types.h>
+#include <linux/string.h>
+#include <linux/uaccess.h>
+#include <linux/slab.h>
 
 struct cbs_snapshot_task snapshot_buffer[SNAPSHOT_BUF_SIZE];
 
@@ -20,10 +24,11 @@ int snapshot(enum snap_event *events, enum snap_trig *triggers, size_t n) {
     sn_events[i] = *(events + i);
     sn_triggers[i] = *(triggers + i);
   }
+  return 0;
 }
 
 int snap_join(void) {
-  
+  return 0;
 }
 
 /* The syscall for snapshots. */
@@ -37,4 +42,5 @@ long sys_snapshot(long eventp, long trigp, long n) {
   out = (long) snapshot(ev, tr, n);
   kfree(ev);
   kfree(tr);
+  return out;
 }

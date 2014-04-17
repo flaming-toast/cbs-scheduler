@@ -3,13 +3,17 @@
 #ifndef CBS_PROC_H
 #define CBS_PROC_H
 
-#include "snapshot.h"
-
 /*
  * The maximum length of history that CBS needs to keep around for
  * snapshots
  */
 #define CBS_MAX_HISTORY 64
+#define SNAP_MAX_TRIGGERS 8
+
+struct cbs_snapshot_task {
+  long pid;
+  long time_len;
+};
 
 /*
  * An opaque type that represents a CBS task.

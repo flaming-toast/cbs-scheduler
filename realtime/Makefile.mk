@@ -53,10 +53,10 @@ all: .obj/realtimectl
 all: install_cbs_proc
 install_cbs_proc:
 	cp -u realtime/cbs_proc.h linux/kernel/sched
-	cp -u realtime/cbs_proc_impl.c linux/kernel/sched
+	cp -u realtime/cbs_proc.c linux/kernel/sched
 	cp -u realtime/cbs.Makefile linux/kernel/sched/Makefile
 	cp -u realtime/snapshot.h linux/kernel/sched/cbs_snapshot.h
-
+	cp -u realtime/snapshot.c linux/kernel/sched/cbs_snapshot.c
 setsched:
 	gcc -g -static -o realtime/setsched realtime/setsched.c
 	gcc -g -static -o realtime/test realtime/test.c

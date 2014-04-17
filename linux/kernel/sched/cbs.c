@@ -38,22 +38,7 @@ static inline int entity_after(struct sched_cbs_entity *a,
 /* An entity is a task if it doesn't "own" a runqueue */
 #define entity_is_task(se)	(!se->my_q)
 
-#define SNAPSHOT_BUF_SIZE ((2 * CBS_MAX_HISTORY) + 2) * SNAP_MAX_TRIGGERS 
-
-/* Ask at OH: How to know how much space to statically allocate, since we don't
-   know how many tasks will be on the runqueue? */
-struct cbs_snapshot_task snapshot_buffer[SNAPSHOT_BUF_SIZE];
-
-int snapshot_written[SNAP_MAX_TRIGGERS];
-
-enum snap_event sn_events[SNAP_MAX_TRIGGERS];
-enum snap_trig sn_triggers[SNAP_MAX_TRIGGERS];
-
-struct cbs_snapshot_task history_buffer[CBS_MAX_HISTORY];
-int history_buffer_head;
 int history_time_interval;
-
-static inline struct task_struct *task_of(struct sched_entity *se)
 
 /* Total utilization; sum of bandwidth ratios Q_s/T_s = U_s of all CBS servers
  * and hard RT tasks on the cbs runqueue. If U_1 + U_2 + ... + U_i <= 1, 
@@ -84,17 +69,29 @@ static void update_curr(struct cbs_rq *cbs_rq)
 const struct sched_class cbs_sched_class;
 //static const struct file_operations cbs_snapshot_fops;
 
+//Forward declaration for compilation.
+void write_snapshot(enum snap_event, enum snap_trig, struct cbs_rq*);
+
 static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 {
 	/* What to do about flags? see fair.c */
 	struct cbs_rq *cbs_rq;
-	struct sched_cbs_entity *cbs_se = &p->cbs_se;
+	struct sched_cbs_entity *cbs_se;
+        unsigned long budget;
+        unsigned long period;
+        unsigned long bandwidth;
+        unsigned long new_slack_ratio;
+        unsigned long new_slack_budget;
+        signed long temp;
+        signed long temp2;
+        int temp3;
+        cbs_se = &p->cbs_se;
 	cbs_rq = &rq->cbs;
 
 	/* bandwidth represented as a 24.8 fp value */
-	unsigned long budget = int_to_fp(cbs_se->cpu_budget);
-	unsigned long period = int_to_fp(cbs_se->period);
-	unsigned long bandwidth = div_fp(budget, period);
+	budget = int_to_fp(cbs_se->cpu_budget);
+	period = int_to_fp(cbs_se->period);
+	bandwidth = div_fp(budget, period);
 	printk("%lx\n", budget);
 	printk("%lx\n", period);
 	printk("%lx\n", bandwidth);
@@ -115,8 +112,8 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	/* new slack budget =
 	 * total periods * (1 - total_utilization ratio)
 	 */
-	unsigned long new_slack_ratio = int_to_fp(1) - cbs_rq->total_sched_cbs_utilization;
-	unsigned long new_slack_budget = mul_fp(int_to_fp(cbs_rq->total_sched_cbs_periods), new_slack_ratio);
+	new_slack_ratio = int_to_fp(1) - cbs_rq->total_sched_cbs_utilization;
+	new_slack_budget = mul_fp(int_to_fp(cbs_rq->total_sched_cbs_periods), new_slack_ratio);
 	cbs_rq->slack_se->cpu_budget = fp_to_int(new_slack_budget);
 	printk("New slack budget is: %lx\n", cbs_rq->slack_se->cpu_budget);
 	printk("New slack budget is: %lu\n", cbs_rq->slack_se->cpu_budget);
@@ -128,9 +125,9 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	 * else use current values
 	 * jiffies represents time since system booted in ticks
 	 */
-	signed long temp = (cbs_se->deadline - jiffies)*cbs_se->cpu_budget;
-	signed long temp2 = cbs_se->current_budget*cbs_se->period;
-	int temp3 = (temp2 >= temp);
+	temp = (cbs_se->deadline - jiffies)*cbs_se->cpu_budget;
+	temp2 = cbs_se->current_budget*cbs_se->period;
+	temp3 = (temp2 >= temp);
 //	if ((cbs_se->current_budget*cbs_se->period) >= (signed long)((cbs_se->deadline - jiffies)*cbs_se->cpu_budget)) {
 	if (temp3) {
 		/* Refresh deadline = period */
@@ -448,7 +445,7 @@ static void switched_to_cbs(struct rq *rq, struct task_struct *p)
 {
 }
                       
-vstatic unsigned int get_rr_interval_cbs(struct rq *rq, struct task_struct *task)
+static unsigned int get_rr_interval_cbs(struct rq *rq, struct task_struct *task)
 {
 	return 0;
 }
@@ -494,24 +491,28 @@ void write_snapshot(enum snap_event ev, enum snap_trig tr, struct cbs_rq* crq) {
   int buf_idx = -1;
   int i = 0;
   int rq_iter = 0;
+  int s_off;
+  struct cbs_snapshot_task h_task;
+  struct sched_cbs_entity *cse;
+  struct task_struct *p;
+  struct rb_node *left;
+  struct rb_node *nxt;
   for (; i < SNAP_MAX_TRIGGERS; i++) {
-    if ((sn_events[i] == ev) && (sn_trigs[i] == tr)) {
+    if ((sn_events[i] == ev) && (sn_triggers[i] == tr)) {
       buf_idx = i;
     }
   }
   if (buf_idx >= 0) { 
     if (snapshot_written[buf_idx] == 0) {
-      int s_off = (buf_idx * SNAPSHOT_BUF_SIZE);
+      s_off = (buf_idx * SNAPSHOT_BUF_SIZE);
       /* Write in the history */
-      for (; head < SNAP_MAX_HISTORY; head++) {
-        struct cbs_snapshot_task h_task = history_buffer[(head + history_buffer_head) % SNAP_MAX_HISTORY];
+      for (; head < CBS_MAX_HISTORY; head++) {
+        h_task = history_buffer[(head + history_buffer_head) % CBS_MAX_HISTORY];
         snapshot_buffer[s_off + head].pid = h_task.pid;
         snapshot_buffer[s_off].time_len = h_task.time_len;
       }
       /* Fill in current */
-      struct sched_cbs_entity cse;
-      struct task_struct *p;
-      struct rb_node *left = crq->rb_leftmost;
+      left = crq->leftmost;
       if (!left) {
         snapshot_buffer[s_off + head].pid = 0;
         snapshot_buffer[s_off + head].time_len = 0;
@@ -527,7 +528,7 @@ void write_snapshot(enum snap_event ev, enum snap_trig tr, struct cbs_rq* crq) {
       }
       head +=1;
       /* Fill in next */
-      struct rb_node *nxt = left->next;
+      nxt = rb_next(left);
       if (!nxt) {
         snapshot_buffer[s_off + head].pid = 0;
         snapshot_buffer[s_off + head].time_len = 0;
@@ -542,7 +543,7 @@ void write_snapshot(enum snap_event ev, enum snap_trig tr, struct cbs_rq* crq) {
         snapshot_buffer[s_off + head].time_len = cse->deadline;
       }
       head += 1;
-      nxt = nxt->next;
+      nxt = rb_next(nxt);
       /* Now fill in the rest of the queue. */
       for (; (rq_iter < CBS_MAX_HISTORY) && (nxt); rq_iter++) {
         cse = rb_entry(nxt, struct sched_cbs_entity, run_node);
@@ -550,6 +551,7 @@ void write_snapshot(enum snap_event ev, enum snap_trig tr, struct cbs_rq* crq) {
         snapshot_buffer[s_off + head].pid = p->pid;
         snapshot_buffer[s_off + head].time_len = cse->deadline;
         head += 1;
+        nxt = rb_next(nxt);
       }
       snapshot_written[buf_idx] = 1;
     }
@@ -557,26 +559,28 @@ void write_snapshot(enum snap_event ev, enum snap_trig tr, struct cbs_rq* crq) {
 }
 int read_proc(struct file *f, char __user *u, size_t i, loff_t *t)
 {
-  int bufNum = atoi(f->f_dentry->d_name->name);
+  int bufNum = (int)((*(f->f_dentry->d_name.name)) - 48);
   long snap_task_byte_len = sizeof(struct cbs_snapshot_task);
-  long snapshot_len = (CBS_MAX_HISTORY * 2) + 2
+  long snapshot_len = (CBS_MAX_HISTORY * 2) + 2;
   long to_read = i;
-  if (*loff_t + i > (snapshot_len * snap_task_byte_len)) {
-    to_read = (snapshot_len * snap_task_byte_len) - (i + *loff_t);
+  long nb;
+  if ((*t) + i > (snapshot_len * snap_task_byte_len)) {
+    to_read = (snapshot_len * snap_task_byte_len) - (i + (*t));
   }
-  long nb = copy_to_user(u, (void*)(((char*)(snapshot_buffer + (bufNum * snapshot_len * snap_task_byte_len))) + *loff_t), to_read);
+  nb = copy_to_user(u, (void*)(((char*)(snapshot_buffer + (bufNum * snapshot_len * snap_task_byte_len))) + (*t)), to_read);
   return (int)(to_read - nb);
 }
 
 static const struct file_operations cbs_snapshot_fops = {
 	.read = read_proc,
 	//.write = write_proc
+        .open = simple_open,
 };
 
 static int __init  init_sched_cbs_procfs(void) {
 
 	struct proc_dir_entry *parent = proc_mkdir("snapshot", NULL);
-
+        int i;
         history_buffer_head = 0;
         history_time_interval = 0;
       
@@ -585,7 +589,6 @@ static int __init  init_sched_cbs_procfs(void) {
           history_buffer[i].time_len = 0;
         }
 
-	int i;
 	char entry[1];
 
 	for (i = 0; i < SNAP_MAX_TRIGGERS; i++) {
