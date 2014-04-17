@@ -15,7 +15,6 @@
 #include <syscall.h>
 #include "cbs.h"
 #include "cbs_proc.h"
-#include "snapshot.h"
 
 // note: slack task has >= 10% utilization
 
@@ -48,7 +47,7 @@ static int entry(void *keep_running)
 	return 1;
 }
 
-void fill_buffer(cbs_proc_t cbs, void *args)
+void fill_buffer(cbs_proc_t cbs, void **args)
 {
 	int *proc_counter = (int*)args[1];
 	((struct cbs_snapshot_task*)args[0])[*proc_counter] = *((struct cbs_snapshot_task*)cbs);
@@ -67,7 +66,7 @@ void test_rq(int snap_id)
 	args[0] = procs;
 	args[1] = &proc_counter;
 
-	cbs_list_rq(snap_id, fill_buffer, args);
+	//cbs_list_rq(snap_id, fill_buffer, args);
 
 	printf("Testing run queue deadlines...\n");
 	for(i = 0; i < proc_counter; i++)
@@ -101,6 +100,7 @@ int main()
 
 	for(i = 0; i < t1_procs; i++)
 	{
+		printf("Creating new CBS process...\n");
 		if(test1[i][0] == 0)
 		{
 			mode = CBS_RT;
@@ -130,9 +130,10 @@ int main()
 	while(keep_running)
 	{
 		//TODO insert snapshot syscall here, calculate snap_id
-		syscall(314);
 
-		test_rq(snap_id);
+		//syscall(314, eventp, trigp)
+
+		//test_rq(snap_id);
 		test_utilization(snap_id);
 		sleep(1);
 	}
