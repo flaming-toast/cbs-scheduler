@@ -63,5 +63,5 @@ setsched:
 	linux/usr/gen_init_cpio fs/config | gzip > .obj/initrd.gz
 
 schedtest:
-	gcc -g -static -o realtime/schedtest realtime/cbs.c realtime/schedtest.c
+	gcc -g -static -o realtime/schedtest realtime/cbs_proc.c realtime/cbs.c realtime/schedtest.c
 	linux/usr/gen_init_cpio fs/config | gzip > .obj/initrd.gz

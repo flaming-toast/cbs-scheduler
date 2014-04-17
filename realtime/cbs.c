@@ -48,7 +48,6 @@ int cbs_create(cbs_t *thread, enum cbs_type type,
 {
 
 	int period_usec = period->tv_usec;
-	*thread = NULL;
 
 	if (type != CBS_RT && type != CBS_BW) {
 		fprintf(stderr, "Invalid cbs_type");
@@ -65,7 +64,7 @@ int cbs_create(cbs_t *thread, enum cbs_type type,
 	        return -1;
 	}
 
-	*thread = task;
+	thread = (cbs_t)task;
 	task->pid = fork();
 
 	if (task->pid < 0) {
