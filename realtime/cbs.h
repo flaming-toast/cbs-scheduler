@@ -12,6 +12,11 @@
 /* An opaque type used to uniquely identify a CBS thread. */
 typedef void * cbs_t;
 
+struct cbs_task
+{
+	pid_t pid;
+	int ret;
+};
 /* The class of real-time process. */
 enum cbs_type
 {
@@ -28,8 +33,6 @@ enum cbs_type
  * thread       A pointer to an opaque CBS thread identifier.
  *
  * type         The class of process to be scheduled.
- *
- * cpu          The CPU allocation, in Bogo-MIs
  *
  * peroid       The allocation period, specificed as a timespec
  *

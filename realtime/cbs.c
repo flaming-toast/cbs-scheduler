@@ -33,11 +33,6 @@ struct cbs_sched_param
 	unsigned int cpu_budget;
 	unsigned long period_ns;
 };
-struct cbs_task
-{
-	pid_t pid;
-	int ret;
-};
 enum cbs_state
 {
 	CBS_STATE_SLEEP,
@@ -70,20 +65,15 @@ int cbs_create(cbs_t *thread, enum cbs_type type,
 	        return -1;
 	}
 
+	*thread = task;
 	task->pid = fork();
-	task->ret = CBS_CONTINUE;
+
 	if (task->pid < 0) {
 		free(task);
 		return EAGAIN;
 	} else if (task->pid == 0)
 	{
-		// child process executes at entry point
-		while(task->ret == CBS_CONTINUE)
-		{
-			task->ret = entry(arg);
-		}
-		exit(1);
-	} else {
+		task->ret = CBS_CONTINUE;
 		struct cbs_sched_param param = {
 			.sched_priority = 2, // do numeric priorities even matter?
 			// Note: the scheduling policy of a task available in task->policy
@@ -102,7 +92,17 @@ int cbs_create(cbs_t *thread, enum cbs_type type,
 			// shouldn't be here..
 			break;
 		}
-		*thread = task;
+		/*
+		 * need to make sure setsched will dequeue child from cfs and enqueue on cbs
+		 */
+		// child process executes at entry point
+		while(task->ret == CBS_CONTINUE)
+		{
+			task->ret = entry(arg);
+		}
+		exit(1);
+	} else {
+		return 0;
 	}
 }
 
@@ -117,3 +117,4 @@ int cbs_join(cbs_t *thread, int *code)
 
 	return ret;
 }
+

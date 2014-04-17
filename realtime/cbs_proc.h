@@ -63,6 +63,7 @@ void cbs_disable(void);
  */
 void cbs_list_history(int sid, cbs_func_t func, void *arg);
 
+void cbs_list_rq(int sid, cbs_func_t func, void* arg);
 /*
  * Shows the currently running CBS process
  *

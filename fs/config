@@ -9,7 +9,7 @@ dir /var 755 0 0
 dir /var/www 755 0 0
 dir /lib 755 0 0
 dir /lib64 755 0 0
-dir /usr 755 0 0 
+dir /usr 755 0 0
 dir /usr/lib 755 0 0
 dir /usr/lib64 755 0 0
 dir /sbin/ 755 0 0
@@ -25,6 +25,7 @@ nod /dev/ttyS0 644 0 0 b 4 64
 # these in here
 file /bin/busybox busybox/busybox 555 0 0
 file /bin/setsched realtime/setsched 555 0 0
+file /bin/schedtest realtime/schedtest 555 0 0
 slink /bin/sh busybox 777 0 0
 slink /bin/ash busybox 777 0 0
 slink /bin/cat busybox 777 0 0
