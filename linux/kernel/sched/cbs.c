@@ -311,17 +311,23 @@ static struct task_struct *pick_next_task_cbs(struct rq *rq){
 	cbs_se  = rb_entry(left, struct sched_cbs_entity, run_node);
         if (cbs_se->is_slack) {
           if (!(cbs_rq->curr->is_slack)) {
+            write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_BEDGE, cbs_rq);
             n = task_of(cbs_rq->curr);
             add_to_history_buf(n->pid);
+            write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_AEDGE, cbs_rq);
           }  
         } else {
           if (cbs_rq->curr->is_slack) {
+            write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_BEDGE, cbs_rq);
             add_to_history_buf(-1);
+            write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_AEDGE, cbs_rq);
           } else {
             n = task_of(cbs_rq->curr);
             p = task_of(cbs_se);
             if (n->pid != p->pid) {
+              write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_BEDGE, cbs_rq);
               add_to_history_buf(n->pid);
+              write_snapshot(SNAP_EVENT_CBS_SCHED, SNAP_TRIG_AEDGE, cbs_rq);
             }
           }
         }
@@ -511,8 +517,12 @@ void write_snapshot(enum snap_event ev, enum snap_trig tr, struct cbs_rq* crq) {
         snapshot_buffer[s_off + head].time_len = 0;
       } else {
         cse = rb_entry(left, struct sched_cbs_entity, run_node); 
-        p = task_of(cse);
-        snapshot_buffer[s_off + head].pid = p->pid;
+        if (cse->is_slack) {
+          snapshot_buffer[s_off + head].pid = -1;
+        } else {
+          p = task_of(cse);
+          snapshot_buffer[s_off + head].pid = p->pid;
+        }
         snapshot_buffer[s_off + head].time_len = cse->deadline;
       }
       head +=1;
@@ -523,8 +533,12 @@ void write_snapshot(enum snap_event ev, enum snap_trig tr, struct cbs_rq* crq) {
         snapshot_buffer[s_off + head].time_len = 0;
       } else {
         cse = rb_entry(nxt, struct sched_cbs_entity, run_node);
-        p = task_of(cse);
-        snapshot_buffer[s_off + head].pid = p->pid;
+        if (cse->is_slack) {
+          snapshot_buffer[s_off + head].pid = -1;
+        } else {
+          p = task_of(cse);
+          snapshot_buffer[s_off + head].pid = p->pid;
+        }
         snapshot_buffer[s_off + head].time_len = cse->deadline;
       }
       head += 1;

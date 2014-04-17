@@ -31,6 +31,7 @@ enum snap_event
 {
     SNAP_EVENT_CFS_SCHED,     /* Triggers when the CFS scheduler
 			       * context switches a task */
+    SNAP_EVENT_CBS_SCHED,
 };
 
 /*
