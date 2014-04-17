@@ -472,6 +472,7 @@ void init_cbs_rq(struct cbs_rq *rq) {
 	rq->total_sched_cbs_utilization = int_to_fp(0); // make sure to do everything in fp arithmetic
 	rq->total_sched_cbs_periods = 0;
 	rq->cpu = smp_processor_id(); // For debugging purposes, but this doesn't get set correctly for some reason, perhaps b/c the initialization code is called from one processor? 
+	rq->curr = NULL;
 					
 }
 
