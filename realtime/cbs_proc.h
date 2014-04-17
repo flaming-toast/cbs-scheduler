@@ -8,6 +8,12 @@
  * snapshots
  */
 #define CBS_MAX_HISTORY 64
+#define SNAP_MAX_TRIGGERS 8
+
+struct cbs_snapshot_task {
+  long pid;
+  long time_len;
+};
 
 /*
  * An opaque type that represents a CBS task.
@@ -57,6 +63,7 @@ void cbs_disable(void);
  */
 void cbs_list_history(int sid, cbs_func_t func, void *arg);
 
+void cbs_list_rq(int sid, cbs_func_t func, void* arg);
 /*
  * Shows the currently running CBS process
  *
@@ -126,5 +133,24 @@ cbs_time_t cbs_get_compute(cbs_proc_t p);
  */
 enum cbs_state cbs_get_state(cbs_proc_t p);
 
+/*
+ * Different subsystems can be interrogated by the snapshot subsystem.
+ * Each subsystem can provide a different set of events
+ */
+enum snap_event
+{
+    SNAP_EVENT_CFS_SCHED,     /* Triggers when the CFS scheduler
+			       * context switches a task */
+    SNAP_EVENT_CBS_SCHED,
+};
+
+/*
+ * Snapshots can be triggered on these sorts of events
+ */
+enum snap_trig
+{
+    SNAP_TRIG_BEDGE,    /* Triggers on the edge before an event starts */
+    SNAP_TRIG_AEDGE,    /* Triggers on the after before an event starts */
+};
 
 #endif

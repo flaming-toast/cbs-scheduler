@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include "cbs.h"
 #include "cbs_proc.h"
-#include "snapshot.h"
 #include "CUnit/Basic.h"
 
 
