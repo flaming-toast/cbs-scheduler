@@ -776,6 +776,7 @@ enum cpu_idle_type {
 #define SD_ASYM_PACKING		0x0800  /* Place busy groups earlier in the domain */
 #define SD_PREFER_SIBLING	0x1000	/* Prefer to place tasks in a sibling domain */
 #define SD_OVERLAP		0x2000	/* sched_domains of this level overlap */
+#define SD_CBS_MIGRATE		0x3000	/* initial migration of a cbs task */
 
 extern int __weak arch_sd_sibiling_asym_packing(void);
 
@@ -1021,18 +1022,18 @@ struct sched_cbs_entity {
 	unsigned int		on_rq;
 
 //	u64 			deadline_ticks_left; // next deadline in jiffies + period
-	u64 			deadline; // deadline in jiffies (a value we'll eventually hit in the future)
-	u64 			current_budget; // should be in ticks
-	u64 			cpu_budget; // ditto
-	u64 			period;
-	u64 			bandwidth; // ratio budget/period
+	unsigned long		deadline; // deadline in jiffies (a value we'll eventually hit in the future)
+	unsigned long		current_budget; // should be in ticks
+	unsigned long		cpu_budget; // ditto
+	unsigned long		period;
+	unsigned long		bandwidth; // ratio budget/period
 
-	u64			exec_start;
-	u64			sum_exec_runtime;
-	u64			vruntime;
-	u64			prev_sum_exec_runtime;
+	unsigned long		exec_start;
+	unsigned long		sum_exec_runtime;
+	unsigned long		vruntime;
+	unsigned long		prev_sum_exec_runtime;
 
-	int  			is_slack; // is this the slack cbs "task"?
+	int 	 		is_slack; // is this the slack cbs "task"?
 
 };
 

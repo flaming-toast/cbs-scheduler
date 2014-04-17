@@ -13,10 +13,10 @@
 
 #include <trace/events/sched.h>
 
+#include <linux/gcd.h>
+
 #include "sched.h"
 #include "cbs_snapshot.h"
-
-
 
 static inline struct task_struct *task_of(struct sched_cbs_entity *se)
 {
@@ -70,28 +70,36 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	struct sched_cbs_entity *cbs_se = &p->cbs_se;
 	cbs_rq = &rq->cbs;
 
-	unsigned long new_total_budget = cbs_rq->total_sched_cbs_budget + cbs_se->cpu_budget;
-	unsigned long new_total_period = cbs_rq->total_sched_cbs_period + cbs_se->period;
+	/* bandwidth represented as a 24.8 fp value */
+	unsigned long budget = int_to_fp(cbs_se->cpu_budget);
+	unsigned long period = int_to_fp(cbs_se->period);
+	unsigned long bandwidth = div_fp(budget, period);
+	printk("%lx\n", budget);
+	printk("%lx\n", period);
+	printk("%lx\n", bandwidth);
+	printk("%ld\n", fp_to_int(mul_fp(div_fp(int_to_fp(1000UL), int_to_fp(10000UL)), int_to_fp(cbs_rq->total_sched_cbs_periods+cbs_se->period))));
 
 	/* Schedulability test, check if sum of ratios >= 1 */
-	if (new_total_budget > new_total_period) {
-		/* We don't enqueue the task */
+//	if (bandwidth + cbs_rq->total_sched_cbs_utilization >= int_to_fp(1))  //0x100
+	if (fp_to_int(bandwidth + cbs_rq->total_sched_cbs_utilization) >= (unsigned long)0x5A)  //90%, save 10% for cbs
 		return;
-	}
+	else
+		cbs_rq->total_sched_cbs_utilization += bandwidth;
 	
-	/* We can enqueue the task if it passed the schedulability test */
-	cbs_rq->total_sched_cbs_budget = new_total_budget;
-	cbs_rq->total_sched_cbs_period = new_total_period;
-
 	/* Recalculate slack task bandwidth (1 - total_sched_cbs_utilization)*/
 	/* Instead of dynamically recalculating this each time...might just be 
 	 * a good idea to set aside a percentage -_-
 	 */
-	/* The maths are all *wrong* here. We need to figure out either a way to do fpa or 
-	 * do potentially hacky integer arithmetic 
+	cbs_rq->total_sched_cbs_periods += cbs_se->period;
+	/* new slack budget =
+	 * total periods * (1 - total_utilization ratio)
 	 */
-	cbs_rq->slack_se->cpu_budget = cbs_rq->total_sched_cbs_period - cbs_rq->total_sched_cbs_budget;
-	cbs_rq->slack_se->period = cbs_rq->total_sched_cbs_period;
+	unsigned long new_slack_ratio = int_to_fp(1) - cbs_rq->total_sched_cbs_utilization;
+	unsigned long new_slack_budget = mul_fp(int_to_fp(cbs_rq->total_sched_cbs_periods), new_slack_ratio);
+	cbs_rq->slack_se->cpu_budget = fp_to_int(new_slack_budget);
+	printk("New slack budget is: %lx\n", cbs_rq->slack_se->cpu_budget);
+	printk("New slack budget is: %lu\n", cbs_rq->slack_se->cpu_budget);
+	cbs_rq->slack_se->period = cbs_rq->total_sched_cbs_periods;
 
 	/* if c > (d - r)U
 	 * recharge deadline to period,
@@ -134,8 +142,7 @@ static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 	rb_erase(&cbs_se->run_node, &cbs_rq->deadlines);
 	cbs_se->on_rq = 0;
 
-	cbs_rq->total_sched_cbs_period -= cbs_se->period;
-	cbs_rq->total_sched_cbs_budget -= cbs_se->cpu_budget;
+	cbs_rq->total_sched_cbs_utilization -= div_fp(int_to_fp(cbs_se->cpu_budget), int_to_fp(cbs_se->period));
 	/* should update slack cbs budget to reflect bandwidth ratio */
 
 	cbs_rq->nr_running--;
@@ -294,13 +301,27 @@ static void put_prev_task_cbs(struct rq *rq, struct task_struct *prev)
 	*/
 	cbs_rq->curr = NULL;
 }
- /*                                           
+
 static int
 select_task_rq_cbs(struct task_struct *p, int sd_flag, int wake_flags)
 {
-	return 0;
+	struct rq *rq;
+	int i;
+	unsigned long utilization; /* 24.8 fp value */
+	int laziest = smp_processor_id();
+	unsigned long min_utilization = cpu_rq(laziest)->cbs.total_sched_cbs_utilization;
+	const struct cpumask *mask = &p->cpus_allowed;
+	for_each_cpu(i, mask) { 
+		rq = cpu_rq(i);
+		utilization = rq->cbs.total_sched_cbs_utilization;
+		if(utilization < min_utilization) 
+			laziest = cpu_of(rq); // or just i
+	}
+
+	return laziest;
 }
 
+/*
 migrate_task_rq_cbs,
                       
 rq_online_cbs,
@@ -383,8 +404,10 @@ static unsigned int get_rr_interval_cbs(struct rq *rq, struct task_struct *task)
 
 void init_cbs_rq(struct cbs_rq *rq) {
 	rq->deadlines = RB_ROOT;
-	rq->total_sched_cbs_budget = 0;
-	rq->total_sched_cbs_period = 0;
+	rq->total_sched_cbs_utilization = int_to_fp(0); // make sure to do everything in fp arithmetic
+	rq->total_sched_cbs_periods = 0;
+	rq->cpu = smp_processor_id(); // For debugging purposes, but this doesn't get set correctly for some reason, perhaps b/c the initialization code is called from one processor? 
+					
 }
 
 __init void init_sched_cbs_class(struct rq *rq)
@@ -401,7 +424,7 @@ __init void init_sched_cbs_class(struct rq *rq)
 
 	/* When we start out slack gets 100% utilization as there are no tasks in the run queue yet */
 	/* These values are quite arbitrary, I'm not sure what to start deadline_ticks_left */
-	cbs_slack_se->period = 10;
+	cbs_slack_se->period = 1000;
 	cbs_slack_se->cpu_budget = cbs_slack_se->current_budget = cbs_slack_se->period;
 	cbs_slack_se->deadline = jiffies + cbs_slack_se->period;
 
@@ -458,17 +481,17 @@ const struct sched_class cbs_sched_class = {
 	.pick_next_task		= pick_next_task_cbs,
 	.put_prev_task		= put_prev_task_cbs,
 
-/* Not responsible for load-balancing migration operations.
 #ifdef CONFIG_SMP
 	.select_task_rq		= select_task_rq_cbs,
+	/*
 	.migrate_task_rq	= migrate_task_rq_cbs,
 
 	.rq_online		= rq_online_cbs,
 	.rq_offline		= rq_offline_cbs,
 
 	.task_waking		= task_waking_cbs,
+	*/
 #endif
-*/
 
 	.set_curr_task          = set_curr_task_cbs,
 	.task_tick		= task_tick_cbs,
