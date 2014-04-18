@@ -47,7 +47,7 @@ int cbs_create(cbs_t *thread, enum cbs_type type,
 		int (*entry)(void *), void *arg)
 {
 
-	int period_usec = period->tv_usec;
+	unsigned long period_usec = period->tv_usec;
 
 	if (type != CBS_RT && type != CBS_BW) {
 		fprintf(stderr, "Invalid cbs_type");
@@ -75,10 +75,10 @@ int cbs_create(cbs_t *thread, enum cbs_type type,
 		task->pid = getpid();
 		task->ret = CBS_CONTINUE;
 		struct cbs_sched_param param = {
-			.sched_priority = 2, // do numeric priorities even matter?
+			.sched_priority = ((int) 2), // do numeric priorities even matter?
 			// Note: the scheduling policy of a task available in task->policy
-			.cpu_budget = cpu,
-			.period_ns = period_usec * 1000
+			.cpu_budget = ((unsigned int) cpu),
+			.period_ns = ((unsigned long) (period_usec * 1000))
 		};
 
 		switch(type){

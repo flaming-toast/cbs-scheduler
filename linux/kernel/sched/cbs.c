@@ -64,6 +64,77 @@ static void update_curr(struct cbs_rq *cbs_rq)
         history_time_interval++;
 	/* Do we need to erase and reinsert into the tree to rebalance? */
 }
+/*
+ * Preempt the current task with a newly woken task if needed:
+ */
+/* "To drive preemption between tasks, the scheduler sets the flag in timer 
+ * interrupt handler scheduler_tick()" -- core.c
+ * if the flag is set, __schedule() runs the needreschedule
+ * goto, which calls pick_next_task, clears the flag, 
+ * calls context_switch with the newly picked task set.
+ */
+static void
+check_preempt_tick(struct cbs_rq *cbs_rq, struct sched_cbs_entity *curr) 
+{
+	int rebalance = 0;
+	if (jiffies >= curr->deadline) { // > or >=?
+		/* Our deadline is here but 
+		 * we still have budget, we 
+		 * couldn't meet our deadline
+		 */
+		if (curr->current_budget > 0) { // still have unrun budget
+			/* SIGXCPU? */
+			struct task_struct *p = task_of(curr);
+			sigaddset(&p->pending.signal, SIGXCPU);
+			set_tsk_thread_flag(p, TIF_SIGPENDING);
+
+			/* Sets TIF_NEEDS_RESCHED flag,
+		 	 * test_tsk_need_resched will return true
+		 	 * for this task
+		 	 */
+			resched_task(task_of(cbs_rq->curr));
+			return;
+		}
+		/* If we are at the deadline and our budget is <=0, fall through
+		 * to the next case...
+		 */
+	}
+
+	/* 
+	 * check if we have exhausted our budget, 
+	 * do a refresh
+	 */
+	if (curr->current_budget <= 0) {
+		curr->current_budget = curr->cpu_budget;
+		curr->deadline = curr->deadline + curr->period; // our previous deadline + period
+
+		/* Deadline changed, re-sort the tree */
+		rebalance = 1;
+
+	}
+
+	if (rebalance) {
+		insert_cbs_rq(cbs_rq, curr, 1);
+	}
+	/* After rebalancing, check if there is an earlier 
+	 * deadline in the tree, if so
+	 * call resched_task 
+	 */
+	if (container_of(cbs_rq->leftmost, struct sched_cbs_entity, run_node) != curr) {
+		/* Fall throught the scheduler classes in pick_next_tasfdsf,
+		 * cbs will be first.
+		 *
+		 * If a task has been newly enqueued/awoken, and it has an earlier 
+		 * deadline than the slack task, then it will get to run on the
+		 * next pick_next_task call
+		 */
+		resched_task(task_of(cbs_rq->curr));
+	}
+
+	/* If there curr did not exhaust its budget and deadline is still in the future (jiffies < deadline)
+	 * then this function does nothing
+	 */
+}
 
 
 const struct sched_class cbs_sched_class;
@@ -137,9 +208,24 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 		cbs_se->current_budget = cbs_se->cpu_budget;
 	}
 
+	/* These calls to insert_cbs_rq will update the leftmost node but will not
+	 * set the resched flag */
+	insert_cbs_rq(cbs_rq, cbs_rq->slack_se, 1);
 	insert_cbs_rq(cbs_rq, cbs_se, 0);
 
 	cbs_rq->nr_running++;
+	rq->nr_running++; // to not fall through that cfs optimation preventing our pick_next_task to be called
+
+	if (cbs_rq->curr == NULL || container_of(cbs_rq->leftmost, struct sched_cbs_entity, run_node) != cbs_rq->curr) {
+		/* Fall throught the scheduler classes in pick_next_tasfdsf,
+		 * cbs will be first.
+		 *
+		 * If a task has been newly enqueued/awoken, and it has an earlier 
+		 * deadline than the slack task, then it will get to run on the
+		 * next pick_next_task call
+		 */
+		resched_task(rq->curr);
+	}
 }
 
 /* Take off runqueue because task is blocking/sleeping/terminating etc */
@@ -177,7 +263,20 @@ static void dequeue_task_cbs (struct rq *rq, struct task_struct *p, int flags)
 	cbs_rq->slack_se->cpu_budget = fp_to_int(new_slack_budget);
 	cbs_rq->slack_se->period = cbs_rq->total_sched_cbs_periods;
 
+	insert_cbs_rq(cbs_rq, cbs_rq->slack_se, 1);
 	cbs_rq->nr_running--;
+	rq->nr_running--;
+
+	if (cbs_rq->curr == NULL || container_of(cbs_rq->leftmost, struct sched_cbs_entity, run_node) != cbs_rq->curr) {
+		/* Fall throught the scheduler classes in pick_next_tasfdsf,
+		 * cbs will be first.
+		 *
+		 * If a task has been newly enqueued/awoken, and it has an earlier 
+		 * deadline than the slack task, then it will get to run on the
+		 * next pick_next_task call
+		 */
+		resched_task(rq->curr);
+	}
 }
 
 static void yield_task_cbs(struct rq *rq)
@@ -189,77 +288,6 @@ static bool yield_to_task_cbs(struct rq *rq, struct task_struct *p, bool preempt
 	return false;
 }
 
-/*
- * Preempt the current task with a newly woken task if needed:
- */
-/* "To drive preemption between tasks, the scheduler sets the flag in timer 
- * interrupt handler scheduler_tick()" -- core.c
- * if the flag is set, __schedule() runs the needreschedule
- * goto, which calls pick_next_task, clears the flag, 
- * calls context_switch with the newly picked task set.
- */
-static void
-check_preempt_tick(struct cbs_rq *cbs_rq, struct sched_cbs_entity *curr) 
-{
-	int rebalance = 0;
-	if (jiffies >= curr->deadline) { // > or >=?
-		/* Our deadline is here but 
-		 * we still have budget, we 
-		 * couldn't meet our deadline
-		 */
-		if (curr->current_budget > 0) { // still have unrun budget
-			/* SIGXCPU? */
-			struct task_struct *p = task_of(curr);
-			sigaddset(&p->pending.signal, SIGXCPU);
-			set_tsk_thread_flag(p, TIF_SIGPENDING);
-
-			/* Sets TIF_NEEDS_RESCHED flag,
-		 	 * test_tsk_need_resched will return true
-		 	 * for this task
-		 	 */
-			resched_task(task_of(cbs_rq->curr));
-			return;
-		}
-		/* If we are at the deadline and our budget is <=0, fall through
-		 * to the next case...
-		 */
-	}
-
-	/* 
-	 * check if we have exhausted our budget, 
-	 * do a refresh
-	 */
-	if (curr->current_budget <= 0) {
-		curr->current_budget = curr->cpu_budget;
-		curr->deadline = curr->deadline + curr->period; // our previous deadline + period
-
-		/* Deadline changed, re-sort the tree */
-		rebalance = 1;
-
-	}
-
-	if (rebalance) {
-		insert_cbs_rq(cbs_rq, curr, 1);
-	}
-	/* After rebalancing, check if there is an earlier 
-	 * deadline in the tree, if so
-	 * call resched_task 
-	 */
-	if (container_of(cbs_rq->leftmost, struct sched_cbs_entity, run_node) != curr) {
-		/* Fall throught the scheduler classes in pick_next_tasfdsf,
-		 * cbs will be first.
-		 *
-		 * If a task has been newly enqueued/awoken, and it has an earlier 
-		 * deadline than the slack task, then it will get to run on the
-		 * next pick_next_task call
-		 */
-		resched_task(task_of(cbs_rq->curr));
-	}
-
-	/* If there curr did not exhaust its budget and deadline is still in the future (jiffies < deadline)
-	 * then this function does nothing
-	 */
-}
 
 /*
  * Preempt the current task with a newly woken task if needed:

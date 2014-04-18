@@ -21,9 +21,9 @@
 // type:{0/hard,1/soft} | cpu budget (MIs)| period (usec)
 #define t1_procs 3
 unsigned long test1[t1_procs][3] = {
-	{0, 2, 40000000},
-	{1, 5, 45000000},
-	{1, 1, 60000000}
+	{0, 1, 50000000000}, 
+	{1, 5, 45000},
+	{1, 1, 60000}
 };
 
 struct cbs_tester
