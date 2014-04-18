@@ -8,18 +8,18 @@ struct cbs_snapshot_task snapshot_buffer[SNAPSHOT_BUF_SIZE];
 
 int snapshot_written[SNAP_MAX_TRIGGERS];
 
-enum snap_event sn_events[SNAP_MAX_TRIGGERS];
-enum snap_trig sn_triggers[SNAP_MAX_TRIGGERS];
+snap_event sn_events[SNAP_MAX_TRIGGERS];
+snap_trig sn_triggers[SNAP_MAX_TRIGGERS];
 
 struct cbs_snapshot_task history_buffer[CBS_MAX_HISTORY];
 int history_buffer_head;
 
-int snapshot(enum snap_event *events, enum snap_trig *triggers, size_t n) {
+int snapshot(snap_event *events, snap_trig *triggers, size_t n) {
   int i = 0;
   memset(snapshot_buffer, 0, SNAPSHOT_BUF_SIZE * sizeof(struct cbs_snapshot_task));
   memset(snapshot_written, 0, SNAP_MAX_TRIGGERS * sizeof(int));
-  memset(sn_events, 0, SNAP_MAX_TRIGGERS * sizeof(enum snap_event));
-  memset(sn_triggers, 0, SNAP_MAX_TRIGGERS * sizeof(enum snap_trig));
+  memset(sn_events, 0, SNAP_MAX_TRIGGERS * sizeof(snap_event));
+  memset(sn_triggers, 0, SNAP_MAX_TRIGGERS * sizeof(snap_trig));
   for (; i < SNAP_MAX_TRIGGERS; i++) {
     sn_events[i] = *(events + i);
     sn_triggers[i] = *(triggers + i);
@@ -35,10 +35,10 @@ int snap_join(void) {
 long sys_snapshot(long eventp, long trigp, long n) {
 
   long out;
-  enum snap_event* ev = kmalloc(sizeof(enum snap_event) * n, GFP_KERNEL);
-  enum snap_trig* tr = kmalloc(sizeof(enum snap_trig) * n, GFP_KERNEL);
-  __copy_from_user(ev, (void*)eventp, sizeof(enum snap_event) * n);
-  __copy_from_user(ev, (void*)trigp, sizeof(enum snap_trig) * n);
+  snap_event* ev = kmalloc(sizeof(snap_event) * n, GFP_KERNEL);
+  snap_trig* tr = kmalloc(sizeof(snap_trig) * n, GFP_KERNEL);
+  __copy_from_user(ev, (void*)eventp, sizeof(snap_event) * n);
+  __copy_from_user(tr, (void*)trigp, sizeof(snap_trig) * n);
   out = (long) snapshot(ev, tr, n);
   kfree(ev);
   kfree(tr);

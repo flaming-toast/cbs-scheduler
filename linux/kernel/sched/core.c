@@ -4492,7 +4492,7 @@ static int migration_cpu_stop(void *data)
 }
 
 /* When a new cbs task has been created via setscheduler, call this
- * to find it an appropriate home. 
+ * to find it an appropriate home.
  */
 void cbs_task_move_rq(struct task_struct *p)
 {
@@ -4500,7 +4500,7 @@ void cbs_task_move_rq(struct task_struct *p)
 	int dest_cpu;
 
 	raw_spin_lock_irqsave(&p->pi_lock, flags);
-	/* Should call select_task_rq_cbs, 
+	/* Should call select_task_rq_cbs,
 	 * which returns the cpu id with the lowest cbs utilization
 	 */
 	dest_cpu = p->sched_class->select_task_rq(p, SD_CBS_MIGRATE, 0);

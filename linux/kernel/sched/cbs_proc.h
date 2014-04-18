@@ -10,6 +10,18 @@
 #define CBS_MAX_HISTORY 64
 #define SNAP_MAX_TRIGGERS 8
 
+
+typedef int snap_event;
+typedef int snap_trig;
+// Triggers when the CFS scheduler context switches a task
+#define SNAP_EVENT_CFS_SCHED 0
+#define SNAP_EVENT_CBS_SCHED 1
+// Triggers on the edge before an event starts
+#define SNAP_TRIG_BEDGE 0
+// Triggers on the edge after an event starts
+#define SNAP_TRIG_AEDGE 1
+
+
 struct cbs_snapshot_task {
   long pid;
   long time_len;
@@ -63,6 +75,7 @@ void cbs_disable(void);
  */
 void cbs_list_history(int sid, cbs_func_t func, void *arg);
 
+void cbs_list_rq(int sid, cbs_func_t func, void* arg);
 /*
  * Shows the currently running CBS process
  *
@@ -131,6 +144,5 @@ cbs_time_t cbs_get_compute(cbs_proc_t p);
  * Obtains the current run state of a process.
  */
 enum cbs_state cbs_get_state(cbs_proc_t p);
-
 
 #endif

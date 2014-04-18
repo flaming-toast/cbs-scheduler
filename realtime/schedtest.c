@@ -21,9 +21,9 @@
 // type:{0/hard,1/soft} | cpu budget (MIs)| period (usec)
 #define t1_procs 3
 unsigned long test1[t1_procs][3] = {
-	{0, 1, 50000000000}, 
-	{1, 5, 45000},
-	{1, 1, 60000}
+	{0, 1, 5000000000},
+	{1, 1, 5000000000},
+	{1, 1, 50000000000},
 };
 
 struct cbs_tester
@@ -44,7 +44,8 @@ void handle_interrupt()
 
 static int entry(void *keep_running)
 {
-	while((int *)keep_running);
+	//while((int *)keep_running);
+	sleep(5);
 	return 1;
 }
 
@@ -126,18 +127,16 @@ int main()
 	}
 
 	signal(SIGINT, handle_interrupt);
+	snap_event *ev = malloc(sizeof(snap_event) * 8);
+	snap_trig *tr = malloc(sizeof(snap_trig) * 8);
+	for(i = 0; i < 8; i++)
+	{
+		ev[i] = SNAP_EVENT_CBS_SCHED;
+		tr[i] = 0;
+	}
+
 	while(keep_running)
 	{
-		//TODO insert snapshot syscall here, calculate snap_id
-		enum snap_event *ev = malloc(sizeof(enum snap_event) * 8);
-		enum snap_trig *tr = malloc(sizeof(enum snap_trig) * 8);
-		for(i = 0; i < 8; i++)
-		{
-		        ev[i] = SNAP_EVENT_CBS_SCHED;
-		        tr[i] = SNAP_TRIG_AEDGE;
-		}
-
-
 		syscall(314, ev, tr, 8);
 		snap_id = 0;
 
@@ -146,14 +145,16 @@ int main()
 		sleep(5);
 		keep_running = 0;
 	}
+	free(ev);
+	free(tr);
 
-/*
-	for(i = 0; i < t1_procs; i++)
-	{
-	       cbs_join(cbs_ts[i], NULL);
-	}
+	/*
+	   for(i = 0; i < t1_procs; i++)
+	   {
+	   cbs_join(cbs_ts[i], NULL);
+	   }
 
-	free(cbs_ts);
-	free(ct1);
-	*/
+	   free(cbs_ts);
+	   free(ct1);
+	   */
 }
