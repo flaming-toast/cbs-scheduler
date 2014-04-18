@@ -3466,14 +3466,11 @@ recheck:
 	}
 
 	if (policy == SCHED_CBS_BW || policy == SCHED_CBS_RT) {
-		unsigned long tmp = div_fp(int_to_fp(500000), int_to_fp(HZ));
-		unsigned long tmp2 = div_fp(tmp, loops_per_jiffy);
-		tmp2 = fp_to_int(tmp);
+		unsigned long tmp = 500 * 1000000000;
+		tmp /= loops_per_jiffy;
 		printk("%lx\n", tmp);
-		printk("%lx\n", tmp2);
-		printk("%ld\n", tmp2);
 
-		p->cbs_se.current_budget = p->cbs_se.cpu_budget = NS_TO_JIFFIES(1000000000 * param->cpu_budget * tmp2);
+		p->cbs_se.current_budget = p->cbs_se.cpu_budget = NS_TO_JIFFIES(param->cpu_budget * tmp);
 		printk("%ld\n", p->cbs_se.current_budget);
 		p->cbs_se.period = NS_TO_JIFFIES(param->period_ns);
 //p->cbs_se.current_budget = p->cbs_se.cpu_budget = param->cpu_budget;
