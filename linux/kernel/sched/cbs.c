@@ -216,16 +216,9 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	cbs_rq->nr_running++;
 	rq->nr_running++; // to not fall through that cfs optimation preventing our pick_next_task to be called
 
-	if (cbs_rq->curr == NULL || container_of(cbs_rq->leftmost, struct sched_cbs_entity, run_node) != cbs_rq->curr) {
-		/* Fall throught the scheduler classes in pick_next_tasfdsf,
-		 * cbs will be first.
-		 *
-		 * If a task has been newly enqueued/awoken, and it has an earlier
-		 * deadline than the slack task, then it will get to run on the
-		 * next pick_next_task call
-		 */
-		resched_task(rq->curr);
-	}
+	/* setscheduler codepath: */
+	/* enqueue_task -> check_class_changed -> switched_to_cbs -> check_preempt_curr */
+
 }
 
 /* Take off runqueue because task is blocking/sleeping/terminating etc */
@@ -295,7 +288,9 @@ static bool yield_to_task_cbs(struct rq *rq, struct task_struct *p, bool preempt
 static void check_preempt_curr_cbs(struct rq *rq, struct task_struct *p, int wake_flags)
 {
 	struct task_struct *curr = rq->curr;
-	struct sched_cbs_entity *curr_cbs_se = &curr->cbs_se, *pse = &p->cbs_se;
+	struct cbs_rq *cbs_rq;
+	cbs_rq = &rq->cbs;
+//	struct sched_cbs_entity *curr_cbs_se = &curr->cbs_se, *pse = &p->cbs_se;
 
 	/* Idle tasks are by definition preempted by non-idle tasks. */
 	if (unlikely(curr->policy == SCHED_IDLE) &&
@@ -313,7 +308,7 @@ static void check_preempt_curr_cbs(struct rq *rq, struct task_struct *p, int wak
 	 * does CBS care about child tasks?
 	 */
 
-	if (entity_before(pse, curr_cbs_se))
+	if (task_of(container_of(cbs_rq->leftmost, struct sched_cbs_entity, run_node)) != curr) 
 		goto preempt;
 preempt:
 	/* resched_task will set the TIF_NEED_RESCHED flag which will be
@@ -488,6 +483,13 @@ static void switched_from_cbs(struct rq *rq, struct task_struct *p)
 
 static void switched_to_cbs(struct rq *rq, struct task_struct *p)
 {
+	if (!p->se.on_rq)
+		return;
+	if (rq->curr == p)
+		resched_task(rq->curr);
+	else
+		check_preempt_curr(rq, p, 0);
+	
 }
 
 static unsigned int get_rr_interval_cbs(struct rq *rq, struct task_struct *task)
@@ -499,9 +501,8 @@ void init_cbs_rq(struct cbs_rq *rq) {
 	rq->deadlines = RB_ROOT;
 	rq->total_sched_cbs_utilization = int_to_fp(0); // make sure to do everything in fp arithmetic
 	rq->total_sched_cbs_periods = 0;
-	rq->cpu = smp_processor_id(); // For debugging purposes, but this doesn't get set correctly for some reason, perhaps b/c the initialization code is called from one processor?
-	rq->curr = NULL;
-
+	rq->cpu = smp_processor_id(); // For debugging purposes, but this doesn't get set correctly for some reason, perhaps b/c the initialization code is called from one processor? 
+	rq->curr = rq->slack_se; // on init the only running cbs task is the slack task
 }
 
 __init void init_sched_cbs_class(struct rq *rq)
