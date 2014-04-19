@@ -19,11 +19,14 @@
 // note: slack task has >= 10% utilization
 
 // type:{0/hard,1/soft} | cpu budget (MIs)| period (usec)
-#define t1_procs 3
+#define t1_procs 6
 unsigned long test1[t1_procs][3] = {
-	{0, 1000, 5000000000},
-	{1, 1000, 5000000000},
-	{1, 1000, 50000000000},
+	{0, 1000, 50000},
+	{0, 1000, 500000},
+	{0, 1000, 5000000},
+	{1, 1000, 50000},
+	{1, 1000, 500000},
+	{1, 1000, 5000000},
 };
 
 struct cbs_tester
@@ -44,8 +47,14 @@ void handle_interrupt()
 
 static int entry(void *keep_running)
 {
-	//while((int *)keep_running);
-	sleep(5);
+	unsigned long i = 0;
+	for(; i < 1000000000; i++)
+	{
+		if(i % 100000000 == 0)
+		{
+		        printf("child still alive\n");
+		}
+	}
 	return 1;
 }
 
@@ -135,26 +144,18 @@ int main()
 		tr[i] = 0;
 	}
 
-	while(keep_running)
+	for(i = 0; i < 4; i++)
 	{
 		syscall(314, ev, tr, 8);
 		snap_id = 0;
 
 		test_rq(snap_id);
 		test_utilization(snap_id);
-		sleep(5);
-		keep_running = 0;
+		sleep(2);
 	}
+
 	free(ev);
 	free(tr);
-
-	/*
-	   for(i = 0; i < t1_procs; i++)
-	   {
-	   cbs_join(cbs_ts[i], NULL);
-	   }
-
-	   free(cbs_ts);
-	   free(ct1);
-	   */
+	free(cbs_ts);
+	free(ct1);
 }
