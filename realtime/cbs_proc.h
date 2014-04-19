@@ -10,6 +10,18 @@
 #define CBS_MAX_HISTORY 64
 #define SNAP_MAX_TRIGGERS 8
 
+
+typedef int snap_event;
+typedef int snap_trig;
+// Triggers when the CFS scheduler context switches a task
+#define SNAP_EVENT_CFS_SCHED 0
+#define SNAP_EVENT_CBS_SCHED 1
+// Triggers on the edge before an event starts
+#define SNAP_TRIG_BEDGE 0
+// Triggers on the edge after an event starts
+#define SNAP_TRIG_AEDGE 1
+
+
 struct cbs_snapshot_task {
   long pid;
   long time_len;
@@ -132,25 +144,5 @@ cbs_time_t cbs_get_compute(cbs_proc_t p);
  * Obtains the current run state of a process.
  */
 enum cbs_state cbs_get_state(cbs_proc_t p);
-
-/*
- * Different subsystems can be interrogated by the snapshot subsystem.
- * Each subsystem can provide a different set of events
- */
-enum snap_event
-{
-    SNAP_EVENT_CFS_SCHED,     /* Triggers when the CFS scheduler
-			       * context switches a task */
-    SNAP_EVENT_CBS_SCHED,
-};
-
-/*
- * Snapshots can be triggered on these sorts of events
- */
-enum snap_trig
-{
-    SNAP_TRIG_BEDGE,    /* Triggers on the edge before an event starts */
-    SNAP_TRIG_AEDGE,    /* Triggers on the after before an event starts */
-};
 
 #endif
