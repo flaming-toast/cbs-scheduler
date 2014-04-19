@@ -3468,10 +3468,10 @@ recheck:
 	if (policy == SCHED_CBS_BW || policy == SCHED_CBS_RT) {
 		unsigned long tmp = 500 * 1000000000;
 		tmp /= loops_per_jiffy;
-		printk("%lx\n", tmp);
+//		printk("%lx\n", tmp);
 
 		p->cbs_se.current_budget = p->cbs_se.cpu_budget = NS_TO_JIFFIES(param->cpu_budget * tmp);
-		printk("%ld\n", p->cbs_se.current_budget);
+//		printk("%ld\n", p->cbs_se.current_budget);
 		p->cbs_se.period = NS_TO_JIFFIES(param->period_ns);
 //p->cbs_se.current_budget = p->cbs_se.cpu_budget = param->cpu_budget;
 //p->cbs_se.period = param->period_ns;

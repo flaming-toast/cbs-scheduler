@@ -163,10 +163,10 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	budget = int_to_fp(cbs_se->cpu_budget);
 	period = int_to_fp(cbs_se->period);
 	bandwidth = div_fp(budget, period);
-	printk("%lx\n", budget);
-	printk("%lx\n", period);
-	printk("%lx\n", bandwidth);
-	printk("%ld\n", fp_to_int(mul_fp(div_fp(int_to_fp(1000UL), int_to_fp(10000UL)), int_to_fp(cbs_rq->total_sched_cbs_periods+cbs_se->period))));
+//	printk("%lx\n", budget);
+//	printk("%lx\n", period);
+//	printk("%lx\n", bandwidth);
+//	printk("%ld\n", fp_to_int(mul_fp(div_fp(int_to_fp(1000UL), int_to_fp(10000UL)), int_to_fp(cbs_rq->total_sched_cbs_periods+cbs_se->period))));
 
 	/* Schedulability test, check if sum of ratios >= 1 */
 //	if (bandwidth + cbs_rq->total_sched_cbs_utilization >= int_to_fp(1))  //0x100
@@ -186,8 +186,8 @@ static void enqueue_task_cbs(struct rq *rq, struct task_struct *p, int flags)
 	new_slack_ratio = int_to_fp(1) - cbs_rq->total_sched_cbs_utilization;
 	new_slack_budget = mul_fp(int_to_fp(cbs_rq->total_sched_cbs_periods), new_slack_ratio);
 	cbs_rq->slack_se->cpu_budget = fp_to_int(new_slack_budget);
-	printk("New slack budget is: %lx\n", cbs_rq->slack_se->cpu_budget);
-	printk("New slack budget is: %lu\n", cbs_rq->slack_se->cpu_budget);
+//	printk("New slack budget is: %lx\n", cbs_rq->slack_se->cpu_budget);
+//	printk("New slack budget is: %lu\n", cbs_rq->slack_se->cpu_budget);
 	cbs_rq->slack_se->period = cbs_rq->total_sched_cbs_periods;
 
 	/* if c > (d - r)U
