@@ -61,7 +61,8 @@ setsched:
 	gcc -g -static -o realtime/setsched realtime/setsched.c
 	gcc -g -static -o realtime/test realtime/test.c
 	linux/usr/gen_init_cpio fs/config | gzip > .obj/initrd.gz
-
+.PHONY: schedtest
 schedtest:
 	gcc -g -static -o realtime/schedtest realtime/cbs_proc.c realtime/cbs.c realtime/schedtest.c
+	gcc -g -static -o realtime/sched_visualize realtime/cbs_proc.c realtime/cbs.c realtime/sched_visualize.c
 	linux/usr/gen_init_cpio fs/config | gzip > .obj/initrd.gz

@@ -17,35 +17,24 @@ struct cbs_snapshot_task {
   long time_len;
 };
 
-#define SNAPSHOT_BUF_SIZE (130 * SNAP_MAX_TRIGGERS) 
+#define SNAPSHOT_BUF_SIZE (130 * SNAP_MAX_TRIGGERS)
 
-
-/*
- * Different subsystems can be interrogated by the snapshot subsystem.
- * Each subsystem can provide a different set of events
- */
-enum snap_event
-{
-    SNAP_EVENT_CFS_SCHED,     /* Triggers when the CFS scheduler
-			       * context switches a task */
-    SNAP_EVENT_CBS_SCHED,
-};
-
-/*
- * Snapshots can be triggered on these sorts of events
- */
-enum snap_trig
-{
-    SNAP_TRIG_BEDGE,    /* Triggers on the edge before an event starts */
-    SNAP_TRIG_AEDGE,    /* Triggers on the after before an event starts */
-};
+typedef int snap_event;
+typedef int snap_trig;
+// Triggers when the CFS scheduler context switches a task
+#define SNAP_EVENT_CFS_SCHED 0
+#define SNAP_EVENT_CBS_SCHED 1
+// Triggers on the edge before an event starts
+#define SNAP_TRIG_BEDGE 0
+// Triggers on the edge after an event starts
+#define SNAP_TRIG_AEDGE 1
 
 extern struct cbs_snapshot_task snapshot_buffer[SNAPSHOT_BUF_SIZE];
 
 extern int snapshot_written[SNAP_MAX_TRIGGERS];
 
-extern enum snap_event sn_events[SNAP_MAX_TRIGGERS];
-extern enum snap_trig sn_triggers[SNAP_MAX_TRIGGERS];
+extern snap_event sn_events[SNAP_MAX_TRIGGERS];
+extern snap_trig sn_triggers[SNAP_MAX_TRIGGERS];
 
 extern struct cbs_snapshot_task history_buffer[CBS_MAX_HISTORY];
 extern int history_buffer_head;
@@ -67,7 +56,7 @@ extern int history_buffer_head;
  *
  * EINVAL         The kernel cannot take "n" snapshots at once.
  */
-int snapshot(enum snap_event *events, enum snap_trig *triggers, size_t n);
+int snapshot(snap_event *events, snap_trig *triggers, size_t n);
 
 /*
  * Waits for the previous set of snapshots to complete
