@@ -4456,6 +4456,7 @@ static int __migrate_task(struct task_struct *p, int src_cpu, int dest_cpu)
 	 * placed properly.
 	 */
 	if (p->on_rq) {
+		printk("Moving pid %d from CPU %d to CPU %d\n", p->pid, src_cpu, dest_cpu);
 		dequeue_task(rq_src, p, 0);
 		set_task_cpu(p, dest_cpu);
 		enqueue_task(rq_dest, p, 0);
