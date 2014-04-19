@@ -52,7 +52,7 @@ static int entry(void *keep_running)
 	{
 		if(i % 100000000 == 0)
 		{
-		        printf("child still alive\n");
+		        printf("child:%d running...\n", getpid());
 		}
 	}
 	return 1;
@@ -130,7 +130,6 @@ int main()
 			ct1[i].utilization = cpu/period.tv_usec;
 			ct1[i].cpu = cpu;
 			ct1[i].period_usec = period.tv_usec;
-			printf("Spawned process with PID: %d\n", ct1[i].pid);
 		}
 
 	}
