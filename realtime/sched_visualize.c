@@ -19,14 +19,13 @@
 // note: slack task has >= 10% utilization
 
 // type:{0/hard,1/soft} | cpu budget (MIs)| period (usec)
-#define t1_procs 6
+#define t1_procs 3
 unsigned long test1[t1_procs][4] = {
-	{0, 1000, 50000,    111},
-	{0, 1000, 500000,   111111},
-	{0, 1000, 5000000,  111111111},
-	{1, 1000, 50000000, 1111111111111},
-	{1, 1000, 500000000,111111111111111111},
-	{1, 1000, 5000000,  111111111},
+	{0, 10000, 1000000,  11111},
+	{0, 10000, 2000000,  111111111},
+	{1, 10000, 6000000,  11111111111111},
+//	{1, 10000, 5000000000,111111111111111111},
+//	{1, 10000, 5000000,  111111111},
 };
 
 struct cbs_tester
@@ -126,10 +125,10 @@ int main()
 			printf("Failed to create process %d with ret val %d\n", i, ret);
 		} else
 		{
-			ct1[i].pid = ((struct cbs_task *)cbs_ts+i)->pid;
 			ct1[i].utilization = cpu/period.tv_usec;
 			ct1[i].cpu = cpu;
 			ct1[i].period_usec = period.tv_usec;
+			ct1[i].pid = ((struct cbs_task *)cbs_ts+i)->pid;
 			printf("Spawned process with PID: %d\n", ct1[i].pid);
 		}
 
