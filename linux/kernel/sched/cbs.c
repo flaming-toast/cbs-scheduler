@@ -405,7 +405,7 @@ select_task_rq_cbs(struct task_struct *p, int sd_flag, int wake_flags)
 		if(utilization < min_utilization)
 			laziest = cpu_of(rq); // or just i
 	}
-
+	printk("select_task_rq_cbs: For task %d, selected CPU %d with utilization 0.%lu\n", p->pid, laziest, min_utilization);
 	return laziest;
 }
 
